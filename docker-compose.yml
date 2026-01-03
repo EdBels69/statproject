@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: stat_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/workspace/datasets
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/app/workspace/datasets
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: stat_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
