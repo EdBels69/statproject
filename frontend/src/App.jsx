@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import Upload from './app/pages/Upload';
 import Profile from './app/pages/Profile';

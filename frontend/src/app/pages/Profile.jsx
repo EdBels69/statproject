@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { reparseDataset, modifyDataset, getDataset, scanDataset, getSheets } from '../../lib/api';
 
@@ -9,7 +9,7 @@ export default function Profile() {
 
     // Data State
     const [profile, setProfile] = useState(location.state?.profile || null);
-    const [filename, setFilename] = useState(location.state?.filename || "Unknown file");
+    const [filename] = useState(location.state?.filename || "Unknown file");
     const [sheets, setSheets] = useState([]);
     const [selectedSheet, setSelectedSheet] = useState(null);
     const [editingCell, setEditingCell] = useState(null);
@@ -40,17 +40,7 @@ export default function Profile() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [menuRef]);
 
-    // Initial Load
-    useEffect(() => {
-        loadProfile();
-    }, [id]);
-
-    // Sheets check
-    useEffect(() => {
-        checkSheets();
-    }, [id]);
-
-    const checkSheets = async () => {
+    const checkSheets = useCallback(async () => {
         try {
             const s = await getSheets(id);
             if (s && s.length > 0) {
@@ -59,9 +49,9 @@ export default function Profile() {
         } catch (e) {
             console.error("Failed to load sheets", e);
         }
-    }
+    }, [id]);
 
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         setLoading(true);
         try {
             // Fetch "all" (first 10000 rows)
@@ -73,7 +63,17 @@ export default function Profile() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    // Initial Load
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
+
+    // Sheets check
+    useEffect(() => {
+        checkSheets();
+    }, [checkSheets]);
 
     const handleSheetChange = async (sheetName) => {
         if (sheetName === selectedSheet) return;

@@ -1,13 +1,12 @@
 import os
-import pandas as pd
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
 from app.modules.expert_system import WizardRequest, WizardRecommendation, recommend_method
-from app.modules.parsers import get_dataset_path, parse_file
-from app.stats.engine import run_analysis
+from app.modules.parsers import get_dataframe
+from app.stats.registry import run_registered_method, get_method
 from app.modules.reporting import generate_pdf_report
 from app.api.datasets import DATA_DIR # Reuse shared data dir constant
 
@@ -35,25 +34,10 @@ async def apply_analysis(request: ApplyRequest):
     vars = request.variables
     
     # 1. Load Data
-    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-        
     try:
-        # Load metadata for header_row
-        header_row = 0
-        meta_path = os.path.join(upload_dir, "metadata.json")
-        if os.path.exists(meta_path):
-            import json
-            with open(meta_path, "r") as f:
-                header_row = json.load(f).get("header_row", 0)
-        
-        # Check for processed version
-        processed_path = os.path.join(upload_dir, "processed.csv")
-        if os.path.exists(processed_path):
-             df = pd.read_csv(processed_path)
-        else:
-             df, _ = parse_file(file_path, header_row=header_row)
+        df = get_dataframe(dataset_id, DATA_DIR)
+    except FileNotFoundError:
+         raise HTTPException(status_code=404, detail="Dataset not found")
     except Exception as e:
          raise HTTPException(status_code=400, detail=f"Failed to load dataset: {e}")
 
@@ -86,26 +70,26 @@ async def apply_analysis(request: ApplyRequest):
 
     # 3. Run Real Analysis
     try:
-        # Pass group_col as a keyword argument for survival, or predictors for regression
-        results = run_analysis(
-            df, method_id, target_col, 
-            group_col if method_id not in ["survival_km", "linear_regression", "logistic_regression"] else (event_col if method_id == "survival_km" else predictors[0]),
-            group_col=group_col if method_id == "survival_km" else None,
-            predictors=predictors if method_id in ["linear_regression", "logistic_regression"] else None
-        )
+        if method_id == "survival_km":
+            results = run_registered_method(method_id, df, duration=target_col, event=event_col, group=group_col)
+        elif method_id in ["linear_regression", "logistic_regression"]:
+            results = run_registered_method(method_id, df, target=target_col, predictors=predictors)
+        elif method_id in ["pearson", "spearman"]:
+            results = run_registered_method(method_id, df, x=target_col, y=group_col)
+        else:
+            results = run_registered_method(method_id, df, target=target_col, group=group_col, is_paired=False)
         
         # AI Enhancement
         from app.llm import get_ai_conclusion
         from app.schemas.analysis import AnalysisResult
-        from app.stats.registry import METHODS
         
-        method_info = METHODS.get(method_id)
+        method_info = get_method(method_id)
         
         temp_res = AnalysisResult(
             method=method_info,
-            p_value=results["p_value"],
-            stat_value=results["stat_value"],
-            significant=results["significant"],
+            p_value=results.get("p_value", 0.0),
+            stat_value=results.get("stat_value", 0.0),
+            significant=results.get("significant", False),
             groups=results.get("groups"),
             plot_stats=results.get("plot_stats"),
             r_squared=results.get("r_squared"),

@@ -1,5 +1,59 @@
 const API_URL = "http://localhost:8000/api/v1";
 
+async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || response.statusText || "Request failed");
+  }
+  return response.json() as Promise<T>;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  missing_count: number;
+  unique_count: number;
+  example?: unknown;
+}
+
+export interface DatasetProfile {
+  row_count: number;
+  col_count: number;
+  columns: ColumnInfo[];
+  head: Record<string, unknown>[];
+  page: number;
+  total_pages: number;
+}
+
+export interface DatasetUploadResponse {
+  id: string;
+  filename: string;
+  profile: DatasetProfile;
+}
+
+export interface AnalysisJobPayload {
+  dataset_id: string;
+  target_column: string;
+  feature_column: string;
+  method_id?: string | null;
+  is_paired?: boolean;
+  job_type?: "analysis" | "report";
+}
+
+export interface JobStatus {
+  id: string;
+  dataset_id: string;
+  task_type: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  result_path?: string | null;
+  log_path?: string | null;
+  error?: string | null;
+  payload?: Record<string, unknown>;
+}
+
 export async function uploadDataset(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -15,35 +69,31 @@ export async function uploadDataset(file: File) {
 }
 
 export async function getWizardRecommendation(data: any) {
-  const response = await fetch(`${API_URL}/wizard/recommend`, {
+  return request(`${API_URL}/wizard/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error("Recommendation failed");
-  return response.json();
 }
 
 export async function applyStrategy(data: any) {
-  const response = await fetch(`${API_URL}/wizard/apply`, {
+  return request(`${API_URL}/wizard/apply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error("Apply strategy failed");
-  return response.json();
 }
 
 export async function listDatasets() {
-  const response = await fetch(`${API_URL}/datasets`);
-  if (!response.ok) throw new Error("Failed to list datasets");
-  return response.json();
+  return request<{ id: string; filename: string }[]>(`${API_URL}/datasets`);
 }
 
-export async function getDataset(id: string) {
-  const response = await fetch(`${API_URL}/datasets/${id}`);
-  if (!response.ok) throw new Error("Failed to fetch dataset");
-  return response.json();
+export async function getDataset(id: string, page?: number, limit?: number) {
+  const query = new URLSearchParams();
+  if (page) query.append("page", page.toString());
+  if (limit) query.append("limit", limit.toString());
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request<DatasetProfile>(`${API_URL}/datasets/${id}${suffix}`);
 }
 
 export async function exportReport(payload: { results: any, variables: any, dataset_id: string }) {
@@ -72,27 +122,23 @@ export async function getDatasetContent(datasetId: string, sheetName?: string) {
 }
 
 export async function modifyDataset(id: string, modifications: any) {
-  const response = await fetch(`${API_URL}/datasets/${id}/modify`, {
+  return request<DatasetProfile>(`${API_URL}/datasets/${id}/modify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(modifications),
   });
-  if (!response.ok) throw new Error("Failed to modify dataset");
-  return response.json();
 }
 
-export async function reparseDataset(id: string, something: any, sheetName: string) {
-  const response = await fetch(`${API_URL}/datasets/${id}/reparse?sheet=${encodeURIComponent(sheetName)}`, {
-    method: "POST"
+export async function reparseDataset(id: string, headerRow: number, sheetName?: string) {
+  return request<DatasetProfile>(`${API_URL}/datasets/${id}/reparse`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ header_row: headerRow, sheet_name: sheetName })
   });
-  if (!response.ok) throw new Error("Reparse failed");
-  return response.json();
 }
 
 export async function scanDataset(id: string) {
-  const response = await fetch(`${API_URL}/quality/scan/${id}`);
-  if (!response.ok) throw new Error("Scan failed");
-  return response.json();
+  return request(`${API_URL}/quality/scan/${id}`);
 }
 
 export async function downloadBatchReport(datasetId: string, batchResult: any, selectedVar: string | null) {
@@ -148,19 +194,27 @@ export function getPDFExportUrl(datasetId: string, variable: string, groupColumn
 }
 
 export async function reprocessDataset(id: string) {
-  const response = await fetch(`${API_URL}/datasets/${id}/reprocess`, {
+  return request(`${API_URL}/datasets/${id}/reprocess`, {
     method: "POST"
   });
-  if (!response.ok) throw new Error("Reprocess failed");
-  return response.json();
 }
 
 export async function runBatchAnalysis(datasetId: string, targets: string[], groupColumn: string) {
-  const response = await fetch(`${API_URL}/analyze/batch`, {
+  return request(`${API_URL}/analyze/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn }),
   });
-  if (!response.ok) throw new Error("Batch analysis failed");
-  return response.json();
+}
+
+export async function enqueueAnalysisJob(payload: AnalysisJobPayload): Promise<JobStatus> {
+  return request<JobStatus>(`${API_URL}/jobs/analysis`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getJobStatus(datasetId: string, jobId: string): Promise<JobStatus> {
+  return request<JobStatus>(`${API_URL}/jobs/${datasetId}/${jobId}`);
 }

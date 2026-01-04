@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 
 const TypeIcon = ({ type }) => {
     const getLabel = () => {
@@ -25,22 +25,21 @@ const TypeIcon = ({ type }) => {
 };
 
 export default function VariableSelector({ allColumns, onRun, loading }) {
-    const [available, setAvailable] = useState([]);
     const [targetCols, setTargetCols] = useState([]);
     const [groupCol, setGroupCol] = useState(null);
     const [selectedAvailable, setSelectedAvailable] = useState([]);
     const [selectedTargets, setSelectedTargets] = useState([]);
 
-    useEffect(() => {
-        if (allColumns.length > 0 && available.length === 0 && targetCols.length === 0 && !groupCol) {
-            setAvailable(allColumns);
-        }
-    }, [allColumns]);
+    const availableColumns = useMemo(() => {
+        return allColumns.filter(col =>
+            !targetCols.includes(col) &&
+            (!groupCol || groupCol.name !== col.name)
+        );
+    }, [allColumns, targetCols, groupCol]);
 
     const moveRightTarget = () => {
         const toMove = selectedAvailable.filter(c => !groupCol || c.name !== groupCol.name);
         setTargetCols([...targetCols, ...toMove]);
-        setAvailable(available.filter(c => !toMove.includes(c)));
         setSelectedAvailable([]);
     };
 
@@ -48,19 +47,16 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
         if (selectedAvailable.length !== 1) return;
         const col = selectedAvailable[0];
         setGroupCol(col);
-        setAvailable(available.filter(c => c !== col));
         setSelectedAvailable([]);
     };
 
     const moveLeftTarget = () => {
-        setAvailable([...available, ...selectedTargets]);
         setTargetCols(targetCols.filter(c => !selectedTargets.includes(c)));
         setSelectedTargets([]);
     };
 
     const removeGroup = () => {
         if (groupCol) {
-            setAvailable([...available, groupCol]);
             setGroupCol(null);
         }
     };
@@ -163,10 +159,10 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                 <div style={sectionStyle}>
                     <div style={headerStyle}>
                         <span style={labelStyle}>Available</span>
-                        <span style={countStyle}>{available.length}</span>
+                        <span style={countStyle}>{availableColumns.length}</span>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto' }}>
-                        {available.map(col => renderItem(
+                        {availableColumns.map(col => renderItem(
                             col,
                             selectedAvailable.includes(col),
                             () => {

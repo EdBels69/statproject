@@ -1,6 +1,4 @@
 import os
-import json
-import pandas as pd
 from fastapi import APIRouter, HTTPException
 from typing import List
 
@@ -11,7 +9,7 @@ from app.modules.quality import (
     detect_outliers_iqr,
     perform_auto_cleaning
 )
-from app.modules.parsers import get_dataset_path, parse_file
+from app.modules.parsers import get_dataset_path, get_dataframe, load_metadata, persist_metadata, invalidate_dataset_cache
 from app.api.datasets import DATA_DIR
 from app.llm import scan_data_quality
 from app.schemas.dataset import QualityReport
@@ -25,17 +23,7 @@ async def scan_dataset_quality(dataset_id: str):
         raise HTTPException(status_code=404, detail="Dataset not found")
         
     try:
-        # Load data
-        processed_path = os.path.join(upload_dir, "processed.csv")
-        if os.path.exists(processed_path):
-            df = pd.read_csv(processed_path)
-        else:
-            header_row = 0
-            meta_path = os.path.join(upload_dir, "metadata.json")
-            if os.path.exists(meta_path):
-                with open(meta_path, "r") as f:
-                    header_row = json.load(f).get("header_row", 0)
-            df, _ = parse_file(file_path, header_row=header_row)
+        df = get_dataframe(dataset_id, DATA_DIR)
             
         # 1. Rule-based checks
         constant_cols = detect_constant_columns(df)
@@ -74,13 +62,17 @@ async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
         raise HTTPException(status_code=404, detail="Dataset not found")
         
     try:
-        df, _ = parse_file(file_path) # Simplified load for cleaning original
+        df = get_dataframe(dataset_id, DATA_DIR, prefer_processed=False)
         cleaned_df = perform_auto_cleaning(df, method=strategy)
         
         # Save as processed
         processed_path = os.path.join(upload_dir, "processed.csv")
         cleaned_df.to_csv(processed_path, index=False)
-        
+        metadata = load_metadata(dataset_id, DATA_DIR)
+        metadata.bump_modification()
+        persist_metadata(dataset_id, DATA_DIR, metadata)
+        invalidate_dataset_cache(dataset_id)
+
         return {"status": "success", "message": f"Dataset cleaned using {strategy} and saved as processed."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")

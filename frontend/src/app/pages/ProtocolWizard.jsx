@@ -126,7 +126,7 @@ export default function ProtocolWizard() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch (err) {
+    } catch {
       alert('Failed to download report');
     }
   };

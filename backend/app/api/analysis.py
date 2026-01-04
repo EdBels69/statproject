@@ -1,39 +1,37 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
-import os
 import pandas as pd
 from app.schemas.analysis import AnalysisRequest, AnalysisResult, StatMethod
-from app.stats.registry import get_method
-from app.stats.engine import select_test, run_analysis
+from app.stats.registry import get_method, run_registered_method
+from app.stats.engine import select_test
+from app.llm import get_ai_conclusion
 
-from app.api.datasets import DATA_DIR, parse_file
+from app.api.datasets import DATA_DIR
+from app.modules.parsers import get_dataframe
 
 router = APIRouter()
+
+
+def _execute_registered(method_id: str, df: pd.DataFrame, col_a: str, col_b: str, *, is_paired: bool, predictors: List[str] = None):
+    predictors = predictors or []
+    if method_id in ["pearson", "spearman"]:
+        return run_registered_method(method_id, df, x=col_a, y=col_b)
+    if method_id in ["linear_regression", "logistic_regression"]:
+        return run_registered_method(method_id, df, target=col_a, predictors=predictors or [col_b])
+    if method_id == "survival_km":
+        return run_registered_method(method_id, df, duration=col_a, event=col_b, group=None)
+    return run_registered_method(method_id, df, target=col_a, group=col_b, is_paired=is_paired)
 
 @router.post("/recommend", response_model=StatMethod)
 async def recommend_method(request: AnalysisRequest):
     # 1. Load Data
     # Assuming dataset_id is valid
-    upload_dir = os.path.join(DATA_DIR, request.dataset_id)
-    files = [f for f in os.listdir(upload_dir) if not f.endswith('.json')]
-    if not files:
-        raise HTTPException(status_code=404, detail="Dataset file not found")
-    
-    file_path = os.path.join(upload_dir, files[0])
-    
-    # Load metadata if exists to get header_row
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
-
     try:
-        df, _ = parse_file(file_path, header_row=header_row)
-    except:
-        df = pd.read_csv(file_path) # Fallback
+        df = get_dataframe(request.dataset_id, DATA_DIR)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset file not found")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to load dataset: {exc}")
 
     # 2. Analyze Types
     # Request gives us `target_column` and `features`. 
@@ -66,23 +64,12 @@ async def recommend_method(request: AnalysisRequest):
 @router.post("/run", response_model=AnalysisResult)
 async def run_method_api(request: AnalysisRequest):
     # 1. Load Data
-    file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
-    if not file_path:
+    try:
+        df = get_dataframe(request.dataset_id, DATA_DIR)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Dataset not found")
-            
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            header_row = json.load(f).get("header_row", 0)
-            
-    # Load processed or raw
-    processed_path = os.path.join(upload_dir, "processed.csv")
-    if os.path.exists(processed_path):
-        df = pd.read_csv(processed_path)
-    else:
-        df, _ = parse_file(file_path, header_row=header_row)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to load dataset: {exc}")
     
     col_a = request.target_column
     col_b = request.features[0] # Single feature for now
@@ -104,7 +91,8 @@ async def run_method_api(request: AnalysisRequest):
 
     # 3. Run
     try:
-        results = run_analysis(df, method_id, col_a, col_b, is_paired=request.is_paired)
+        predictors = request.features if request.features else [col_b]
+        results = _execute_registered(method_id, df, col_a, col_b, is_paired=request.is_paired, predictors=predictors)
         
         # Build AnalysisResult
         method_info = get_method(method_id)
@@ -145,7 +133,6 @@ async def run_method_api(request: AnalysisRequest):
     # AI Enhancement
     from app.core.config import settings
     if settings.GLM_ENABLED and settings.GLM_API_KEY:
-        from app.llm import get_ai_conclusion
         try:
             ai_text = await get_ai_conclusion(analysis_res)
             if ai_text:
@@ -167,27 +154,17 @@ async def download_report(
     
     # Re-run analysis logic to get results (similar to /run)
     # 1. Load Data
-    upload_dir = os.path.join(DATA_DIR, dataset_id)
-    files = [f for f in os.listdir(upload_dir) if not f.endswith('.json')]
-    if not files:
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Dataset not found")
-        
-    file_path = os.path.join(upload_dir, files[0])
-    
-    # Load metadata
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
-            
-    df, _ = parse_file(file_path, header_row=header_row)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to load dataset: {exc}")
     
     # 2. Determine Method (if not provided)
     col_a = target_col
     col_b = group_col
+    dataset_name = dataset_id
     
     if not method_id:
         # Mini auto-detect
@@ -200,7 +177,7 @@ async def download_report(
     
     # 3. Run Analysis
     try:
-        res = run_analysis(df, method_id, col_a, col_b)
+        res = _execute_registered(method_id, df, col_a, col_b, is_paired=False)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -224,7 +201,6 @@ async def download_report(
     # 5. Enhace with AI (Async)
     from app.core.config import settings
     if settings.GLM_ENABLED and settings.GLM_API_KEY:
-        from app.llm import get_ai_conclusion
         try:
             ai_text = await get_ai_conclusion(analysis_result)
             if ai_text:
@@ -233,7 +209,7 @@ async def download_report(
             print(f"AI Enhancement failed: {e}")
             
     # 6. Render HTML
-    html_content = render_report(analysis_result, target_col, group_col, dataset_name=files[0])
+    html_content = render_report(analysis_result, target_col, group_col, dataset_name=dataset_name)
     
     return HTMLResponse(content=html_content)
 
@@ -243,26 +219,12 @@ from app.schemas.analysis import BatchAnalysisResponse, BatchAnalysisRequest
 async def run_batch_analysis(request: BatchAnalysisRequest):
 
     # 1. Load Data
-    upload_dir = os.path.join(DATA_DIR, request.dataset_id)
-    files = [f for f in os.listdir(upload_dir) if not f.endswith('.json')]
-    if not files:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-        
-    file_path = os.path.join(upload_dir, files[0])
-    
-    # Load metadata
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
-            
     try:
-        df, _ = parse_file(file_path, header_row=header_row)
-    except:
-        df = pd.read_csv(file_path)
+        df = get_dataframe(request.dataset_id, DATA_DIR)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Dataset load failed: {exc}")
 
     # 2. Compute Descriptives (Primary)
     from app.stats.engine import compute_batch_descriptives
@@ -296,7 +258,7 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
             
         try:
             # Run
-            res = run_analysis(df, method_id, col, group_col)
+            res = _execute_registered(method_id, df, col, group_col, is_paired=False)
             
             # Format
             method_info = get_method(method_id)

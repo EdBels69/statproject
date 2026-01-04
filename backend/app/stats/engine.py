@@ -5,7 +5,6 @@ from scipy import stats
 import statsmodels.api as sm
 from lifelines import KaplanMeierFitter
 from lifelines.statistics import logrank_test
-from app.stats.registry import METHODS
 
 def check_normality(data: pd.Series) -> bool:
     """

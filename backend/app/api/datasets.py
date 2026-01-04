@@ -3,13 +3,23 @@ import uuid
 import os
 import pandas as pd
 import aiofiles
-import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from typing import List
 
 from app.schemas.dataset import DatasetUpload, DatasetProfile, DatasetReparse, DatasetModification
-from app.modules.parsers import parse_file, get_dataset_path
+from app.modules.parsers import (
+    parse_file,
+    get_dataset_path,
+    get_dataframe,
+    load_metadata,
+    persist_metadata,
+    cache_profile,
+    read_cached_profile,
+    invalidate_dataset_cache,
+    snapshot_dataset,
+    cleanup_processed_files,
+)
 from app.modules.profiler import generate_profile
 
 router = APIRouter()
@@ -20,6 +30,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 @router.get("", response_model=List[dict])
 async def list_datasets():
+    cleanup_processed_files(DATA_DIR)
     datasets = []
     if not os.path.exists(DATA_DIR):
         return []
@@ -58,12 +69,14 @@ async def upload_dataset(file: UploadFile = File(...)):
     try:
         def parse_logic(): return parse_file(file_path, header_row=0)
         df, used_header = await run_in_threadpool(parse_logic)
-        with open(os.path.join(upload_dir, "metadata.json"), "w") as f:
-            json.dump({"header_row": used_header}, f)
+        metadata = load_metadata(dataset_id, DATA_DIR, original_filename=file.filename)
+        metadata.header_row = used_header
+        persist_metadata(dataset_id, DATA_DIR, metadata)
     except Exception as e:
         shutil.rmtree(upload_dir)
         raise HTTPException(status_code=400, detail=f"Could not parse file: {str(e)}")
     profile = await run_in_threadpool(generate_profile, df, page=1, limit=100)
+    cache_profile(dataset_id, DATA_DIR, profile, metadata, page=1, limit=100)
     return DatasetUpload(id=dataset_id, filename=file.filename, profile=profile)
 
 @router.post("/{dataset_id}/reparse", response_model=DatasetProfile)
@@ -71,14 +84,18 @@ def reparse_dataset(dataset_id: str, request: DatasetReparse):
     file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
     if not file_path: raise HTTPException(status_code=404, detail="Dataset not found")
     try:
+        metadata = load_metadata(dataset_id, DATA_DIR)
         df, used_header = parse_file(file_path, header_row=request.header_row, sheet_name=request.sheet_name)
-        with open(os.path.join(upload_dir, "metadata.json"), "w") as f:
-            meta = {"header_row": used_header}
-            if request.sheet_name: meta["sheet_name"] = request.sheet_name
-            json.dump(meta, f)
+        metadata.header_row = used_header
+        metadata.sheet_name = request.sheet_name
+        metadata.bump_modification()
+        persist_metadata(dataset_id, DATA_DIR, metadata)
+        invalidate_dataset_cache(dataset_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not reparse file: {str(e)}")
-    return generate_profile(df)
+    profile = generate_profile(df)
+    cache_profile(dataset_id, DATA_DIR, profile, metadata, page=1, limit=100)
+    return profile
 
 @router.post("/{dataset_id}/modify", response_model=DatasetProfile)
 def modify_dataset(dataset_id: str, modification: DatasetModification):
@@ -86,15 +103,13 @@ def modify_dataset(dataset_id: str, modification: DatasetModification):
     if not os.path.exists(upload_dir): raise HTTPException(status_code=404, detail="Dataset not found")
     processed_path = os.path.join(upload_dir, "processed.csv")
     file_path, _ = get_dataset_path(dataset_id, DATA_DIR)
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        with open(meta_path, "r") as f: header_row = json.load(f).get("header_row", 0)
+    metadata = load_metadata(dataset_id, DATA_DIR)
     try:
-        df = pd.read_csv(processed_path) if os.path.exists(processed_path) else parse_file(file_path, header_row=header_row)[0]
+        df = pd.read_csv(processed_path) if os.path.exists(processed_path) else parse_file(file_path, header_row=metadata.header_row, sheet_name=metadata.sheet_name)[0]
         df.columns = df.columns.astype(str)
     except Exception as e: raise HTTPException(status_code=500, detail=f"Failed to load data: {e}")
     try:
+        snapshot_dataset(dataset_id, DATA_DIR)
         for action in modification.actions:
             if action.type == "drop_col":
                 if action.column in df.columns: df = df.drop(columns=[action.column])
@@ -113,22 +128,24 @@ def modify_dataset(dataset_id: str, modification: DatasetModification):
                     df.at[action.row_index, action.column] = action.value
         df = df.reset_index(drop=True)
         df.to_csv(processed_path, index=False)
+        metadata.bump_modification()
+        persist_metadata(dataset_id, DATA_DIR, metadata)
+        invalidate_dataset_cache(dataset_id)
     except Exception as e: raise HTTPException(status_code=400, detail=f"Failed to modify dataset: {str(e)}")
-    return generate_profile(df)
+    profile = generate_profile(df)
+    cache_profile(dataset_id, DATA_DIR, profile, metadata, page=1, limit=100)
+    return profile
 
 @router.get("/{dataset_id}", response_model=DatasetProfile)
 def get_dataset(dataset_id: str, page: int = 1, limit: int = 100):
     upload_dir = os.path.join(DATA_DIR, dataset_id)
     if not os.path.exists(upload_dir): raise HTTPException(status_code=404, detail="Dataset not found")
-    processed_path = os.path.join(upload_dir, "processed.csv")
-    if os.path.exists(processed_path):
-        df = pd.read_csv(processed_path)
-        df.columns = df.columns.astype(str)
-        return generate_profile(df, page=page, limit=limit)
-    file_path, _ = get_dataset_path(dataset_id, DATA_DIR)
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        with open(meta_path, "r") as f: header_row = json.load(f).get("header_row", 0)
-    df, _ = parse_file(file_path, header_row=header_row)
-    return generate_profile(df, page=page, limit=limit)
+    metadata = load_metadata(dataset_id, DATA_DIR)
+    cached = read_cached_profile(dataset_id, DATA_DIR, metadata, page=page, limit=limit)
+    if cached:
+        return cached
+    df = get_dataframe(dataset_id, DATA_DIR)
+    df.columns = df.columns.astype(str)
+    profile = generate_profile(df, page=page, limit=limit)
+    cache_profile(dataset_id, DATA_DIR, profile, metadata, page=page, limit=limit)
+    return profile
