@@ -39,11 +39,12 @@ class DatasetModification(BaseModel):
 
 class QualityIssue(BaseModel):
     column: Optional[str] = None
-    issue_type: str # missing, outlier, pii, logic, mixed_type
+    type: str # constant, near_constant, outliers, missing, etc.
     severity: str # high, medium, low
-    description: str
-    suggestion: str
+    message: str
+    suggestion: Optional[str] = None
 
 class QualityReport(BaseModel):
-    row_count: int
+    dataset_id: str
     issues: List[QualityIssue]
+    summary: Optional[str] = None

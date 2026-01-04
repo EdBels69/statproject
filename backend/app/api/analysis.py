@@ -65,21 +65,24 @@ async def recommend_method(request: AnalysisRequest):
 
 @router.post("/run", response_model=AnalysisResult)
 async def run_method_api(request: AnalysisRequest):
-    # 1. Load Data (Duplicate logic, should refactor)
-    upload_dir = os.path.join(DATA_DIR, request.dataset_id)
-    files = [f for f in os.listdir(upload_dir) if not f.endswith('.json')]
-    file_path = os.path.join(upload_dir, files[0])
-    
-    # Load metadata
+    # 1. Load Data
+    file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+            
     header_row = 0
     meta_path = os.path.join(upload_dir, "metadata.json")
     if os.path.exists(meta_path):
         import json
         with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
+            header_row = json.load(f).get("header_row", 0)
             
-    df, _ = parse_file(file_path, header_row=header_row)
+    # Load processed or raw
+    processed_path = os.path.join(upload_dir, "processed.csv")
+    if os.path.exists(processed_path):
+        df = pd.read_csv(processed_path)
+    else:
+        df, _ = parse_file(file_path, header_row=header_row)
     
     col_a = request.target_column
     col_b = request.features[0] # Single feature for now
@@ -101,13 +104,28 @@ async def run_method_api(request: AnalysisRequest):
 
     # 3. Run
     try:
-        result = run_analysis(df, method_id, col_a, col_b)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        results = run_analysis(df, method_id, col_a, col_b, is_paired=request.is_paired)
+        
+        # Build AnalysisResult
+        method_info = get_method(method_id)
+        
+        res = AnalysisResult(
+            method=method_info,
+            p_value=results["p_value"],
+            stat_value=results["stat_value"],
+            significant=results["significant"],
+            groups=results.get("groups"),
+            plot_data=results.get("plot_data"),
+            plot_stats=results.get("plot_stats"),
+            conclusion=""
+        )
+        
+        # AI Conclusion
+        ai_conclusion = await get_ai_conclusion(res)
+        res.conclusion = ai_conclusion
+        return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
-        
-    method_info = get_method(method_id)
     
     
     # 4. Format Result

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import Upload from './app/pages/Upload';
 import Profile from './app/pages/Profile';
 import Analyze from './app/pages/Analyze';
@@ -8,17 +8,71 @@ import ProtocolWizard from './app/pages/ProtocolWizard';
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-50">
-        <header className="bg-white shadow-sm border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-slate-800">📊 Stat Analyzer MVP</h1>
-            <nav className="flex gap-4">
-              <a href="/" className="text-sm font-medium text-slate-600 hover:text-slate-900">Upload</a>
-              <a href="/wizard" className="text-sm font-bold text-indigo-600 hover:text-indigo-800">🧙‍♂️ Protocol Wizard</a>
-            </nav>
+      <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-primary)' }}>
+        {/* Header */}
+        <header style={{
+          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-color)',
+          height: '56px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              background: 'var(--accent)',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              color: '#000',
+              fontSize: '14px'
+            }}>SA</div>
+            <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>
+              Stat Analyzer
+            </span>
           </div>
+
+          <nav style={{ display: 'flex', gap: '8px' }}>
+            <NavLink
+              to="/"
+              style={({ isActive }) => ({
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                textDecoration: 'none',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                background: isActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+                transition: 'all 0.15s'
+              })}
+            >
+              Upload
+            </NavLink>
+            <NavLink
+              to="/wizard"
+              style={({ isActive }) => ({
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                textDecoration: 'none',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                background: isActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+                transition: 'all 0.15s'
+              })}
+            >
+              Protocol Wizard
+            </NavLink>
+          </nav>
         </header>
-        <main className="py-10">
+
+        {/* Main Content */}
+        <main style={{ flex: 1, padding: '32px' }}>
           <Routes>
             <Route path="/" element={<Upload />} />
             <Route path="/profile/:id" element={<Profile />} />

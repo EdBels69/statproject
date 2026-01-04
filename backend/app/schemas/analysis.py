@@ -14,9 +14,9 @@ class StatMethod(BaseModel):
     id: str
     name: str
     description: str
-    type: Literal["parametric", "non-parametric", "correlation", "categorical"]
-    min_groups: int = 2
-    max_groups: int = 2
+    type: Literal["parametric", "non-parametric", "correlation", "categorical", "survival"]
+    min_groups: int = 1
+    max_groups: int = 100
 
 class AnalysisResult(BaseModel):
     method: StatMethod
@@ -26,6 +26,10 @@ class AnalysisResult(BaseModel):
     stat_value: float
     significant: bool
     warnings: List[str] = []
+    
+    # Regression specific
+    r_squared: Optional[float] = None
+    coefficients: Optional[List[Dict[str, Any]]] = None
     
     groups: Optional[List[str]] = None
     

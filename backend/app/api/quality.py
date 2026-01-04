@@ -1,96 +1,86 @@
+import os
+import json
 import pandas as pd
-import numpy as np
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from typing import List
 
-from app.api.datasets import get_dataset_path, parse_file
-from app.schemas.dataset import QualityReport, QualityIssue
+from app.modules.quality import (
+    detect_constant_columns, 
+    detect_near_constant_columns,
+    calculate_skewness,
+    detect_outliers_iqr,
+    perform_auto_cleaning
+)
+from app.modules.parsers import get_dataset_path, parse_file
+from app.api.datasets import DATA_DIR
 from app.llm import scan_data_quality
+from app.schemas.dataset import QualityReport
 
-router = APIRouter()
+router = APIRouter(prefix="/quality", tags=["quality"])
 
-import os
-
-@router.post("/datasets/{dataset_id}/scan", response_model=QualityReport)
+@router.get("/{dataset_id}/scan", response_model=QualityReport)
 async def scan_dataset_quality(dataset_id: str):
-    file_path, _ = get_dataset_path(dataset_id)
-    if not file_path or not os.path.exists(file_path):
+    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
+    if not file_path:
         raise HTTPException(status_code=404, detail="Dataset not found")
         
     try:
-        # Load data using shared parser
-        df, _ = parse_file(file_path, header_row=0)
-    except Exception as e:
-         raise HTTPException(status_code=500, detail=f"Failed to load dataset: {str(e)}")
-    
-    issues = []
-    
-    # 1. Rule-Based Checks (Pandas)
-    
-    # A. Missing Values
-    for col in df.columns:
-        missing_count = df[col].isna().sum()
-        if missing_count > 0:
-            pct = (missing_count / len(df)) * 100
-            severity = "high" if pct > 20 else "medium"
-            issues.append(QualityIssue(
-                column=col,
-                issue_type="missing",
-                severity=severity,
-                description=f"{int(missing_count)} missing values ({pct:.1f}%)",
-                suggestion="Fill missing values or drop rows/column"
-            ))
+        # Load data
+        processed_path = os.path.join(upload_dir, "processed.csv")
+        if os.path.exists(processed_path):
+            df = pd.read_csv(processed_path)
+        else:
+            header_row = 0
+            meta_path = os.path.join(upload_dir, "metadata.json")
+            if os.path.exists(meta_path):
+                with open(meta_path, "r") as f:
+                    header_row = json.load(f).get("header_row", 0)
+            df, _ = parse_file(file_path, header_row=header_row)
             
-    # B. Duplicates
-    dup_count = df.duplicated().sum()
-    if dup_count > 0:
-        issues.append(QualityIssue(
-            column=None,
-            issue_type="duplicate",
-            severity="medium",
-            description=f"Found {int(dup_count)} exact duplicate rows",
-            suggestion="Remove duplicate rows"
-        ))
+        # 1. Rule-based checks
+        constant_cols = detect_constant_columns(df)
+        near_constant = detect_near_constant_columns(df)
+        outliers = detect_outliers_iqr(df)
+        skewness = calculate_skewness(df)
         
-    # C. Outliers (Z-Score > 3) for numeric
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    for col in numeric_cols:
-        col_data = df[col].dropna()
-        if len(col_data) > 10: # Only check if enough data
-            z_scores = np.abs((col_data - col_data.mean()) / col_data.std())
-            outliers = (z_scores > 3).sum()
-            if outliers > 0:
-                 issues.append(QualityIssue(
-                    column=col,
-                    issue_type="outlier",
-                    severity="low",
-                    description=f"Found {int(outliers)} outliers (Z > 3)",
-                    suggestion="Check for data entry errors or apply winsorization"
-                ))
+        # 2. AI-based checks (Semantic)
+        ai_report = await scan_data_quality(df)
+        
+        # Combined issues list
+        issues = []
+        for col in constant_cols:
+            issues.append({"column": col, "type": "constant", "severity": "high", "message": "Column has only one unique value."})
+        for col, val in near_constant.items():
+             issues.append({"column": col, "type": "near_constant", "severity": "medium", "message": f"Column is 95%+ constant (dominant: {val})"})
+        for col, count in outliers.items():
+            if count > 0:
+                issues.append({"column": col, "type": "outliers", "severity": "low", "message": f"Detected {count} potential outliers (IQR method)."})
+        
+        # Add AI issues
+        issues.extend(ai_report.get("issues", []))
+        
+        return {
+            "dataset_id": dataset_id,
+            "issues": issues,
+            "summary": ai_report.get("summary", "Scan complete.")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Quality scan failed: {str(e)}")
 
-    # 2. AI Semantic Check (LLM)
-    # Prepare snippet for LLM
-    head_csv = df.head(10).to_csv(index=False)
-    # Prepare types info
-    col_info = "\n".join([f"{col}: {df[col].dtype}" for col in df.columns])
-    
-    ai_issues_data = await scan_data_quality(head_csv, col_info)
-    
-    # Convert LLM dicts to Pydantic models
-    for issue in ai_issues_data:
-        try:
-            # Map LLM output to our schema safely
-            issues.append(QualityIssue(
-                column=issue.get("column"),
-                issue_type=issue.get("issue_type", "ai_finding"),
-                severity=issue.get("severity", "medium"),
-                description=issue.get("description", "Detected by AI"),
-                suggestion=issue.get("suggestion", "Review manually")
-            ))
-        except:
-            continue
-
-    return QualityReport(
-        row_count=len(df),
-        issues=issues
-    )
+@router.post("/{dataset_id}/clean")
+async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
+    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+        
+    try:
+        df, _ = parse_file(file_path) # Simplified load for cleaning original
+        cleaned_df = perform_auto_cleaning(df, method=strategy)
+        
+        # Save as processed
+        processed_path = os.path.join(upload_dir, "processed.csv")
+        cleaned_df.to_csv(processed_path, index=False)
+        
+        return {"status": "success", "message": f"Dataset cleaned using {strategy} and saved as processed."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")

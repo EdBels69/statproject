@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { runBatchAnalysis, getReportUrl, getDataset } from '../../lib/api';
+import { runBatchAnalysis, getPDFExportUrl, getDataset } from '../../lib/api';
 import VariableSelector from '../components/VariableSelector';
 import VisualizePlot from '../components/VisualizePlot';
 
@@ -10,12 +10,9 @@ export default function Analyze() {
     const navigate = useNavigate();
     const [columns, setColumns] = useState([]);
 
-    // Results
     const [loading, setLoading] = useState(false);
     const [batchResult, setBatchResult] = useState(null);
     const [error, setError] = useState(null);
-
-    // Display
     const [selectedVarDetail, setSelectedVarDetail] = useState(null);
     const [activeGroupCol, setActiveGroupCol] = useState(null);
 
@@ -56,29 +53,32 @@ export default function Analyze() {
     const renderDescriptives = () => {
         if (!batchResult?.descriptives) return null;
         return (
-            <div className="overflow-x-auto mb-8 border border-slate-300">
-                <table className="w-full text-xs text-left text-slate-700 font-mono">
-                    <thead className="bg-slate-100/50 text-slate-900 border-b border-slate-300 uppercase tracking-wider">
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '13px' }}>
+                    <thead>
                         <tr>
-                            <th className="px-3 py-2 border-r border-slate-300">Переменная</th>
-                            <th className="px-3 py-2 border-r border-slate-300">Группа</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">N</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">Среднее</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">SD</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">Медиана</th>
-                            <th className="px-3 py-2 text-right">Норм. (P)</th>
+                            <th>Variable</th>
+                            <th>Group</th>
+                            <th style={{ textAlign: 'right' }}>N</th>
+                            <th style={{ textAlign: 'right' }}>Mean</th>
+                            <th style={{ textAlign: 'right' }}>SD</th>
+                            <th style={{ textAlign: 'right' }}>Median</th>
+                            <th style={{ textAlign: 'right' }}>Norm (P)</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody>
                         {batchResult.descriptives.map((row, idx) => (
-                            <tr key={idx} className="bg-white hover:bg-slate-50">
-                                <td className="px-3 py-1.5 border-r border-slate-200 font-semibold">{row.variable}</td>
-                                <td className="px-3 py-1.5 border-r border-slate-200">{row.group}</td>
-                                <td className="px-3 py-1.5 border-r border-slate-200 text-right">{row.count}</td>
-                                <td className="px-3 py-1.5 border-r border-slate-200 text-right">{row.mean.toFixed(2)}</td>
-                                <td className="px-3 py-1.5 border-r border-slate-200 text-right">{row.sd.toFixed(2)}</td>
-                                <td className="px-3 py-1.5 border-r border-slate-200 text-right">{row.median.toFixed(2)}</td>
-                                <td className={`px-3 py-1.5 text-right ${!row.is_normal ? 'text-red-600' : 'text-slate-500'}`}>
+                            <tr key={idx}>
+                                <td style={{ fontWeight: '500' }}>{row.variable}</td>
+                                <td>{row.group}</td>
+                                <td style={{ textAlign: 'right' }}>{row.count}</td>
+                                <td style={{ textAlign: 'right' }}>{row.mean?.toFixed(2)}</td>
+                                <td style={{ textAlign: 'right' }}>{row.sd?.toFixed(2)}</td>
+                                <td style={{ textAlign: 'right' }}>{row.median?.toFixed(2)}</td>
+                                <td style={{
+                                    textAlign: 'right',
+                                    color: !row.is_normal ? 'var(--error)' : 'var(--text-muted)'
+                                }}>
                                     {row.shapiro_p ? row.shapiro_p.toFixed(3) : '-'}
                                 </td>
                             </tr>
@@ -92,32 +92,46 @@ export default function Analyze() {
     const renderResultsTable = () => {
         if (!batchResult?.results) return null;
         return (
-            <div className="overflow-x-auto border border-slate-300 mb-8">
-                <table className="w-full text-xs text-left text-slate-700 font-mono">
-                    <thead className="bg-slate-100/50 text-slate-900 border-b border-slate-300 uppercase tracking-wider">
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '13px' }}>
+                    <thead>
                         <tr>
-                            <th className="px-3 py-2 border-r border-slate-300">Переменная</th>
-                            <th className="px-3 py-2 border-r border-slate-300">Метод</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">Статистика</th>
-                            <th className="px-3 py-2 border-r border-slate-300 text-right">P-Value</th>
-                            <th className="px-3 py-2 text-center w-16">Знач.</th>
+                            <th>Variable</th>
+                            <th>Method</th>
+                            <th style={{ textAlign: 'right' }}>Statistic</th>
+                            <th style={{ textAlign: 'right' }}>P-Value</th>
+                            <th style={{ textAlign: 'center', width: '80px' }}>Sig.</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody>
                         {Object.entries(batchResult.results).map(([varName, res]) => (
                             <tr
                                 key={varName}
                                 onClick={() => setSelectedVarDetail(varName)}
-                                className={`cursor-pointer transition-colors ${selectedVarDetail === varName ? 'bg-indigo-50 text-indigo-900' : 'bg-white hover:bg-slate-50'}`}
+                                style={{
+                                    cursor: 'pointer',
+                                    background: selectedVarDetail === varName ? 'rgba(249,115,22,0.1)' : undefined
+                                }}
                             >
-                                <td className="px-3 py-2 border-r border-slate-200 font-semibold">{varName}</td>
-                                <td className="px-3 py-2 border-r border-slate-200">{res.method.name}</td>
-                                <td className="px-3 py-2 border-r border-slate-200 text-right">{res.stat_value.toFixed(2)}</td>
-                                <td className={`px-3 py-2 border-r border-slate-200 text-right ${res.significant ? 'font-bold text-slate-900' : 'text-slate-500'}`}>
-                                    {res.p_value < 0.001 ? '<.001' : res.p_value.toFixed(3)}
+                                <td style={{ fontWeight: '500' }}>{varName}</td>
+                                <td style={{ color: 'var(--text-secondary)' }}>{res.method?.name}</td>
+                                <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                    {res.stat_value?.toFixed(2)}
                                 </td>
-                                <td className="px-3 py-2 text-center">
-                                    {res.significant ? <span className="text-slate-900 font-bold">ДА</span> : <span className="text-slate-300">НЕТ</span>}
+                                <td style={{
+                                    textAlign: 'right',
+                                    fontFamily: 'monospace',
+                                    fontWeight: res.significant ? '600' : '400',
+                                    color: res.significant ? 'var(--accent)' : 'var(--text-muted)'
+                                }}>
+                                    {res.p_value < 0.001 ? '<.001' : res.p_value?.toFixed(3)}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    {res.significant ? (
+                                        <span style={{ color: 'var(--success)', fontWeight: '600' }}>YES</span>
+                                    ) : (
+                                        <span style={{ color: 'var(--text-muted)' }}>NO</span>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -128,9 +142,16 @@ export default function Analyze() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-white text-slate-900 font-sans">
-            {/* Left Sidebar */}
-            <aside className="w-[320px] flex-shrink-0 border-r border-slate-300 flex flex-col z-20 bg-slate-50/30">
+        <div style={{ display: 'flex', height: 'calc(100vh - 120px)' }} className="animate-fadeIn">
+            {/* Sidebar */}
+            <aside style={{
+                width: '300px',
+                flexShrink: 0,
+                borderRight: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+                overflowY: 'auto',
+                padding: '16px'
+            }}>
                 <VariableSelector
                     allColumns={columns}
                     onRun={handleRunBatch}
@@ -139,109 +160,202 @@ export default function Analyze() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto bg-white">
-                <div className="max-w-[1200px] mx-auto p-8">
-
-                    {/* Minimalist Header */}
-                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => navigate(`/profile/${id}`)}
-                                className="w-6 h-6 flex items-center justify-center border border-slate-300 hover:bg-slate-100 hover:border-slate-400 text-slate-500 text-xs transition-colors"
-                            >
-                                ←
-                            </button>
-                            <h1 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-900">
-                                Результаты анализа
-                            </h1>
-                        </div>
-                        {batchResult && selectedVarDetail && (
-                            <a
-                                href={getReportUrl(id, selectedVarDetail, activeGroupCol, 'auto')}
-                                target="_blank"
-                                className="text-[10px] font-bold uppercase tracking-widest border border-slate-900 px-3 py-1.5 hover:bg-slate-900 hover:text-white transition-colors"
-                            >
-                                Скачать PDF
-                            </a>
-                        )}
+            <main style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                {/* Header */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '24px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid var(--border-color)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <button
+                            onClick={() => navigate(`/profile/${id}`)}
+                            className="btn-secondary"
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                            ← Back
+                        </button>
+                        <h1 style={{
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: 'var(--text-primary)'
+                        }}>
+                            Analysis Results
+                        </h1>
                     </div>
-
-                    {/* Error Banner */}
-                    {error && (
-                        <div className="mb-6 border border-red-500 bg-red-50 p-4 text-xs font-mono text-red-700">
-                            <strong>ОШИБКА:</strong> {error}
-                        </div>
-                    )}
-
-                    {/* Empty State */}
-                    {!batchResult && !loading && (
-                        <div className="h-[400px] flex items-center justify-center border border-dashed border-slate-300 text-slate-400 font-mono text-xs uppercase tracking-widest">
-                            Выберите переменные слева для начала анализа
-                        </div>
-                    )}
-
-                    {/* Loading State */}
-                    {loading && (
-                        <div className="h-[400px] flex flex-col items-center justify-center font-mono text-xs text-slate-500 uppercase tracking-widest">
-                            <span className="animate-pulse">Обработка данных...</span>
-                        </div>
-                    )}
-
-                    {/* Results */}
                     {batchResult && (
-                        <div className="animate-in fade-in duration-300">
-
-                            {/* Descriptives */}
-                            <section className="mb-8">
-                                <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-slate-500">Описательная статистика</h3>
-                                {renderDescriptives()}
-                            </section>
-
-                            {/* Hypothesis Tests */}
-                            <section className="mb-8">
-                                <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-slate-500">Проверка гипотез</h3>
-                                {renderResultsTable()}
-                            </section>
-
-                            {/* Detail View */}
-                            {selectedVarDetail && batchResult.results[selectedVarDetail] && (
-                                <section className="border-t border-slate-200 pt-8 mt-8">
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                        {/* AI Insight */}
-                                        <div className="lg:col-span-1">
-                                            <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2 text-indigo-600">
-                                                AI Интерпретация
-                                            </h4>
-                                            <p className="text-sm text-slate-800 leading-relaxed font-mono whitespace-pre-line border border-slate-200 p-4 bg-slate-50/50">
-                                                {batchResult.results[selectedVarDetail].conclusion}
-                                            </p>
-                                        </div>
-
-                                        {/* Plot */}
-                                        <div className="lg:col-span-2 border border-slate-200 p-4 min-h-[350px] flex flex-col">
-                                            <h4 className="text-[10px] font-bold uppercase tracking-widest mb-4 text-center text-slate-400">
-                                                Графики распределения
-                                            </h4>
-                                            <div className="flex-1 relative">
-                                                {batchResult.results[selectedVarDetail].plot_data ? (
-                                                    <VisualizePlot
-                                                        data={batchResult.results[selectedVarDetail].plot_data}
-                                                        stats={batchResult.results[selectedVarDetail].plot_stats}
-                                                        groups={batchResult.results[selectedVarDetail].groups}
-                                                    />
-                                                ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-mono text-slate-300">
-                                                        НЕТ ДАННЫХ
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-                            )}
-                        </div>
+                        <a
+                            href={getPDFExportUrl(id, selectedVarDetail || 'Multiple', activeGroupCol || 'Group')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary"
+                            style={{ fontSize: '12px', padding: '8px 16px', textDecoration: 'none', display: 'inline-block' }}
+                        >
+                            Export PDF
+                        </a>
                     )}
                 </div>
+
+                {/* Error */}
+                {error && (
+                    <div className="bg-error" style={{
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        marginBottom: '24px',
+                        fontSize: '14px'
+                    }}>
+                        <strong>Error:</strong> {error}
+                    </div>
+                )}
+
+                {/* Empty State */}
+                {!batchResult && !loading && (
+                    <div style={{
+                        height: '300px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px dashed var(--border-color)',
+                        borderRadius: '8px',
+                        color: 'var(--text-muted)',
+                        fontSize: '14px'
+                    }}>
+                        Select variables from the left panel to begin analysis
+                    </div>
+                )}
+
+                {/* Loading */}
+                {loading && (
+                    <div style={{
+                        height: '300px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-muted)'
+                    }}>
+                        <div style={{
+                            width: '32px',
+                            height: '32px',
+                            border: '3px solid var(--border-color)',
+                            borderTopColor: 'var(--accent)',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            marginBottom: '12px'
+                        }} />
+                        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                        <span style={{ fontSize: '14px' }}>Processing data...</span>
+                    </div>
+                )}
+
+                {/* Results */}
+                {batchResult && (
+                    <div className="animate-slideUp">
+                        {/* Descriptives */}
+                        <section className="card" style={{ marginBottom: '24px', padding: '20px' }}>
+                            <h3 style={{
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                color: 'var(--text-muted)',
+                                marginBottom: '16px'
+                            }}>
+                                Descriptive Statistics
+                            </h3>
+                            {renderDescriptives()}
+                        </section>
+
+                        {/* Hypothesis Tests */}
+                        <section className="card" style={{ marginBottom: '24px', padding: '20px' }}>
+                            <h3 style={{
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                color: 'var(--text-muted)',
+                                marginBottom: '16px'
+                            }}>
+                                Hypothesis Tests
+                            </h3>
+                            {renderResultsTable()}
+                        </section>
+
+                        {/* Detail View */}
+                        {selectedVarDetail && batchResult.results[selectedVarDetail] && (
+                            <section className="card" style={{ padding: '20px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+                                    {/* AI Insight */}
+                                    <div>
+                                        <h4 style={{
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            color: 'var(--accent)',
+                                            marginBottom: '12px'
+                                        }}>
+                                            AI Interpretation
+                                        </h4>
+                                        <p style={{
+                                            fontSize: '13px',
+                                            lineHeight: '1.6',
+                                            color: 'var(--text-secondary)',
+                                            fontFamily: 'monospace',
+                                            whiteSpace: 'pre-line',
+                                            background: 'var(--bg-tertiary)',
+                                            padding: '16px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            {batchResult.results[selectedVarDetail].conclusion || 'No interpretation available.'}
+                                        </p>
+                                    </div>
+
+                                    {/* Plot */}
+                                    <div style={{
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '6px',
+                                        padding: '16px',
+                                        minHeight: '300px'
+                                    }}>
+                                        <h4 style={{
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            color: 'var(--text-muted)',
+                                            marginBottom: '12px',
+                                            textAlign: 'center'
+                                        }}>
+                                            Distribution Plot
+                                        </h4>
+                                        {batchResult.results[selectedVarDetail].plot_data ? (
+                                            <VisualizePlot
+                                                data={batchResult.results[selectedVarDetail].plot_data}
+                                                stats={batchResult.results[selectedVarDetail].plot_stats}
+                                                groups={batchResult.results[selectedVarDetail].groups}
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                height: '200px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'var(--text-muted)',
+                                                fontSize: '12px'
+                                            }}>
+                                                No plot data
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+                    </div>
+                )}
             </main>
         </div>
     );

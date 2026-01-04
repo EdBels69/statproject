@@ -64,6 +64,62 @@ METHODS = {
         type="correlation",
         min_groups=0,
         max_groups=0
+    ),
+    "anova": StatMethod(
+        id="anova",
+        name="One-Way ANOVA",
+        description="Compares means of three or more independent groups. Assumes normal distribution and homogeneity of variances.",
+        type="parametric",
+        min_groups=3,
+        max_groups=100
+    ),
+    "kruskal": StatMethod(
+        id="kruskal",
+        name="Kruskal-Wallis H-test",
+        description="Non-parametric alternative to ANOVA. Compares distributions of three or more independent groups.",
+        type="non-parametric",
+        min_groups=3,
+        max_groups=100
+    ),
+    "rm_anova": StatMethod(
+        id="rm_anova",
+        name="Repeated Measures ANOVA",
+        description="Compares means of the same subjects across three or more time points/conditions.",
+        type="parametric",
+        min_groups=3,
+        max_groups=100
+    ),
+    "mixed_model": StatMethod(
+        id="mixed_model",
+        name="Linear Mixed Models (LMM)",
+        description="Advanced model for nested/clustered data and unbalanced designs. Essential for complex clinical trials.",
+        type="parametric",
+        min_groups=2,
+        max_groups=100
+    ),
+    "survival_km": StatMethod(
+        id="survival_km",
+        name="Kaplan-Meier Survival Analysis",
+        description="Estimates survival probability over time. Includes Log-Rank test to compare groups.",
+        type="non-parametric",
+        min_groups=2,
+        max_groups=20
+    ),
+    "linear_regression": StatMethod(
+        id="linear_regression",
+        name="Linear Regression",
+        description="Predicts a continuous outcome based on one or more predictors.",
+        type="parametric",
+        min_groups=1,
+        max_groups=20
+    ),
+    "logistic_regression": StatMethod(
+        id="logistic_regression",
+        name="Logistic Regression",
+        description="Predicts a binary outcome (Yes/No) based on one or more predictors.",
+        type="parametric",
+        min_groups=1,
+        max_groups=20
     )
 }
 

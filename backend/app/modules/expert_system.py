@@ -22,21 +22,21 @@ def recommend_method(req: WizardRequest) -> WizardRecommendation:
                 if req.data_type == "numeric":
                     if req.normal_distribution:
                         return WizardRecommendation(
-                            method_id="ttest_ind",
+                            method_id="t_test_ind",
                             name="Student's T-Test",
                             description="Compares means of two independent groups.",
                             assumptions=["Normal distribution", "Homogeneity of variances"]
                         )
                     else:
                         return WizardRecommendation(
-                            method_id="mannwhitney",
+                            method_id="mann_whitney",
                             name="Mann-Whitney U Test",
                             description="Compares distributions of two independent groups (non-parametric).",
                             assumptions=["Independent samples"]
                         )
                 elif req.data_type == "categorical":
                     return WizardRecommendation(
-                        method_id="chi2",
+                        method_id="chi_square",
                         name="Chi-Square Test",
                         description="Tests independence between two categorical variables.",
                         assumptions=["Expected cell counts > 5"]
@@ -63,7 +63,7 @@ def recommend_method(req: WizardRequest) -> WizardRecommendation:
                  if req.data_type == "numeric":
                     if req.normal_distribution:
                         return WizardRecommendation(
-                            method_id="ttest_rel",
+                            method_id="t_test_rel",
                             name="Paired T-Test",
                             description="Compares means of two related/paired groups.",
                             assumptions=["Differences are normally distributed"]
@@ -93,6 +93,32 @@ def recommend_method(req: WizardRequest) -> WizardRecommendation:
                     description="Measures monotonic relationship between two ranked variables.",
                     assumptions=["Monotonicity"]
                 )
+
+    # 3. Survival Analysis
+    elif req.goal == "survival":
+        return WizardRecommendation(
+            method_id="survival_km",
+            name="Kaplan-Meier Analysis",
+            description="Analyzes time until an event occurs (e.g., survival, recovery).",
+            assumptions=["Non-informative censoring", "Independence of events"]
+        )
+
+    # 4. Prediction
+    elif req.goal == "prediction":
+        if req.data_type == "numeric":
+            return WizardRecommendation(
+                method_id="linear_regression",
+                name="Linear Regression",
+                description="Predicts a continuous outcome based on input factors.",
+                assumptions=["Linearity", "Normality of residuals", "Homoscedasticity"]
+            )
+        elif req.data_type == "categorical":
+            return WizardRecommendation(
+                method_id="logistic_regression",
+                name="Logistic Regression",
+                description="Predicts a binary outcome (e.g., Success/Failure) based on factors.",
+                assumptions=["Independence of observations", "Binary outcome"]
+            )
 
     # Fallback
     return WizardRecommendation(

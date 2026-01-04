@@ -7,6 +7,7 @@ export default function Upload() {
     const [dragActive, setDragActive] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
+    const [fileName, setFileName] = useState(null);
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -37,6 +38,7 @@ export default function Upload() {
     const handleUpload = async (file) => {
         setUploading(true);
         setError(null);
+        setFileName(file.name);
         try {
             const data = await uploadDataset(file);
             navigate(`/profile/${data.id}`, {
@@ -53,44 +55,112 @@ export default function Upload() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-8">
-            <h1 className="text-3xl font-bold mb-6 text-slate-800">Загрузка данных</h1>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }} className="animate-fadeIn">
+            <h1 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: 'var(--text-primary)'
+            }}>
+                Upload Dataset
+            </h1>
+            <p style={{
+                color: 'var(--text-muted)',
+                marginBottom: '32px',
+                fontSize: '14px'
+            }}>
+                Drag and drop your CSV or Excel file to begin analysis.
+            </p>
 
             <form
-                className={`relative p-10 border-2 border-dashed rounded-xl transition-colors
-            ${dragActive ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-white"}
-            ${uploading ? "opacity-50 cursor-wait" : ""}`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
+                style={{
+                    border: `2px dashed ${dragActive ? 'var(--accent)' : 'var(--border-color)'}`,
+                    borderRadius: '12px',
+                    padding: '48px',
+                    textAlign: 'center',
+                    background: dragActive ? 'rgba(249, 115, 22, 0.05)' : 'var(--bg-secondary)',
+                    transition: 'all 0.2s',
+                    cursor: uploading ? 'wait' : 'pointer'
+                }}
             >
                 <input
                     type="file"
                     id="file-upload"
-                    className="hidden"
+                    style={{ display: 'none' }}
                     onChange={handleChange}
                     accept=".csv,.xlsx,.xls"
                     disabled={uploading}
                 />
 
-                <div className="text-center">
-                    <div className="text-5xl mb-4">📁</div>
-                    <p className="text-lg mb-2 text-slate-700">Перетащите файл сюда</p>
-                    <p className="text-sm text-slate-500 mb-4">или</p>
-                    <label
-                        htmlFor="file-upload"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
-                    >
-                        {uploading ? "Загрузка..." : "Выбрать файл"}
-                    </label>
-                    <p className="mt-4 text-xs text-slate-400">Поддерживаются: CSV, Excel</p>
-                </div>
+                {uploading ? (
+                    <div>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            margin: '0 auto 16px',
+                            border: '3px solid var(--border-color)',
+                            borderTopColor: 'var(--accent)',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite'
+                        }} />
+                        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                            Processing {fileName}...
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            margin: '0 auto 16px',
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '24px'
+                        }}>📄</div>
+                        <p style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '15px' }}>
+                            Drop your file here
+                        </p>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '13px' }}>
+                            or click to browse
+                        </p>
+                        <label
+                            htmlFor="file-upload"
+                            className="btn-primary"
+                            style={{ display: 'inline-block', cursor: 'pointer' }}
+                        >
+                            Select File
+                        </label>
+                        <p style={{
+                            marginTop: '16px',
+                            color: 'var(--text-muted)',
+                            fontSize: '12px'
+                        }}>
+                            Supported: CSV, XLSX, XLS
+                        </p>
+                    </>
+                )}
             </form>
 
             {error && (
-                <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
-                    ❌ Ошибка: {error}
+                <div
+                    className="bg-error animate-slideUp"
+                    style={{
+                        marginTop: '16px',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        color: 'var(--error)'
+                    }}
+                >
+                    <strong>Error:</strong> {error}
                 </div>
             )}
         </div>

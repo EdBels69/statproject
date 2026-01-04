@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react';
 
-// Minimalist Type Icons (Text-based)
 const TypeIcon = ({ type }) => {
-    switch (type) {
-        case 'numeric': return <span className="font-mono text-[9px] text-slate-500 font-bold border border-slate-300 px-1 rounded-sm">NUM</span>;
-        case 'categorical': return <span className="font-mono text-[9px] text-slate-500 font-bold border border-slate-300 px-1 rounded-sm">CAT</span>;
-        case 'datetime': return <span className="font-mono text-[9px] text-slate-500 font-bold border border-slate-300 px-1 rounded-sm">DAT</span>;
-        default: return <span className="font-mono text-[9px] text-slate-500 font-bold border border-slate-300 px-1 rounded-sm">TXT</span>;
-    }
+    const getLabel = () => {
+        switch (type) {
+            case 'numeric': return 'NUM';
+            case 'categorical': return 'CAT';
+            case 'datetime': return 'DAT';
+            default: return 'TXT';
+        }
+    };
+    return (
+        <span style={{
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            color: 'var(--accent)',
+            background: 'rgba(249, 115, 22, 0.15)',
+            padding: '2px 6px',
+            borderRadius: '3px'
+        }}>
+            {getLabel()}
+        </span>
+    );
 };
 
 export default function VariableSelector({ allColumns, onRun, loading }) {
     const [available, setAvailable] = useState([]);
     const [targetCols, setTargetCols] = useState([]);
     const [groupCol, setGroupCol] = useState(null);
-
     const [selectedAvailable, setSelectedAvailable] = useState([]);
     const [selectedTargets, setSelectedTargets] = useState([]);
 
@@ -56,120 +69,256 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
         <div
             key={col.name}
             onClick={onClick}
-            className={`flex items-center gap-3 px-3 py-1.5 cursor-pointer select-none transition-colors border-b border-dashed border-slate-100 last:border-0
-                 ${isSelected ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-slate-50 text-slate-600'}`}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                background: isSelected ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+                borderBottom: '1px solid var(--border-color)',
+                transition: 'background 0.15s'
+            }}
         >
             <TypeIcon type={col.type} />
-            <span className={`text-xs font-mono truncate ${isSelected ? 'font-bold' : ''}`} title={col.name}>{col.name}</span>
+            <span style={{
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                fontWeight: isSelected ? '600' : '400',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+            }} title={col.name}>
+                {col.name}
+            </span>
         </div>
     );
 
+    const sectionStyle = {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid var(--border-color)',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        minHeight: 0
+    };
+
+    const headerStyle = {
+        background: 'var(--bg-tertiary)',
+        padding: '8px 12px',
+        borderBottom: '1px solid var(--border-color)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    };
+
+    const labelStyle = {
+        fontSize: '10px',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: 'var(--text-muted)'
+    };
+
+    const countStyle = {
+        fontSize: '10px',
+        fontFamily: 'monospace',
+        color: 'var(--text-muted)'
+    };
+
     return (
-        <div className="flex flex-col h-full bg-white font-sans">
-            <div className="p-4 border-b border-slate-300">
-                <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-900">
-                    Конфигурация
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            background: 'var(--bg-secondary)'
+        }}>
+            <div style={{
+                padding: '16px',
+                borderBottom: '1px solid var(--border-color)'
+            }}>
+                <h2 style={{
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: 'var(--text-primary)'
+                }}>
+                    Configuration
                 </h2>
             </div>
 
-            <div className="flex flex-col flex-1 overflow-hidden p-4 gap-4 min-h-0">
-
-                {/* Available List */}
-                <div className="flex-1 flex flex-col border border-slate-300 min-h-0">
-                    <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-300 flex justify-between items-center">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Доступные</span>
-                        <span className="text-[10px] font-mono font-bold text-slate-400">{available.length}</span>
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                padding: '16px',
+                gap: '12px',
+                minHeight: 0,
+                overflow: 'hidden'
+            }}>
+                {/* Available */}
+                <div style={sectionStyle}>
+                    <div style={headerStyle}>
+                        <span style={labelStyle}>Available</span>
+                        <span style={countStyle}>{available.length}</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
                         {available.map(col => renderItem(
                             col,
                             selectedAvailable.includes(col),
                             () => {
-                                if (selectedAvailable.includes(col)) setSelectedAvailable(selectedAvailable.filter(c => c !== col));
-                                else setSelectedAvailable([...selectedAvailable, col]);
+                                if (selectedAvailable.includes(col))
+                                    setSelectedAvailable(selectedAvailable.filter(c => c !== col));
+                                else
+                                    setSelectedAvailable([...selectedAvailable, col]);
                             }
                         ))}
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-center gap-2">
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                     <button
                         onClick={moveRightTarget}
                         disabled={selectedAvailable.length === 0}
-                        className="border border-slate-300 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-20 transition-all"
+                        className="btn-secondary"
+                        style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
-                        Добавить Y ↓
+                        Add Y ↓
                     </button>
                     <button
                         onClick={moveLeftTarget}
                         disabled={selectedTargets.length === 0}
-                        className="border border-slate-300 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-red-600 hover:text-white hover:border-red-600 disabled:opacity-20 transition-all"
+                        className="btn-secondary"
+                        style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
-                        Убрать ↑
+                        Remove ↑
                     </button>
                 </div>
 
-                {/* Target Lists */}
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
-
-                    {/* Y Variables */}
-                    <div className="flex-1 flex flex-col border border-slate-300 bg-slate-50/30 min-h-0">
-                        <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-300 flex justify-between items-center">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Зависимые (Y)</span>
-                            <span className="text-[10px] font-mono font-bold text-slate-400">{targetCols.length}</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-                            {targetCols.length === 0 && (
-                                <div className="absolute inset-0 flex items-center justify-center text-[9px] text-slate-300 uppercase tracking-widest">
-                                    Пусто
-                                </div>
-                            )}
-                            {targetCols.map(col => renderItem(
-                                col,
-                                selectedTargets.includes(col),
-                                () => {
-                                    if (selectedTargets.includes(col)) setSelectedTargets(selectedTargets.filter(c => c !== col));
-                                    else setSelectedTargets([...selectedTargets, col]);
-                                }
-                            ))}
-                        </div>
+                {/* Target Variables (Y) */}
+                <div style={sectionStyle}>
+                    <div style={headerStyle}>
+                        <span style={labelStyle}>Dependent (Y)</span>
+                        <span style={countStyle}>{targetCols.length}</span>
                     </div>
-
-                    {/* Grouping */}
-                    <div className="h-[80px] flex flex-col border border-slate-300 bg-slate-50/30 flex-shrink-0">
-                        <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-300 flex justify-between items-center">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Группирующая (X)</span>
-                            <button
-                                onClick={moveRightGroup}
-                                disabled={selectedAvailable.length !== 1 || !!groupCol}
-                                className="text-[9px] font-bold uppercase hover:underline disabled:opacity-0"
-                            >
-                                Назначить
-                            </button>
-                        </div>
-                        <div className="flex-1 flex items-center justify-center">
-                            {groupCol ? (
-                                <div className="w-full flex items-center justify-between px-3">
-                                    <div className="flex items-center gap-2">
-                                        <TypeIcon type={groupCol.type} />
-                                        <span className="text-xs font-mono font-bold">{groupCol.name}</span>
-                                    </div>
-                                    <button onClick={removeGroup} className="text-slate-400 hover:text-red-500 font-bold">×</button>
-                                </div>
-                            ) : (
-                                <div className="text-[9px] text-slate-300 uppercase tracking-widest">Не выбрано</div>
-                            )}
-                        </div>
+                    <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                        {targetCols.length === 0 && (
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '10px',
+                                color: 'var(--text-muted)'
+                            }}>
+                                Empty
+                            </div>
+                        )}
+                        {targetCols.map(col => renderItem(
+                            col,
+                            selectedTargets.includes(col),
+                            () => {
+                                if (selectedTargets.includes(col))
+                                    setSelectedTargets(selectedTargets.filter(c => c !== col));
+                                else
+                                    setSelectedTargets([...selectedTargets, col]);
+                            }
+                        ))}
                     </div>
                 </div>
 
+                {/* Grouping Variable (X) */}
+                <div style={{
+                    ...sectionStyle,
+                    flex: 'none',
+                    height: '80px'
+                }}>
+                    <div style={headerStyle}>
+                        <span style={labelStyle}>Grouping (X)</span>
+                        <button
+                            onClick={moveRightGroup}
+                            disabled={selectedAvailable.length !== 1 || !!groupCol}
+                            style={{
+                                fontSize: '9px',
+                                color: 'var(--accent)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                opacity: selectedAvailable.length !== 1 || !!groupCol ? 0 : 1
+                            }}
+                        >
+                            Assign
+                        </button>
+                    </div>
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 12px'
+                    }}>
+                        {groupCol ? (
+                            <div style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <TypeIcon type={groupCol.type} />
+                                    <span style={{
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace',
+                                        color: 'var(--text-primary)',
+                                        fontWeight: '600'
+                                    }}>
+                                        {groupCol.name}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={removeGroup}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        ) : (
+                            <div style={{
+                                fontSize: '10px',
+                                color: 'var(--text-muted)'
+                            }}>
+                                Not selected
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Run Button */}
                 <button
                     onClick={() => onRun(targetCols.map(c => c.name), groupCol ? groupCol.name : null)}
                     disabled={!targetCols.length || !groupCol || loading}
-                    className="w-full py-3 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black disabled:bg-slate-200 disabled:text-slate-400 transition-all cursor-pointer"
+                    className="btn-primary"
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em'
+                    }}
                 >
-                    {loading ? 'ОБРАБОТКА...' : 'ЗАПУСТИТЬ АНАЛИЗ'}
+                    {loading ? 'Processing...' : 'Run Analysis'}
                 </button>
             </div>
         </div>
