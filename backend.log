@@ -177,3 +177,61 @@ LLM Quality Scan Error: Unterminated string starting at: line 56 column 19 (char
 INFO:     127.0.0.1:55909 - "POST /api/v1/datasets/e35ded7b-0832-46b8-9c31-5d416afa3ff3/scan HTTP/1.1" 200 OK
 INFO:     127.0.0.1:56061 - "OPTIONS /api/v1/analyze/batch HTTP/1.1" 200 OK
 INFO:     127.0.0.1:56061 - "POST /api/v1/analyze/batch HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'backend/app/modules/expert_system.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [6999]
+WARNING:  WatchFiles detected changes in 'backend/app/api/wizard.py'. Reloading...
+INFO:     Started server process [17302]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [17309]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend/app/api/routes.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [17309]
+INFO:     Started server process [17312]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+DEBUG: Starting Async Chunked Upload for Первичка для анализа работа.xlsx
+DEBUG: Saving to workspace/datasets/48b6aea0-4f2e-4009-a923-4f969d00750f/Первичка для анализа работа.xlsx
+DEBUG: File saved successfully (Async)
+DEBUG: Parsing file (in threadpool)...
+DEBUG: Parsed dataframe shape: (44, 119)
+DEBUG: Generating profile (in threadpool)...
+DEBUG: Profile generated
+INFO:     127.0.0.1:61562 - "POST /api/v1/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61563 - "GET /api/v1/datasets/48b6aea0-4f2e-4009-a923-4f969d00750f/sheets HTTP/1.1" 404 Not Found
+DEBUG: get_dataset called with page=1, limit=10000
+INFO:     127.0.0.1:61565 - "GET /api/v1/datasets/48b6aea0-4f2e-4009-a923-4f969d00750f/sheets HTTP/1.1" 404 Not Found
+DEBUG: get_dataset called with page=1, limit=10000
+INFO:     127.0.0.1:61562 - "GET /api/v1/datasets/48b6aea0-4f2e-4009-a923-4f969d00750f?page=1&limit=10000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /api/v1/datasets/48b6aea0-4f2e-4009-a923-4f969d00750f?page=1&limit=10000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61588 - "OPTIONS /api/v1/wizard/recommend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61588 - "POST /api/v1/wizard/recommend HTTP/1.1" 200 OK
+DEBUG: Starting Async Chunked Upload for Первичка для анализа работа.xlsx
+DEBUG: Saving to workspace/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b/Первичка для анализа работа.xlsx
+DEBUG: File saved successfully (Async)
+DEBUG: Parsing file (in threadpool)...
+DEBUG: Parsed dataframe shape: (44, 119)
+DEBUG: Generating profile (in threadpool)...
+DEBUG: Profile generated
+INFO:     127.0.0.1:61615 - "POST /api/v1/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61616 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b/sheets HTTP/1.1" 404 Not Found
+DEBUG: get_dataset called with page=1, limit=10000
+INFO:     127.0.0.1:61617 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b/sheets HTTP/1.1" 404 Not Found
+DEBUG: get_dataset called with page=1, limit=10000
+INFO:     127.0.0.1:61615 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b?page=1&limit=10000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61616 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b?page=1&limit=10000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61628 - "OPTIONS /api/v1/analyze/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61628 - "POST /api/v1/analyze/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61636 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b/sheets HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61638 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b/sheets HTTP/1.1" 404 Not Found
+DEBUG: get_dataset called with page=1, limit=10000
+DEBUG: get_dataset called with page=1, limit=10000
+INFO:     127.0.0.1:61637 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b?page=1&limit=10000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /api/v1/datasets/39494d72-6786-4184-b9d8-a904f36f7c0b?page=1&limit=10000 HTTP/1.1" 200 OK

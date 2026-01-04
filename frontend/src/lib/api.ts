@@ -145,3 +145,13 @@ export async function scanDataset(id) {
     if (!response.ok) throw new Error("Quality scan failed");
     return response.json();
 }
+
+export async function getWizardRecommendation(params) {
+    const response = await fetch(`${API_URL}/wizard/recommend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+    });
+    if (!response.ok) throw new Error("Wizard recommendation failed");
+    return response.json();
+}
