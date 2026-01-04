@@ -1,0 +1,150 @@
+{
+    "name": "Stat Analyzer CI/CD Automation",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "git-push",
+                "authentication": "headerAuth",
+                "headerAuth": {
+                    "name": "X-GitHub-Token",
+                    "value": "={{ $env.GIT_WEBHOOK_SECRET }}"
+                }
+            },
+            "id": "webhook-trigger",
+            "name": "Git Push Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const payload = $input.all()[0].json;\nconst result = {\n  event_type: payload.ref_type || 'push',\n  branch: payload.ref ? payload.ref.replace('refs/heads/', '') : 'main',\n  commit: payload.after || payload.sha,\n  author: payload.pusher ? payload.pusher.name : (payload.sender ? payload.sender.login : 'unknown'),\n  repository: payload.repository ? payload.repository.full_name : 'unknown',\n  clone_url: payload.repository ? payload.repository.clone_url : '',\n  pr_number: payload.pull_request ? payload.pull_request.number : null,\n  pr_title: payload.pull_request ? payload.pull_request.title : null,\n  pr_action: payload.action || null,\n  changedFiles: []\n};\nif (payload.commits && Array.isArray(payload.commits)) {\n  result.changedFiles = payload.commits.map(c => {\n    const files = [];\n    if (c.added) files.push(...c.added.map(f => ({ path: f, action: 'added' })));\n    if (c.modified) files.push(...c.modified.map(f => ({ path: f, action: 'modified' })));\n    if (c.removed) files.push(...c.removed.map(f => ({ path: f, action: 'removed' })));\n    return files;\n  }).flat();\n}\nresult.tasks = result.changedFiles.map(file => {\n  let agent = null;\n  let taskType = null;\n  if (file.path.startsWith('backend/')) {\n    agent = 'GLM';\n    taskType = 'backend_code';\n  } else if (file.path.startsWith('frontend/')) {\n    agent = 'GLM';\n    taskType = 'frontend_code';\n  } else if (file.path.startsWith('docs/')) {\n    agent = 'GLM';\n    taskType = 'documentation';\n  } else if (file.path.startsWith('tests/')) {\n    agent = 'GLM';\n    taskType = 'tests';\n  } else {\n    agent = 'GLM';\n    taskType = 'other';\n  }\n  return { ...file, agent, taskType };\n});\nif (result.pr_number) {\n  result.workflowType = 'pr_review';\n} else if (result.changedFiles.length > 0) {\n  result.workflowType = 'code_changes';\n} else {\n  result.workflowType = 'other';\n}\nreturn [{ json: result }];"
+            },
+            "id": "event-parser",
+            "name": "Event Parser",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.workflowType }}",
+                            "operation": "equals",
+                            "value2": "pr_review"
+                        }
+                    ]
+                }
+            },
+            "id": "workflow-router",
+            "name": "Workflow Router",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.GEMINI_AGENT_URL }}/api/review",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "headerAuth": {
+                    "name": "Authorization",
+                    "value": "Bearer {{ $env.GEMINI_AGENT_API_KEY }}"
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\"pr\": {\"number\": {{ $json.pr_number }}, \"title\": \"{{ $json.pr_title }}\", \"repository\": \"{{ $json.repository }}\", \"branch\": \"{{ $json.branch }}\"}, \"files\": {{ $json.tasks }}}"
+            },
+            "id": "gemini-review",
+            "name": "Gemini3 Pro Review",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                850,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.GLM_AGENT_URL }}/api/task",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "headerAuth": {
+                    "name": "Authorization",
+                    "value": "Bearer {{ $env.GLM_AGENT_API_KEY }}"
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\"task\": {\"type\": \"code\", \"description\": \"Process code changes\", \"files\": {{ $json.tasks }}, \"context\": {\"branch\": \"{{ $json.branch }}\", \"commit\": \"{{ $json.commit }}\", \"repository\": \"{{ $json.repository }}\"}}}"
+            },
+            "id": "glm-code",
+            "name": "GLM Code Task",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                850,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Git Push Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Event Parser",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Event Parser": {
+            "main": [
+                [
+                    {
+                        "node": "Workflow Router",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Workflow Router": {
+            "main": [
+                [
+                    {
+                        "node": "Gemini3 Pro Review",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "GLM Code Task",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "triggerCount": 1
+}

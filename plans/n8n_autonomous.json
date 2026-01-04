@@ -1,0 +1,159 @@
+{
+    "name": "Autonomous Agent Workflow",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "github-webhook",
+                "authentication": "none"
+            },
+            "name": "GitHub Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "webhook"
+        },
+        {
+            "parameters": {
+                "jsCode": "const payload = $input.all()[0].json;\nconst isBackend = payload.commits && payload.commits.some(c => c.modified.some(f => f.includes('backend/')) || c.added.some(f => f.includes('backend/')));\nconst isFrontend = payload.commits && payload.commits.some(c => c.modified.some(f => f.includes('frontend/')) || c.added.some(f => f.includes('frontend/')));\n\n// Debug: Log payload structure if needed\n// console.log(JSON.stringify(payload, null, 2));\n\nconst message = payload.head_commit ? payload.head_commit.message : (payload.commits ? payload.commits[0].message : 'Update');\n\nreturn [{\n  json: {\n    task: message,\n    isBackend,\n    isFrontend,\n    context: payload\n  }\n}];"
+            },
+            "name": "Classify Task",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                300,
+                300
+            ],
+            "id": "classifier"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.isBackend }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "name": "Backend?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "id": "if-backend"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://localhost:8000/api/task",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "task",
+                            "value": "={{ $json.task }}"
+                        },
+                        {
+                            "name": "verification_command",
+                            "value": "python3 -m pytest backend/tests"
+                        },
+                        {
+                            "name": "context",
+                            "value": "={{ $json.context }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Agent (Backend)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                750,
+                200
+            ],
+            "id": "agent-backend"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://localhost:8000/api/task",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "task",
+                            "value": "={{ $json.task }}"
+                        },
+                        {
+                            "name": "verification_command",
+                            "value": "cd frontend && npm run build"
+                        },
+                        {
+                            "name": "context",
+                            "value": "={{ $json.context }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Agent (Frontend)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                750,
+                400
+            ],
+            "id": "agent-frontend"
+        }
+    ],
+    "connections": {
+        "GitHub Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Classify Task",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Classify Task": {
+            "main": [
+                [
+                    {
+                        "node": "Backend?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Backend?": {
+            "main": [
+                [
+                    {
+                        "node": "Agent (Backend)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Agent (Frontend)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
