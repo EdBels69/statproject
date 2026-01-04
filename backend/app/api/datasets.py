@@ -19,8 +19,10 @@ from app.modules.parsers import (
     invalidate_dataset_cache,
     snapshot_dataset,
     cleanup_processed_files,
+    clear_profile_cache,
 )
 from app.modules.profiler import generate_profile
+from app.modules.reporting import cleanup_old_reports
 
 router = APIRouter()
 
@@ -31,6 +33,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 @router.get("", response_model=List[dict])
 async def list_datasets():
     cleanup_processed_files(DATA_DIR)
+    cleanup_old_reports()
     datasets = []
     if not os.path.exists(DATA_DIR):
         return []
@@ -90,6 +93,11 @@ def reparse_dataset(dataset_id: str, request: DatasetReparse):
         metadata.sheet_name = request.sheet_name
         metadata.bump_modification()
         persist_metadata(dataset_id, DATA_DIR, metadata)
+        # Drop processed/profile cache to avoid stale header or schema
+        processed_path = os.path.join(upload_dir, "processed.csv")
+        if os.path.exists(processed_path):
+            os.remove(processed_path)
+        clear_profile_cache(dataset_id, DATA_DIR)
         invalidate_dataset_cache(dataset_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not reparse file: {str(e)}")
@@ -130,6 +138,7 @@ def modify_dataset(dataset_id: str, modification: DatasetModification):
         df.to_csv(processed_path, index=False)
         metadata.bump_modification()
         persist_metadata(dataset_id, DATA_DIR, metadata)
+        clear_profile_cache(dataset_id, DATA_DIR)
         invalidate_dataset_cache(dataset_id)
     except Exception as e: raise HTTPException(status_code=400, detail=f"Failed to modify dataset: {str(e)}")
     profile = generate_profile(df)

@@ -116,6 +116,15 @@ def invalidate_dataset_cache(dataset_id: str) -> None:
         DATAFRAME_CACHE.pop(dataset_id, None)
 
 
+def clear_profile_cache(dataset_id: str, data_dir: str) -> None:
+    cache_path = os.path.join(data_dir, dataset_id, "profile_cache.json")
+    if os.path.exists(cache_path):
+        try:
+            os.remove(cache_path)
+        except OSError:
+            pass
+
+
 def get_dataframe(dataset_id: str, data_dir: str, *, force_refresh: bool = False, prefer_processed: bool = True) -> pd.DataFrame:
     """
     Centralized function to load DataFrame for any dataset with caching and metadata awareness.
