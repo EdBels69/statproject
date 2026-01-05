@@ -3,12 +3,44 @@ from typing import List, Dict, Any
 import os
 import pandas as pd
 from app.schemas.analysis import AnalysisRequest, AnalysisResult, StatMethod
-from app.stats.registry import get_method
+from app.stats.registry import get_method, list_methods
 from app.stats.engine import select_test, run_analysis
+from app.stats.validation import validate_inputs
 
 from app.api.datasets import DATA_DIR, parse_file
 
 router = APIRouter()
+
+
+def _build_mapping(
+    method_id: str,
+    col_a: str,
+    col_b: str = None,
+    *,
+    group_col: str = None,
+    event_col: str = None,
+    predictors: List[str] = None,
+) -> Dict[str, Any]:
+    if method_id in ["t_test_ind", "mann_whitney", "t_test_rel", "wilcoxon", "anova", "kruskal"]:
+        return {"target": col_a, "group": col_b}
+    if method_id in ["chi_square", "fisher"]:
+        return {"feature_a": col_a, "feature_b": col_b}
+    if method_id in ["pearson", "spearman"]:
+        return {"x": col_a, "y": col_b}
+    if method_id == "survival_km":
+        return {"duration": col_a, "event": event_col or col_b, "group": group_col}
+    if method_id in ["linear_regression", "logistic_regression"]:
+        return {"target": col_a, "predictor": predictors or []}
+    return {}
+
+
+@router.get("/methods", response_model=List[StatMethod])
+async def list_available_methods(include_experimental: bool = False):
+    """
+    Return only executable statistical methods.
+    Disabled/experimental methods are hidden by default.
+    """
+    return list_methods(include_experimental=include_experimental)
 
 @router.post("/recommend", response_model=StatMethod)
 async def recommend_method(request: AnalysisRequest):
@@ -61,7 +93,10 @@ async def recommend_method(request: AnalysisRequest):
     if not method_id:
         raise HTTPException(status_code=400, detail="No suitable method found for these variables.")
         
-    return get_method(method_id)
+    method = get_method(method_id)
+    if not method:
+        raise HTTPException(status_code=400, detail="Selected method is not available.")
+    return method
 
 @router.post("/run", response_model=AnalysisResult)
 async def run_method_api(request: AnalysisRequest):
@@ -102,13 +137,28 @@ async def run_method_api(request: AnalysisRequest):
     if not method_id:
          raise HTTPException(status_code=400, detail="Method determination failed.")
 
+    method_info = get_method(method_id)
+    if not method_info:
+        raise HTTPException(status_code=400, detail="Selected method is disabled or unavailable.")
+
+    predictors = request.features if method_id in ["linear_regression", "logistic_regression"] else None
+    mapping = _build_mapping(method_id, col_a, col_b, predictors=predictors)
+    validation_errors = validate_inputs(method_info, df, mapping)
+    if validation_errors:
+        raise HTTPException(status_code=422, detail={"errors": validation_errors})
+
     # 3. Run
     try:
-        results = run_analysis(df, method_id, col_a, col_b, is_paired=request.is_paired)
+        results = run_analysis(
+            df,
+            method_id,
+            col_a,
+            col_b,
+            is_paired=request.is_paired,
+            predictors=predictors
+        )
         
         # Build AnalysisResult
-        method_info = get_method(method_id)
-        
         res = AnalysisResult(
             method=method_info,
             p_value=results["p_value"],
@@ -205,7 +255,9 @@ async def download_report(
         raise HTTPException(status_code=500, detail=str(e))
         
     method_info = get_method(method_id)
-    
+    if not method_info:
+        raise HTTPException(status_code=400, detail="Selected method is disabled or unavailable.")
+
     # 4. Create Result Object
     # Initial conclusion
     conclusion = f"Statistically {'significant' if res['significant'] else 'insignificant'} difference found (p={res['p_value']:.4f})."
@@ -293,13 +345,21 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
         
         if not method_id:
             continue
-            
+
+        method_info = get_method(method_id)
+        if not method_info:
+            continue
+
+        mapping = _build_mapping(method_id, col, group_col)
+        validation_errors = validate_inputs(method_info, df, mapping)
+        if validation_errors:
+            continue
+
         try:
             # Run
             res = run_analysis(df, method_id, col, group_col)
             
             # Format
-            method_info = get_method(method_id)
             conclusion = f"P={res['p_value']:.4f}"
             
             result_obj = AnalysisResult(

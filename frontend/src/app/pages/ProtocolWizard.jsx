@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getWizardRecommendation, applyStrategy, listDatasets, getDataset, exportReport } from '../../lib/api';
+import { getWizardRecommendation, applyStrategy, listMethods, listDatasets, getDataset, exportReport } from '../../lib/api';
 import AnalyticsChart from '../components/AnalyticsChart';
 
 export default function ProtocolWizard() {
@@ -7,6 +7,7 @@ export default function ProtocolWizard() {
   const [datasets, setDatasets] = useState([]);
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [columns, setColumns] = useState([]);
+  const [availableMethods, setAvailableMethods] = useState({});
 
   const [selections, setSelections] = useState({
     goal: '',
@@ -24,6 +25,22 @@ export default function ProtocolWizard() {
 
   useEffect(() => {
     loadDatasets();
+  }, []);
+
+  useEffect(() => {
+    const loadMethods = async () => {
+      try {
+        const methods = await listMethods();
+        const statusMap = methods.reduce((acc, method) => {
+          acc[method.id] = method.status;
+          return acc;
+        }, {});
+        setAvailableMethods(statusMap);
+      } catch (e) {
+        console.error('Failed to load method list', e);
+      }
+    };
+    loadMethods();
   }, []);
 
   const loadDatasets = async () => {
@@ -85,6 +102,12 @@ export default function ProtocolWizard() {
       alert("Please select required variables");
       return;
     }
+
+    if (recommendation && !isMethodAvailable(recommendation.method_id)) {
+      alert("The recommended method is currently unavailable.");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await applyStrategy({
@@ -142,6 +165,15 @@ export default function ProtocolWizard() {
     setVariables({ target: '', group: '', event: '' });
     setSelectedDataset(null);
   };
+
+  const isMethodAvailable = (methodId) => {
+    if (!methodId) return true;
+    return availableMethods[methodId] ? availableMethods[methodId] === 'ready' : true;
+  };
+
+  const survivalAvailable = isMethodAvailable('survival_km');
+  const regressionAvailable = isMethodAvailable('linear_regression') && isMethodAvailable('logistic_regression');
+  const recommendationReady = !recommendation || isMethodAvailable(recommendation.method_id);
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-20">
@@ -225,19 +257,22 @@ export default function ProtocolWizard() {
                   icon="📈"
                   title="Prediction"
                   desc="Focus on outcome prediction (Regression)"
-                  disabled
+                  disabled={!regressionAvailable}
+                  onClick={() => regressionAvailable && handleSelect('goal', 'prediction')}
                 />
                 <OptionCard
                   icon="⏳"
                   title="Survival Analysis"
                   desc="Time-to-event analysis (Clinical Survival)"
-                  onClick={() => handleSelect('goal', 'survival')}
+                  disabled={!survivalAvailable}
+                  onClick={() => survivalAvailable && handleSelect('goal', 'survival')}
                 />
                 <OptionCard
                   icon="🔮"
                   title="Predict Outcome"
                   desc="Multi-factor predictive modeling (Regression)"
-                  onClick={() => handleSelect('goal', 'prediction')}
+                  disabled={!regressionAvailable}
+                  onClick={() => regressionAvailable && handleSelect('goal', 'prediction')}
                 />
               </div>
             </div>
@@ -352,13 +387,18 @@ export default function ProtocolWizard() {
             {!showApplyForm ? (
               <div className="flex justify-center flex-wrap gap-4">
                 <button onClick={reset} className="px-8 py-3 rounded-xl border border-slate-300 text-slate-600 font-bold hover:bg-slate-50 transition-all">Start Over</button>
-                {recommendation.method_id !== "consult_statistician" && (
+                {recommendation.method_id !== "consult_statistician" && recommendationReady && (
                   <button
                     onClick={() => setShowApplyForm(true)}
                     className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 hover:-translate-y-0.5"
                   >
                     Apply to Dataset →
                   </button>
+                )}
+                {recommendation.method_id !== "consult_statistician" && !recommendationReady && (
+                  <span className="px-4 py-2 text-sm font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl">
+                    This method is currently unavailable
+                  </span>
                 )}
               </div>
             ) : null}
@@ -374,6 +414,12 @@ export default function ProtocolWizard() {
                   <p className="text-sm text-slate-500">Mapping variables for {recommendation.name}</p>
                 </div>
               </div>
+
+              {!recommendationReady && (
+                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+                  This method is marked as unavailable. Please choose another recommendation.
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 <div className="space-y-2">
@@ -454,7 +500,7 @@ export default function ProtocolWizard() {
                 <div className="flex gap-4">
                   <button
                     onClick={handleApply}
-                    disabled={loading || !variables.target || (
+                    disabled={loading || !recommendationReady || !variables.target || (
                       recommendation?.method_id === 'survival_km' ? !variables.event :
                         (recommendation?.method_id?.includes('regression') ? !variables.predictors : !variables.group)
                     )}

@@ -24,6 +24,13 @@ export async function getWizardRecommendation(data: any) {
   return response.json();
 }
 
+export async function listMethods(includeExperimental: boolean = false) {
+  const params = includeExperimental ? "?include_experimental=true" : "";
+  const response = await fetch(`${API_URL}/analyze/methods${params}`);
+  if (!response.ok) throw new Error("Failed to list methods");
+  return response.json();
+}
+
 export async function applyStrategy(data: any) {
   const response = await fetch(`${API_URL}/wizard/apply`, {
     method: "POST",

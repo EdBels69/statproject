@@ -1,6 +1,31 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any, Dict, Literal
 
+
+class IODescriptor(BaseModel):
+    name: str
+    kind: Literal[
+        "target",
+        "group",
+        "feature",
+        "duration",
+        "event",
+        "predictor",
+        "covariate",
+        "axis",
+    ]
+    dtype: Literal[
+        "numeric",
+        "categorical",
+        "binary",
+        "datetime",
+        "any",
+        "numeric_or_categorical",
+    ]
+    required: bool = True
+    multiple: bool = False
+    description: Optional[str] = None
+
 class AnalysisRequest(BaseModel):
     dataset_id: str
     target_column: str  # e.g., "Disease Status" (Group) or "BMI" (Numeric)
@@ -17,6 +42,8 @@ class StatMethod(BaseModel):
     type: Literal["parametric", "non-parametric", "correlation", "categorical", "survival"]
     min_groups: int = 1
     max_groups: int = 100
+    status: Literal["ready", "experimental", "disabled"] = "ready"
+    inputs: List[IODescriptor] = Field(default_factory=list)
 
 class AnalysisResult(BaseModel):
     method: StatMethod

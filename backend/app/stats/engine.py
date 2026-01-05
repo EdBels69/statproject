@@ -37,15 +37,20 @@ def select_test(
     type_a = types.get(col_a)
     type_b = types.get(col_b)
     
+    def _ready(method_id: str) -> bool:
+        method = METHODS.get(method_id)
+        return bool(method and method.status == "ready")
+
     # 1. Numeric vs Numeric -> Correlation
     if type_a == "numeric" and type_b == "numeric":
         norm_a = check_normality(df[col_a])
         norm_b = check_normality(df[col_b])
-        return "pearson" if norm_a and norm_b else "spearman"
+        candidate = "pearson" if norm_a and norm_b else "spearman"
+        return candidate if _ready(candidate) else None
 
     # 2. Categorical vs Categorical -> Chi-Square
     if type_a == "categorical" and type_b == "categorical":
-        return "chi_square"
+        return "chi_square" if _ready("chi_square") else None
 
     # 3. Numeric vs Categorical -> Group Comparison
     num_col = col_a if type_a == "numeric" else col_b
@@ -65,11 +70,14 @@ def select_test(
             
     if len(groups) == 2:
         if is_paired:
-            return "t_test_rel" if all_normal else "wilcoxon"
-        return "t_test_ind" if all_normal else "mann_whitney"
+            candidate = "t_test_rel" if all_normal else "wilcoxon"
+            return candidate if _ready(candidate) else None
+        candidate = "t_test_ind" if all_normal else "mann_whitney"
+        return candidate if _ready(candidate) else None
     else:
         # 3+ groups
-        return "anova" if all_normal else "kruskal"
+        candidate = "anova" if all_normal else "kruskal"
+        return candidate if _ready(candidate) else None
 
 def run_analysis(
     df: pd.DataFrame, 
@@ -82,6 +90,9 @@ def run_analysis(
     """
     Executes a specific statistical test.
     """
+    method_meta = METHODS.get(method_id)
+    if not method_meta or method_meta.status != "ready":
+        raise ValueError(f"Method {method_id} is not available for execution.")
     # Robust numeric/categorical identification
     # Identify involved columns for cleaning
     input_cols = [col_a]

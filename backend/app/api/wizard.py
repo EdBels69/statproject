@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional
 from app.modules.expert_system import WizardRequest, WizardRecommendation, recommend_method
 from app.modules.parsers import get_dataset_path, parse_file
 from app.stats.engine import run_analysis
+from app.stats.validation import validate_inputs
+from app.stats.registry import get_method
 from app.modules.reporting import generate_pdf_report
 from app.api.datasets import DATA_DIR # Reuse shared data dir constant
 
@@ -79,10 +81,30 @@ async def apply_analysis(request: ApplyRequest):
             raise HTTPException(status_code=400, detail="Missing variable mapping. Need 'target' and 'group'.")
         
     # Validation
+    method_info = get_method(method_id)
+    if not method_info:
+        raise HTTPException(status_code=400, detail="Selected method is disabled or unavailable.")
+
     valid_cols = [target_col, group_col, event_col] + predictors
     for c in valid_cols:
         if c and c not in df.columns:
              raise HTTPException(status_code=400, detail=f"Column '{c}' not found in dataset.")
+
+    mapping = {}
+    if method_id in ["t_test_ind", "mann_whitney", "t_test_rel", "wilcoxon", "anova", "kruskal"]:
+        mapping = {"target": target_col, "group": group_col}
+    elif method_id in ["chi_square", "fisher"]:
+        mapping = {"feature_a": target_col, "feature_b": group_col}
+    elif method_id in ["pearson", "spearman"]:
+        mapping = {"x": target_col, "y": group_col}
+    elif method_id == "survival_km":
+        mapping = {"duration": target_col, "event": event_col, "group": group_col}
+    elif method_id in ["linear_regression", "logistic_regression"]:
+        mapping = {"target": target_col, "predictor": predictors}
+
+    validation_errors = validate_inputs(method_info, df, mapping)
+    if validation_errors:
+        raise HTTPException(status_code=422, detail={"errors": validation_errors})
 
     # 3. Run Real Analysis
     try:
@@ -97,10 +119,7 @@ async def apply_analysis(request: ApplyRequest):
         # AI Enhancement
         from app.llm import get_ai_conclusion
         from app.schemas.analysis import AnalysisResult
-        from app.stats.registry import METHODS
-        
-        method_info = METHODS.get(method_id)
-        
+
         temp_res = AnalysisResult(
             method=method_info,
             p_value=results["p_value"],
