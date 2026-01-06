@@ -301,14 +301,21 @@ def get_scan_report(dataset_id: str):
 def get_dataset(dataset_id: str, page: int = 1, limit: int = 100):
     upload_dir = os.path.join(DATA_DIR, dataset_id)
     
-    # Priority 1: Processed Snapshot
+    # Priority 1: New Parquet format (fastest)
+    parquet_path = os.path.join(upload_dir, "processed", "data.parquet")
+    if os.path.exists(parquet_path):
+        df = pd.read_parquet(parquet_path)
+        df.columns = df.columns.astype(str)
+        return generate_profile(df, page=page, limit=limit)
+    
+    # Priority 2: New CSV format (backward compat)
     processed_path = os.path.join(upload_dir, "processed", "data.csv")
     if os.path.exists(processed_path):
         df = pd.read_csv(processed_path)
         df.columns = df.columns.astype(str)
         return generate_profile(df, page=page, limit=limit)
         
-    # Priority 2: Old Processed
+    # Priority 3: Old Processed (legacy flat structure)
     old_proc = os.path.join(upload_dir, "processed.csv")
     if os.path.exists(old_proc):
          df = pd.read_csv(old_proc)

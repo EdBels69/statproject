@@ -59,18 +59,23 @@ def parse_file(file_path: str, header_row: int = 0, sheet_name: str = None, orig
 def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
     """
     Centralized function to load DataFrame for any dataset.
-    Checks for processed.csv first (faster), falls back to original file.
+    Priority: Parquet (fastest) -> CSV -> Original file.
     """
     import json
     
     upload_dir = os.path.join(data_dir, dataset_id)
     
-    # Try processed files (Parquet/CSV)
-    # Check for processed/{id}.parquet (Pipeline Standard)
-    parquet_path = os.path.join(upload_dir, "processed", f"{dataset_id}.parquet")
+    # Priority 1: New Parquet format (fastest)
+    parquet_path = os.path.join(upload_dir, "processed", "data.parquet")
     if os.path.exists(parquet_path):
         return pd.read_parquet(parquet_path)
+    
+    # Priority 2: New CSV format (backward compat for old code)
+    csv_path = os.path.join(upload_dir, "processed", "data.csv")
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path)
         
+    # Priority 3: Legacy flat structure
     processed_path = os.path.join(upload_dir, "processed.csv")
     if os.path.exists(processed_path):
         return pd.read_csv(processed_path)
