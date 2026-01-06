@@ -32,7 +32,7 @@ def setup_test_data():
     # Save processed (parquet usually, but CSV for scan mock if needed, but pipeline reads parquet)
     # Our pipeline usually reads from 'processed/{id}.parquet' or similar. 
     # Let's check get_dataframe logic. It looks for .parquet or .csv in processed.
-    df.to_parquet(os.path.join(TEST_DIR, "processed", f"{TEST_ID}.parquet"))
+    df.to_parquet(os.path.join(TEST_DIR, "processed", "data.parquet"))
     
     # Mock scan report
     with open(os.path.join(TEST_DIR, "processed", "scan_report.json"), "w") as f:

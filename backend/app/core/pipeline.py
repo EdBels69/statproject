@@ -62,16 +62,17 @@ class PipelineManager:
         """
         Stage 1: Save cleaned dataframe to processed/ directory.
         Returns path to the primary processed file.
+        
+        Uses Parquet format for 10-50x faster loading on large datasets.
         """
         import pandas as pd
         paths = self.initialize_dataset(dataset_id)
         
-        # optimized format (parquet would be better, but sticking to CSV for MVP transparency)
-        # keeping it simple: 'data.csv' is the HEAD of the processed branch
-        csv_path = os.path.join(paths["processed"], "data.csv")
-        df.to_csv(csv_path, index=False)
+        # Parquet format: columnar, compressed, 10-50x faster than CSV
+        parquet_path = os.path.join(paths["processed"], "data.parquet")
+        df.to_parquet(parquet_path, index=False, engine='pyarrow')
         
-        # Save schema/dtypes
+        # Save schema/dtypes (still useful for quick inspection without loading data)
         dtypes = df.dtypes.astype(str).to_dict()
         with open(os.path.join(paths["processed"], "dtypes.json"), "w") as f:
             json.dump(dtypes, f, indent=2)
@@ -81,7 +82,7 @@ class PipelineManager:
              with open(os.path.join(paths["processed"], "cleaning_log.json"), "w") as f:
                 json.dump(cleaning_log, f, indent=2)
                 
-        return csv_path
+        return parquet_path
     
     def create_analysis_run(self, dataset_id: str, protocol: Dict[str, Any]) -> str:
         """

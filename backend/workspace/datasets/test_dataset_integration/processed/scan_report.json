@@ -1,0 +1,1 @@
+{"columns": {"Group": {"type": "categorical"}, "Value": {"type": "numeric", "normality": {"is_normal": true}}}}

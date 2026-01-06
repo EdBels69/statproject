@@ -152,6 +152,22 @@ METHODS = {
         type="diagnostic",
         min_groups=2,
         max_groups=2
+    ),
+    "friedman": StatMethod(
+        id="friedman",
+        name="Friedman Test",
+        description="Non-parametric alternative to RM-ANOVA. Compares distributions of the same subjects across 3+ conditions.",
+        type="non-parametric",
+        min_groups=3,
+        max_groups=100
+    ),
+    "cox_regression": StatMethod(
+        id="cox_regression",
+        name="Cox Proportional Hazards Regression",
+        description="Models time-to-event data with covariates. Outputs hazard ratios and survival predictions.",
+        type="survival",
+        min_groups=1,
+        max_groups=20
     )
 }
 
