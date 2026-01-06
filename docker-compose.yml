@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/workspace:/app/workspace
+    environment:
+      - DATA_DIR=/app/workspace/datasets
+    networks:
+      - pro-cmt-net
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - pro-cmt-net
+
+networks:
+  pro-cmt-net:
+    driver: bridge

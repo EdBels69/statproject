@@ -1,0 +1,7 @@
+{
+  "Group": "object",
+  "Value": "float64",
+  "Outcome": "int64",
+  "Time": "int64",
+  "Event": "int64"
+}

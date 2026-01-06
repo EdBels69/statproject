@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.backgroundColor = 'red';
+        div.style.color = 'white';
+        div.style.zIndex = '999999';
+        div.style.padding = '20px';
+        div.style.whiteSpace = 'pre-wrap';
+        div.innerText = 'Global Error: ' + msg + '\n' + url + ':' + line + ':' + col + '\n' + (error ? error.stack : '');
+        document.body.appendChild(div);
+      };
+      window.onunhandledrejection = function(e) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '50%';
+        div.style.left = '0';
+        div.style.backgroundColor = 'darkred';
+        div.style.color = 'white';
+        div.style.zIndex = '999999';
+        div.style.padding = '20px';
+        div.innerText = 'Promise Error: ' + e.reason;
+        document.body.appendChild(div);
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
