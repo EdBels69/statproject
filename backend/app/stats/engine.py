@@ -178,6 +178,15 @@ def run_analysis(
     elif method_id == "roc_analysis":
         return _handle_roc_analysis(clean_df, method_id, col_a, col_b)
 
+    elif method_id == "rm_anova":
+        return _handle_rm_anova(clean_df, col_a, col_b, kwargs)
+
+    elif method_id == "friedman":
+        return _handle_friedman(clean_df, col_a, col_b, kwargs)
+
+    elif method_id == "cox_regression":
+        return _handle_cox_regression(clean_df, col_a, col_b, kwargs)
+
     raise ValueError(f"Method {method_id} not implemented")
 
 
@@ -505,6 +514,198 @@ def _handle_roc_analysis(df, method_id, col_a, col_b):
         "plot_data": roc_data,
         "plot_config": {"x_label": "False Positive Rate", "y_label": "True Positive Rate", "type": "line"}
     }
+
+
+def _handle_rm_anova(df: pd.DataFrame, dv: str, within: str, kwargs: Dict) -> Dict[str, Any]:
+    """
+    Repeated Measures ANOVA using pingouin.
+    Expects data in long format with:
+      - dv: dependent variable (numeric)
+      - within: within-subject factor (e.g., timepoint)
+      - subject: subject identifier column (from kwargs)
+    """
+    import pingouin as pg
+    
+    subject = kwargs.get("subject_col", "subject")
+    
+    if subject not in df.columns:
+        raise ValueError(f"Subject column '{subject}' not found. RM-ANOVA requires a subject identifier.")
+    
+    # Run RM-ANOVA
+    aov = pg.rm_anova(data=df, dv=dv, within=within, subject=subject, detailed=True)
+    
+    # Extract main results
+    f_val = float(aov['F'].iloc[0])
+    p_val = float(aov['p-unc'].iloc[0])
+    eta_sq = float(aov['np2'].iloc[0]) if 'np2' in aov.columns else None  # partial eta-squared
+    
+    # Sphericity test (Mauchly's)
+    sphericity = pg.sphericity(data=df, dv=dv, within=within, subject=subject)
+    spher_w = float(sphericity[0]) if isinstance(sphericity, tuple) else None
+    spher_p = float(sphericity[2]) if isinstance(sphericity, tuple) else None
+    spher_passed = spher_p > 0.05 if spher_p else True
+    
+    # Get corrected p-values if sphericity violated
+    p_gg = float(aov['p-GG-corr'].iloc[0]) if 'p-GG-corr' in aov.columns else p_val
+    eps_gg = float(aov['eps'].iloc[0]) if 'eps' in aov.columns else 1.0
+    
+    # Pairwise post-hoc with Bonferroni correction
+    posthoc = None
+    if p_val < 0.05:
+        try:
+            posthoc_df = pg.pairwise_tests(data=df, dv=dv, within=within, subject=subject, 
+                                           padjust='bonf', effsize='cohen')
+            posthoc = []
+            for _, row in posthoc_df.iterrows():
+                posthoc.append({
+                    "A": str(row['A']),
+                    "B": str(row['B']),
+                    "t_stat": float(row['T']) if 'T' in row else None,
+                    "p_value": float(row['p-unc']),
+                    "p_adj": float(row['p-corr']) if 'p-corr' in row else float(row['p-unc']),
+                    "effect_size": float(row['cohen']) if 'cohen' in row else None,
+                    "significant": row['p-corr'] < 0.05 if 'p-corr' in row else row['p-unc'] < 0.05
+                })
+        except Exception as e:
+            print(f"Post-hoc failed: {e}")
+    
+    return {
+        "method": "rm_anova",
+        "stat_value": f_val,
+        "p_value": p_val,
+        "p_value_gg": p_gg,
+        "epsilon_gg": eps_gg,
+        "effect_size": eta_sq,
+        "effect_size_type": "partial_eta_squared",
+        "sphericity": {
+            "W": spher_w,
+            "p_value": spher_p,
+            "passed": spher_passed
+        },
+        "significant": p_val < 0.05,
+        "post_hoc": posthoc,
+        "anova_table": aov.to_dict(orient='records')
+    }
+
+
+def _handle_friedman(df: pd.DataFrame, dv: str, within: str, kwargs: Dict) -> Dict[str, Any]:
+    """
+    Friedman Test (non-parametric alternative to RM-ANOVA) using pingouin.
+    """
+    import pingouin as pg
+    
+    subject = kwargs.get("subject_col", "subject")
+    
+    if subject not in df.columns:
+        raise ValueError(f"Subject column '{subject}' not found. Friedman test requires a subject identifier.")
+    
+    # Run Friedman test
+    friedman = pg.friedman(data=df, dv=dv, within=within, subject=subject)
+    
+    q_val = float(friedman['Q'].iloc[0])
+    p_val = float(friedman['p-unc'].iloc[0])
+    
+    # Kendall's W effect size
+    # W = Q / (n * (k - 1)) where n = subjects, k = conditions
+    n_subjects = df[subject].nunique()
+    k_conditions = df[within].nunique()
+    kendall_w = q_val / (n_subjects * (k_conditions - 1)) if n_subjects > 0 and k_conditions > 1 else None
+    
+    # Post-hoc Nemenyi (or Conover) if significant
+    posthoc = None
+    if p_val < 0.05:
+        try:
+            posthoc_df = pg.pairwise_tests(data=df, dv=dv, within=within, subject=subject,
+                                           parametric=False, padjust='bonf')
+            posthoc = []
+            for _, row in posthoc_df.iterrows():
+                posthoc.append({
+                    "A": str(row['A']),
+                    "B": str(row['B']),
+                    "W_stat": float(row['W-val']) if 'W-val' in row else None,
+                    "p_value": float(row['p-unc']),
+                    "p_adj": float(row['p-corr']) if 'p-corr' in row else float(row['p-unc']),
+                    "significant": row['p-corr'] < 0.05 if 'p-corr' in row else row['p-unc'] < 0.05
+                })
+        except Exception as e:
+            print(f"Post-hoc failed: {e}")
+    
+    return {
+        "method": "friedman",
+        "stat_value": q_val,
+        "p_value": p_val,
+        "effect_size": kendall_w,
+        "effect_size_type": "kendall_w",
+        "significant": p_val < 0.05,
+        "post_hoc": posthoc,
+        "n_subjects": n_subjects,
+        "n_conditions": k_conditions
+    }
+
+
+def _handle_cox_regression(df: pd.DataFrame, duration_col: str, event_col: str, kwargs: Dict) -> Dict[str, Any]:
+    """
+    Cox Proportional Hazards Regression using lifelines.
+    """
+    from lifelines import CoxPHFitter
+    
+    predictors = kwargs.get("predictors", [])
+    
+    if not predictors:
+        raise ValueError("Cox regression requires at least one predictor variable.")
+    
+    # Prepare data
+    cols = [duration_col, event_col] + predictors
+    clean_df = df[cols].dropna()
+    
+    # Handle categorical predictors (dummy encoding)
+    for col in predictors:
+        if clean_df[col].dtype == 'object' or clean_df[col].nunique() < 10:
+            dummies = pd.get_dummies(clean_df[col], prefix=col, drop_first=True)
+            clean_df = pd.concat([clean_df.drop(columns=[col]), dummies], axis=1)
+    
+    # Fit Cox model
+    cph = CoxPHFitter()
+    cph.fit(clean_df, duration_col=duration_col, event_col=event_col)
+    
+    # Extract coefficients
+    coef_data = []
+    summary = cph.summary
+    for var in summary.index:
+        coef_data.append({
+            "variable": str(var),
+            "coefficient": float(summary.loc[var, 'coef']),
+            "hazard_ratio": float(summary.loc[var, 'exp(coef)']),
+            "hr_ci_lower": float(summary.loc[var, 'exp(coef) lower 95%']),
+            "hr_ci_upper": float(summary.loc[var, 'exp(coef) upper 95%']),
+            "std_err": float(summary.loc[var, 'se(coef)']),
+            "z_stat": float(summary.loc[var, 'z']),
+            "p_value": float(summary.loc[var, 'p']),
+            "significant": summary.loc[var, 'p'] < 0.05
+        })
+    
+    # Model fit statistics
+    concordance = float(cph.concordance_index_)
+    log_likelihood = float(cph.log_likelihood_)
+    
+    # Proportional hazards test
+    try:
+        ph_test = cph.check_assumptions(clean_df, show_plots=False, p_value_threshold=0.05)
+        ph_assumption_ok = True  # If no exception, assumption holds
+    except:
+        ph_assumption_ok = None  # Could not test
+    
+    return {
+        "method": "cox_regression",
+        "coefficients": coef_data,
+        "concordance_index": concordance,
+        "log_likelihood": log_likelihood,
+        "n_observations": len(clean_df),
+        "n_events": int(clean_df[event_col].sum()),
+        "significant": any(c['significant'] for c in coef_data),
+        "proportional_hazards_ok": ph_assumption_ok
+    }
+
 
 def _prepare_group_plot_data(groups, data_groups):
     plot_data = []
