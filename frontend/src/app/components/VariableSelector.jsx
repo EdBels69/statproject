@@ -24,7 +24,7 @@ const TypeIcon = ({ type }) => {
     );
 };
 
-export default function VariableSelector({ allColumns, onRun, loading }) {
+export default function VariableSelector({ allColumns, onRun, loading, mode = 'batch' }) {
     const [available, setAvailable] = useState([]);
     const [targetCols, setTargetCols] = useState([]);
     const [groupCol, setGroupCol] = useState(null);
@@ -32,10 +32,20 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
     const [selectedTargets, setSelectedTargets] = useState([]);
 
     useEffect(() => {
-        if (allColumns.length > 0 && available.length === 0 && targetCols.length === 0 && !groupCol) {
-            setAvailable(allColumns);
+        if (allColumns.length > 0) {
+            // Reset if needed or just update available
+            if (available.length === 0 && targetCols.length === 0 && !groupCol) {
+                setAvailable(allColumns);
+            }
         }
     }, [allColumns]);
+
+    // Reset inputs when mode changes
+    useEffect(() => {
+        setTargetCols([]);
+        setGroupCol(null);
+        setAvailable(allColumns.filter(c => !targetCols.includes(c) && (!groupCol || groupCol !== c)));
+    }, [mode]);
 
     const moveRightTarget = () => {
         const toMove = selectedAvailable.filter(c => !groupCol || c.name !== groupCol.name);
@@ -187,7 +197,7 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         className="btn-secondary"
                         style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
-                        Add Y ↓
+                        Add {mode === 'matrix' ? 'Var' : 'Y'} ↓
                     </button>
                     <button
                         onClick={moveLeftTarget}
@@ -202,7 +212,7 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                 {/* Target Variables (Y) */}
                 <div style={sectionStyle}>
                     <div style={headerStyle}>
-                        <span style={labelStyle}>Dependent (Y)</span>
+                        <span style={labelStyle}>{mode === 'matrix' ? 'Variables' : 'Dependent (Y)'}</span>
                         <span style={countStyle}>{targetCols.length}</span>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
@@ -233,81 +243,83 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                 </div>
 
                 {/* Grouping Variable (X) */}
-                <div style={{
-                    ...sectionStyle,
-                    flex: 'none',
-                    height: '80px'
-                }}>
-                    <div style={headerStyle}>
-                        <span style={labelStyle}>Grouping (X)</span>
-                        <button
-                            onClick={moveRightGroup}
-                            disabled={selectedAvailable.length !== 1 || !!groupCol}
-                            style={{
-                                fontSize: '9px',
-                                color: 'var(--accent)',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                opacity: selectedAvailable.length !== 1 || !!groupCol ? 0 : 1
-                            }}
-                        >
-                            Assign
-                        </button>
-                    </div>
+                {mode === 'batch' && (
                     <div style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0 12px'
+                        ...sectionStyle,
+                        flex: 'none',
+                        height: '80px'
                     }}>
-                        {groupCol ? (
-                            <div style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <TypeIcon type={groupCol.type} />
-                                    <span style={{
-                                        fontSize: '12px',
-                                        fontFamily: 'monospace',
-                                        color: 'var(--text-primary)',
-                                        fontWeight: '600'
-                                    }}>
-                                        {groupCol.name}
-                                    </span>
+                        <div style={headerStyle}>
+                            <span style={labelStyle}>Grouping (X)</span>
+                            <button
+                                onClick={moveRightGroup}
+                                disabled={selectedAvailable.length !== 1 || !!groupCol}
+                                style={{
+                                    fontSize: '9px',
+                                    color: 'var(--accent)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    opacity: selectedAvailable.length !== 1 || !!groupCol ? 0 : 1
+                                }}
+                            >
+                                Assign
+                            </button>
+                        </div>
+                        <div style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0 12px'
+                        }}>
+                            {groupCol ? (
+                                <div style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <TypeIcon type={groupCol.type} />
+                                        <span style={{
+                                            fontSize: '12px',
+                                            fontFamily: 'monospace',
+                                            color: 'var(--text-primary)',
+                                            fontWeight: '600'
+                                        }}>
+                                            {groupCol.name}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={removeGroup}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-muted)',
+                                            fontSize: '16px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        ×
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={removeGroup}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--text-muted)',
-                                        fontSize: '16px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    ×
-                                </button>
-                            </div>
-                        ) : (
-                            <div style={{
-                                fontSize: '10px',
-                                color: 'var(--text-muted)'
-                            }}>
-                                Not selected
-                            </div>
-                        )}
+                            ) : (
+                                <div style={{
+                                    fontSize: '10px',
+                                    color: 'var(--text-muted)'
+                                }}>
+                                    Not selected
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Run Button */}
                 <button
                     onClick={() => onRun(targetCols.map(c => c.name), groupCol ? groupCol.name : null)}
-                    disabled={!targetCols.length || !groupCol || loading}
+                    disabled={mode === 'matrix' ? (targetCols.length < 2 || loading) : (!targetCols.length || !groupCol || loading)}
                     className="btn-primary"
                     style={{
                         width: '100%',
@@ -318,7 +330,7 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         letterSpacing: '0.1em'
                     }}
                 >
-                    {loading ? 'Processing...' : 'Run Analysis'}
+                    {loading ? 'Processing...' : (mode === 'matrix' ? 'Generate Matrix' : 'Run Analysis')}
                 </button>
             </div>
         </div>

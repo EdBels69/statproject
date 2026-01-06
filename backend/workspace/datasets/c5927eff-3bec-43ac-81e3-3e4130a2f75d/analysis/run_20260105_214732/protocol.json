@@ -1,0 +1,18 @@
+{
+  "steps": [
+    {
+      "id": "step1",
+      "type": "hypothesis_test",
+      "target": "Group",
+      "group": "Category",
+      "method": {
+        "id": "chi_square",
+        "name": "Chi-Square",
+        "params": {
+          "row": "Group",
+          "col": "Category"
+        }
+      }
+    }
+  ]
+}

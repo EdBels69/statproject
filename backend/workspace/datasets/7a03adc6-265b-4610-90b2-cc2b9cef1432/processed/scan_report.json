@@ -1,0 +1,98 @@
+{
+  "columns": {
+    "ID": {
+      "name": "ID",
+      "type": "int64",
+      "missing_count": 0,
+      "unique_count": 9,
+      "total": 9,
+      "normality": {
+        "is_normal": "True",
+        "p_value": 0.913560953190048
+      },
+      "mean": 5.0,
+      "min": 1.0,
+      "max": 9.0,
+      "example": 1.0
+    },
+    "Group": {
+      "name": "Group",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 3,
+      "total": 9,
+      "categories": [
+        "A",
+        "B",
+        "C"
+      ],
+      "example": "A"
+    },
+    "Value": {
+      "name": "Value",
+      "type": "float64",
+      "missing_count": 0,
+      "unique_count": 9,
+      "total": 9,
+      "normality": {
+        "is_normal": "True",
+        "p_value": 0.3609506912095102
+      },
+      "mean": 15.5,
+      "min": 9.8,
+      "max": 21.5,
+      "example": 10.5
+    },
+    "Category": {
+      "name": "Category",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 9,
+      "categories": [
+        "Pos",
+        "Neg"
+      ],
+      "example": "Pos"
+    },
+    "Time": {
+      "name": "Time",
+      "type": "int64",
+      "missing_count": 0,
+      "unique_count": 9,
+      "total": 9,
+      "normality": {
+        "is_normal": "True",
+        "p_value": 0.5133039333512489
+      },
+      "mean": 16.11111111111111,
+      "min": 10.0,
+      "max": 22.0,
+      "example": 10.0
+    },
+    "Event": {
+      "name": "Event",
+      "type": "int64",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 9,
+      "normality": {
+        "is_normal": "False",
+        "p_value": 0.0001525914707021745
+      },
+      "mean": 0.6666666666666666,
+      "min": 0.0,
+      "max": 1.0,
+      "example": 1.0
+    }
+  },
+  "issues": [],
+  "reorder_suggestion": [
+    "ID",
+    "Value",
+    "Time",
+    "Group",
+    "Category",
+    "Event"
+  ]
+}

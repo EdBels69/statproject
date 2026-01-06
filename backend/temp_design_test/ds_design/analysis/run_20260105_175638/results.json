@@ -1,0 +1,18 @@
+{
+  "protocol_name": "Dynamic Analysis of Hb by Group",
+  "dataset_id": "ds_design",
+  "results": {
+    "time_trend_overall": {
+      "error": "Unknown step type: compare_dynamic"
+    },
+    "timepoint_comparison": {
+      "error": "Step timepoint_comparison failed: Method t_test_welch not implemented"
+    }
+  },
+  "log": [
+    "Starting step time_trend_overall...",
+    "Step time_trend_overall completed.",
+    "Starting step timepoint_comparison...",
+    "Step timepoint_comparison failed: Method t_test_welch not implemented"
+  ]
+}

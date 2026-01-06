@@ -1,10 +1,26 @@
 from app.schemas.analysis import StatMethod
 
 METHODS = {
+    "t_test_one": StatMethod(
+        id="t_test_one",
+        name="One-Sample T-Test",
+        description="Compares the mean of a single group to a known value.",
+        type="parametric",
+        min_groups=1,
+        max_groups=1
+    ),
     "t_test_ind": StatMethod(
         id="t_test_ind",
         name="Student's t-test (Independent)",
         description="Compares means of two independent groups. Assumes normal distribution.",
+        type="parametric",
+        min_groups=2,
+        max_groups=2
+    ),
+    "t_test_welch": StatMethod(
+        id="t_test_welch",
+        name="Welch's T-Test",
+        description="Compares means of two independent groups with unequal variances. More robust than Student's t-test.",
         type="parametric",
         min_groups=2,
         max_groups=2
@@ -73,6 +89,14 @@ METHODS = {
         min_groups=3,
         max_groups=100
     ),
+    "anova_welch": StatMethod(
+        id="anova_welch",
+        name="Welch's ANOVA",
+        description="Robust ANOVA for unequal variances (heteroscedasticity).",
+        type="parametric",
+        min_groups=3,
+        max_groups=100
+    ),
     "kruskal": StatMethod(
         id="kruskal",
         name="Kruskal-Wallis H-test",
@@ -120,6 +144,30 @@ METHODS = {
         type="parametric",
         min_groups=1,
         max_groups=20
+    ),
+    "roc_analysis": StatMethod(
+        id="roc_analysis",
+        name="ROC Analysis",
+        description="Evaluates diagnostic accuracy of a continuous predictor against a binary outcome. Calculates AUC and optimal cut-off.",
+        type="diagnostic",
+        min_groups=2,
+        max_groups=2
+    ),
+    "cox_regression": StatMethod(
+        id="cox_regression",
+        name="Cox Proportional Hazards Regression",
+        description="Multivariate survival analysis. Estimates Hazard Ratios (HR) for covariates.",
+        type="survival",
+        min_groups=1,
+        max_groups=20
+    ),
+    "friedman": StatMethod(
+        id="friedman",
+        name="Friedman Test",
+        description="Non-parametric alternative to Repeated Measures ANOVA. Compares 3+ paired groups.",
+        type="non-parametric",
+        min_groups=3,
+        max_groups=100
     )
 }
 

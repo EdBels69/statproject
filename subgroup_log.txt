@@ -1,0 +1,4 @@
+LOGS: ['Starting step test_age...', "DEBUG: Step test_age, Subgroup: Sex, Cols: ['Age', 'Score', 'Treatment', 'Sex']", 'Step test_age completed.']
+Keys found: dict_keys(['test_age_Male', 'test_age_Female'])
+✅ Correctly exploded into subgroups
+✅ Metadata injected correctly

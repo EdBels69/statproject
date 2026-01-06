@@ -1,0 +1,21 @@
+{
+  "name": "Dynamic Analysis of Hb by Group",
+  "goal": "compare_groups",
+  "steps": [
+    {
+      "id": "time_trend_overall",
+      "type": "compare_dynamic",
+      "target": "Hb",
+      "time": "Time",
+      "group": "Group"
+    },
+    {
+      "id": "timepoint_comparison",
+      "type": "batch_compare_by_factor",
+      "target": "Hb",
+      "group": "Group",
+      "split_by": "Time"
+    }
+  ],
+  "required_visualization": "dashboard_v1"
+}

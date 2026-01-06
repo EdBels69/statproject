@@ -1,0 +1,16 @@
+{
+  "protocol_name": "Unnamed Protocol",
+  "dataset_id": "7a03adc6-265b-4610-90b2-cc2b9cef1432",
+  "results": {
+    "surv1": {
+      "method": "id='survival_km' name='Kaplan-Meier Survival Analysis' description='Estimates survival probability over time. Includes Log-Rank test to compare groups.' type='non-parametric' min_groups=2 max_groups=20",
+      "p_value": 1.0,
+      "significant": false,
+      "km_stats": 0.0
+    }
+  },
+  "log": [
+    "Starting step surv1...",
+    "Step surv1 completed."
+  ]
+}

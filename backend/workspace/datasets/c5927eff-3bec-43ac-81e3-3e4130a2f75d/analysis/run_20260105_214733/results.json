@@ -1,0 +1,53 @@
+{
+  "protocol_name": "Unnamed Protocol",
+  "dataset_id": "c5927eff-3bec-43ac-81e3-3e4130a2f75d",
+  "results": {
+    "roc1": {
+      "type": "hypothesis_test",
+      "method": "id='roc_analysis' name='ROC Analysis' description='Evaluates diagnostic accuracy of a continuous predictor against a binary outcome. Calculates AUC and optimal cut-off.' type='diagnostic' min_groups=2 max_groups=2",
+      "p_value": null,
+      "effect_size": null,
+      "significant": false,
+      "stats": null,
+      "groups": null,
+      "plot_stats": null,
+      "plot_data": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "threshold": Infinity
+        },
+        {
+          "x": 0.0,
+          "y": 0.2,
+          "threshold": 21.5
+        },
+        {
+          "x": 0.75,
+          "y": 0.2,
+          "threshold": 16.2
+        },
+        {
+          "x": 0.75,
+          "y": 0.6,
+          "threshold": 14.8
+        },
+        {
+          "x": 1.0,
+          "y": 0.6,
+          "threshold": 11.2
+        },
+        {
+          "x": 1.0,
+          "y": 1.0,
+          "threshold": 9.8
+        }
+      ],
+      "conclusion": "Analysis completed."
+    }
+  },
+  "log": [
+    "Starting step roc1...",
+    "Step roc1 completed."
+  ]
+}

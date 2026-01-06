@@ -1,0 +1,4 @@
+✅ Method: pearson
+✅ Plot Image Generated (34984 bytes)
+✅ Correlation Matrix 3x3 verified
+  Corr(Var1, Var2) ~0.8: 0.74

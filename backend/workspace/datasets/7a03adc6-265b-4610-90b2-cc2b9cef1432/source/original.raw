@@ -1,0 +1,10 @@
+ID,Group,Value,Category,Time,Event
+1,A,10.5,Pos,10,1
+2,A,11.2,Neg,12,1
+3,A,9.8,Pos,11,0
+4,B,15.5,Pos,15,1
+5,B,16.2,Neg,18,1
+6,B,14.8,Pos,16,0
+7,C,20.1,Neg,20,1
+8,C,21.5,Pos,22,1
+9,C,19.9,Neg,21,0

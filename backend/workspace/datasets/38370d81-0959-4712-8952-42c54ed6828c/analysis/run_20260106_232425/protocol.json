@@ -1,0 +1,2427 @@
+{
+  "name": "Batch Comparison of 121 variables by \u0413\u0440\u0443\u043f\u043f\u0430",
+  "goal": "compare_groups",
+  "steps": [
+    {
+      "id": "desc_\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "descriptive_compare",
+      "target": "\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "compare",
+      "target": "\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 0,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0413\u0440\u0443\u043f\u043f\u0430",
+      "type": "descriptive_compare",
+      "target": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0413\u0440\u0443\u043f\u043f\u0430",
+      "type": "compare",
+      "target": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 1,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+      "type": "descriptive_compare",
+      "target": "\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+      "type": "compare",
+      "target": "\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 2,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "descriptive_compare",
+      "target": "ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "compare",
+      "target": "ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 3,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+      "type": "descriptive_compare",
+      "target": "\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+      "type": "compare",
+      "target": "\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 4,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041f\u043e\u043b",
+      "type": "descriptive_compare",
+      "target": "\u041f\u043e\u043b",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041f\u043e\u043b",
+      "type": "compare",
+      "target": "\u041f\u043e\u043b",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 5,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_V1",
+      "type": "descriptive_compare",
+      "target": "V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_V1",
+      "type": "compare",
+      "target": "V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 6,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 7,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "descriptive_compare",
+      "target": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "compare",
+      "target": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 8,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "descriptive_compare",
+      "target": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "compare",
+      "target": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 9,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 10,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V1",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V1",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 11,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V1",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V1",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 12,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+      "type": "descriptive_compare",
+      "target": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+      "type": "compare",
+      "target": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 13,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u041f \u0421\u0410\u0414 V1",
+      "type": "descriptive_compare",
+      "target": "\u041e\u041f \u0421\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u041f \u0421\u0410\u0414 V1",
+      "type": "compare",
+      "target": "\u041e\u041f \u0421\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 14,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u041f \u0414\u0410\u0414 V1",
+      "type": "descriptive_compare",
+      "target": "\u041e\u041f \u0414\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u041f \u0414\u0410\u0414 V1",
+      "type": "compare",
+      "target": "\u041e\u041f \u0414\u0410\u0414 V1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 15,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 16,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+      "type": "descriptive_compare",
+      "target": "\u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+      "type": "compare",
+      "target": "\u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 17,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 18,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V2",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V2",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 19,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V2",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V2",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 20,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 21,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 22,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 23,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 24,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 25,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 26,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 27,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 28,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 29,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 30,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "type": "descriptive_compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "type": "compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 31,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 32,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 33,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 34,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 35,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 36,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 37,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 38,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V2.1",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V2.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V2.1",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V2.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 39,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V2.1",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V2.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V2.1",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V2.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 40,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+      "type": "descriptive_compare",
+      "target": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+      "type": "compare",
+      "target": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 41,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u041f \u0421\u0410\u0414 V1.1",
+      "type": "descriptive_compare",
+      "target": "\u041e\u041f \u0421\u0410\u0414 V1.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u041f \u0421\u0410\u0414 V1.1",
+      "type": "compare",
+      "target": "\u041e\u041f \u0421\u0410\u0414 V1.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 42,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041e\u041f \u0414\u0410\u0414 V1.1",
+      "type": "descriptive_compare",
+      "target": "\u041e\u041f \u0414\u0410\u0414 V1.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041e\u041f \u0414\u0410\u0414 V1.1",
+      "type": "compare",
+      "target": "\u041e\u041f \u0414\u0410\u0414 V1.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 43,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+      "type": "descriptive_compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+      "type": "compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 44,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 45,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 46,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 47,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 48,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 49,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 50,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 51,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V3 1",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V3 1",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 52,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V3 2",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V3 2",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 53,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V3 3",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V3 3",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V3 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 54,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "type": "descriptive_compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "type": "compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 55,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 56,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 57,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 58,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 59,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 60,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 61,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V4",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V4",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 62,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V4",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V4",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 63,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+      "type": "descriptive_compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+      "type": "compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 64,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 65,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 66,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 67,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 68,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 69,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 70,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 71,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 72,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 73,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 74,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+      "type": "descriptive_compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+      "type": "compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 75,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 76,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 77,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 78,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 79,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 80,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 81,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V2.2",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V2.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V2.2",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V2.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 82,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V2.2",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V2.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V2.2",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V2.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 83,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+      "type": "descriptive_compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+      "type": "compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 84,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 85,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 86,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 87,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 88,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 89,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 90,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 91,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V5 1",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V5 1",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 92,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V5 2",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V5 2",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 93,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V5 3",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V5 3",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V5 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 94,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+      "type": "descriptive_compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+      "type": "compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 95,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 96,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 97,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 98,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 99,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "compare",
+      "target": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 100,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+      "type": "descriptive_compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+      "type": "compare",
+      "target": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 101,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0410\u0414 V6",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0410\u0414 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0410\u0414 V6",
+      "type": "compare",
+      "target": "\u0421\u0410\u0414 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 102,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0414\u0410\u0414 V6",
+      "type": "descriptive_compare",
+      "target": "\u0414\u0410\u0414 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0414\u0410\u0414 V6",
+      "type": "compare",
+      "target": "\u0414\u0410\u0414 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 103,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+      "type": "descriptive_compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+      "type": "compare",
+      "target": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 104,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 105,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 106,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 107,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 108,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 109,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 110,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 111,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+      "type": "descriptive_compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+      "type": "compare",
+      "target": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 112,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V6 1",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V6 1",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 1",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 113,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V6 2",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V6 2",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 2",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 114,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0421\u0442\u0440\u0443\u043f V6 3",
+      "type": "descriptive_compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0421\u0442\u0440\u0443\u043f V6 3",
+      "type": "compare",
+      "target": "\u0421\u0442\u0440\u0443\u043f V6 3",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 115,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+      "type": "descriptive_compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+      "type": "compare",
+      "target": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 116,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 117,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 118,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+      "type": "descriptive_compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+      "type": "compare",
+      "target": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 119,
+      "total_tests": 121
+    },
+    {
+      "id": "desc_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "descriptive_compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null
+    },
+    {
+      "id": "test_\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "compare",
+      "target": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "group": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "subgroup": null,
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect"
+      },
+      "batch_index": 120,
+      "total_tests": 121
+    }
+  ],
+  "required_visualization": "dashboard_v1"
+}

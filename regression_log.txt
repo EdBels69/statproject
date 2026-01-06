@@ -1,0 +1,16 @@
+--- Regression Logic Test ---
+
+[1] Linear Regression (OLS)
+✅ Method: ols (Expected 'ols')
+✅ R-Squared: 0.9838
+  Intercept (Exp ~5): 5.06
+  X1 (Exp ~2): 1.94
+  X2 (Exp ~3): 3.04
+✅ Coefficients correct within tolerance
+✅ Diagnostic Plot Generated (39664 bytes)
+
+[2] Logistic Regression (Logit)
+✅ Method: logit (Expected 'logit')
+✅ Pseudo R-Squared: 0.7158
+  X1 Odds Ratio: 69.40
+✅ ROC Curve Generated (40324 bytes)

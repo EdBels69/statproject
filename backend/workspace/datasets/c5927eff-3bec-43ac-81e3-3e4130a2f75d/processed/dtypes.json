@@ -1,0 +1,8 @@
+{
+  "ID": "int64",
+  "Group": "object",
+  "Value": "float64",
+  "Category": "object",
+  "Time": "int64",
+  "Event": "int64"
+}

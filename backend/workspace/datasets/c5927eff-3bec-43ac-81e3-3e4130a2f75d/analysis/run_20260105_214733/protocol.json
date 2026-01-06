@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "id": "roc1",
+      "type": "hypothesis_test",
+      "target": "Value",
+      "group": "Category",
+      "method": {
+        "id": "roc_analysis",
+        "name": "ROC Curve",
+        "params": {
+          "target": "Value",
+          "outcome": "Category",
+          "positive_class": "Pos"
+        }
+      }
+    }
+  ]
+}

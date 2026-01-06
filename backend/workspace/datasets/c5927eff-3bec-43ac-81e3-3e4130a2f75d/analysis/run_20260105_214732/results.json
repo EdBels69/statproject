@@ -1,0 +1,22 @@
+{
+  "protocol_name": "Unnamed Protocol",
+  "dataset_id": "c5927eff-3bec-43ac-81e3-3e4130a2f75d",
+  "results": {
+    "step1": {
+      "type": "hypothesis_test",
+      "method": "id='chi_square' name='Chi-Square Test of Independence' description='Tests association between two categorical variables.' type='categorical' min_groups=2 max_groups=100",
+      "p_value": 0.6376281516217732,
+      "effect_size": null,
+      "significant": "False",
+      "stats": 0.9,
+      "groups": null,
+      "plot_stats": null,
+      "plot_data": null,
+      "conclusion": "A Chi-Square test of independence was performed to examine the relation between Group and Category. The relation between these variables was not significant (p = 0.638). Group appears to be independent of Category."
+    }
+  },
+  "log": [
+    "Starting step step1...",
+    "Step step1 completed."
+  ]
+}

@@ -1,0 +1,11 @@
+--- Survival Analysis Test ---
+
+[1] Overall Survival
+✅ Method: Kaplan-Meier
+✅ Median Survival (Overall): 11.61433373331096
+✅ Plot Generated (31216 bytes)
+
+[2] Grouped Survival (A vs B)
+✅ Log-Rank P-Value: 0.061350214070459215
+✅ Medians: A=7.75, B=12.98
+✅ Significant difference detected

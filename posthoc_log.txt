@@ -1,0 +1,5 @@
+ANOVA P-Value: 2.8326166465758392e-18
+✅ Post-hoc Results Detected (3 comparisons)
+  A vs B: Diff=10.02, Sig=True
+  A vs C: Diff=20.16, Sig=True
+  B vs C: Diff=10.14, Sig=True

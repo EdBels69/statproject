@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 export async function uploadDataset(file: File) {
   const formData = new FormData();
@@ -10,6 +10,34 @@ export async function uploadDataset(file: File) {
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Upload failed");
+  }
+  return response.json();
+}
+
+export async function getDatasets() {
+  const response = await fetch(`${API_URL}/datasets`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch datasets");
+  }
+  return response.json();
+}
+
+export async function deleteDataset(id: string) {
+  const response = await fetch(`${API_URL}/datasets/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete dataset");
+  }
+  return response.json();
+}
+
+export async function autoClassifyVariables(id: string) {
+  const response = await fetch(`${API_URL}/datasets/${id}/auto_classify`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to auto-classify variables");
   }
   return response.json();
 }
@@ -71,6 +99,45 @@ export async function getDatasetContent(datasetId: string, sheetName?: string) {
   return response.json();
 }
 
+export async function cleanColumn(id: string, column: string, action: string) {
+  const response = await fetch(`${API_URL}/datasets/${id}/clean_column`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ column, action }),
+  });
+  if (!response.ok) throw new Error("Failed to clean column");
+  return response.json();
+}
+
+/* -- ANALYSIS PROTOCOL API -- */
+
+export async function suggestAnalysisDesign(datasetId: string, goal: string, variables: any) {
+  const response = await fetch(`${API_URL}/analysis/design`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataset_id: datasetId, goal, variables }),
+  });
+  if (!response.ok) throw new Error("Failed to suggest analysis design");
+  return response.json();
+}
+
+export async function runAnalysisProtocol(datasetId: string, protocol: any) {
+  const response = await fetch(`${API_URL}/analysis/protocol/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataset_id: datasetId, protocol }),
+  });
+  if (!response.ok) throw new Error("Failed to run analysis protocol");
+  return response.json(); // Expected { run_id: "...", status: "completed" }
+}
+
+export async function getAnalysisResults(datasetId: string, runId: string) {
+  // Note: backend requires dataset_id param for hierarchy lookup
+  const response = await fetch(`${API_URL}/analysis/run/${runId}?dataset_id=${datasetId}`);
+  if (!response.ok) throw new Error("Failed to get analysis results");
+  return response.json();
+}
+
 export async function modifyDataset(id: string, modifications: any) {
   const response = await fetch(`${API_URL}/datasets/${id}/modify`, {
     method: "POST",
@@ -95,52 +162,128 @@ export async function scanDataset(id: string) {
   return response.json();
 }
 
+export async function getReportHtmlPreview(datasetId: string, batchResult: any, selectedVar: string | null) {
+  // Construct payload similar to export
+  const results = {};
+
+  // Transform batchResult.results (Map) into Report JSON Structure
+  if (batchResult && batchResult.results) {
+    Object.entries(batchResult.results).forEach(([key, val]) => {
+      results[`test_${key}`] = {
+        ...val,
+        type: "hypothesis_test",
+        target: key
+      };
+    });
+  }
+
+  if (batchResult && batchResult.descriptives) {
+    // Group descriptives by variable
+    const groups = [...new Set(batchResult.descriptives.map(d => d.group))];
+    const vars = [...new Set(batchResult.descriptives.map(d => d.variable))];
+
+    vars.forEach(v => {
+      const stats = {};
+      batchResult.descriptives.filter(d => d.variable === v).forEach(d => {
+        stats[d.group] = d;
+      });
+      results[`desc_${v}`] = {
+        type: "descriptive_compare",
+        target: v,
+        stats: stats
+      };
+    });
+  }
+
+  const payload = {
+    dataset_name: `Dataset ${datasetId}`,
+    results: results,
+    export_settings: { selected_var: selectedVar } // Optional
+  };
+
+  const response = await fetch(`${API_URL}/analysis/report/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error("Failed to generate HTML report");
+  return response.text();
+}
+
 export async function downloadBatchReport(datasetId: string, batchResult: any, selectedVar: string | null) {
   try {
-    // Prepare export data from batch results
-    const varResult = selectedVar && batchResult?.results?.[selectedVar];
-    const results = varResult
-      ? {
-        p_value: varResult.p_value ?? 0,
-        stat_value: varResult.stat_value ?? 0,
-        significant: varResult.significant ?? false,
-        method: varResult.method?.name || 'Statistical Test',
-        conclusion: varResult.conclusion || 'Analysis completed',
-        groups: varResult.groups || [],
-        plot_stats: varResult.plot_stats || {}
-      }
-      : {
-        p_value: 0,
-        stat_value: 0,
-        significant: false,
-        method: 'Batch Analysis',
-        conclusion: 'Multiple variables analyzed',
-        groups: [],
-        plot_stats: {}
-      };
+    // Identical payload construction as HTML Preview
+    // Construct payload similar to export
+    const results = {};
+
+    // Transform batchResult.results (Map) into Report JSON Structure
+    if (batchResult && batchResult.results) {
+      Object.entries(batchResult.results).forEach(([key, val]) => {
+        results[`test_${key}`] = {
+          ...val,
+          type: "hypothesis_test",
+          target: key
+        };
+      });
+    }
+
+    if (batchResult && batchResult.descriptives) {
+      // Group descriptives by variable
+      const vars = [...new Set(batchResult.descriptives.map(d => d.variable))];
+
+      vars.forEach(v => {
+        const stats = {};
+        batchResult.descriptives.filter(d => d.variable === v).forEach(d => {
+          stats[d.group] = d;
+        });
+        results[`desc_${v}`] = {
+          type: "descriptive_compare",
+          target: v,
+          stats: stats
+        };
+      });
+    }
 
     const payload = {
-      results,
-      variables: { target: selectedVar || 'Multiple', group: 'Group' },
-      dataset_id: datasetId
+      dataset_name: `Dataset ${datasetId}`,
+      results: results,
+      export_settings: {}
     };
 
-    const response = await fetch(`${API_URL}/wizard/export`, {
+    const response = await fetch(`${API_URL}/analysis/report/word/preview`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Export failed: ${errorText}`);
+      throw new Error("Failed to generate report word preview");
     }
-
     return response.blob();
   } catch (error) {
-    console.error('Download report error:', error);
-    throw new Error(error.message || 'Failed to export report');
+    console.error("Preview failed:", error);
+    throw error;
   }
+}
+
+export async function runCorrelationMatrix(datasetId: string, features: string[], method: string, cluster: boolean) {
+  const response = await fetch(`${API_URL}/analysis/correlation_matrix`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      features: features,
+      method: method,
+      cluster_variables: cluster
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || "Correlation Matrix Analysis failed");
+  }
+  return response.json();
 }
 
 export function getPDFExportUrl(datasetId: string, variable: string, groupColumn: string = 'Group') {
@@ -155,12 +298,73 @@ export async function reprocessDataset(id: string) {
   return response.json();
 }
 
-export async function runBatchAnalysis(datasetId: string, targets: string[], groupColumn: string) {
-  const response = await fetch(`${API_URL}/analyze/batch`, {
+export async function runBatchAnalysis(datasetId: string, targets: string[], groupColumn: string, options: any = {}) {
+  const response = await fetch(`${API_URL}/analysis/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn }),
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      target_columns: targets,
+      group_column: groupColumn,
+      options: options
+    }),
   });
   if (!response.ok) throw new Error("Batch analysis failed");
+  return response.json();
+}
+
+export async function downloadWordReport(datasetId: string, runId: string): Promise<Blob> {
+  const response = await fetch(`${API_URL}/analysis/report/${runId}/word?dataset_id=${datasetId}`);
+  if (!response.ok) throw new Error("Failed to download Word report");
+  return response.blob();
+}
+
+export function getWordReportUrl(datasetId: string, runId: string): string {
+  return `${API_URL}/analysis/report/${runId}/word?dataset_id=${datasetId}`;
+}
+
+export async function analyzeDatasetPrep(id: string) {
+  const response = await fetch(`${API_URL}/datasets/${id}/prep/analyze`);
+  if (!response.ok) throw new Error("Prep analysis failed");
+  return response.json();
+}
+
+export async function applyDatasetPrep(id: string, action: string, params: any = {}) {
+  const response = await fetch(`${API_URL}/datasets/${id}/prep/apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, params }),
+  });
+  if (!response.ok) throw new Error("Prep apply failed");
+  return response.json();
+}
+
+export async function generateProtocol(description: string) {
+  const response = await fetch(`${API_URL}/protocol/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description }),
+  });
+  if (!response.ok) throw new Error("Failed to generate protocol");
+  return response.json();
+}
+
+export async function previewData(datasetId: string, limit: number, offset: number, filters: any[]) {
+  const response = await fetch(`${API_URL}/datasets/${datasetId}/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit, offset, filters }),
+  });
+  if (!response.ok) throw new Error("Preview failed");
+  return response.json();
+}
+
+export async function createSubset(datasetId: string, newName: string, filters: any[]) {
+  const response = await fetch(`${API_URL}/datasets/${datasetId}/subset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ new_name: newName, filters }),
+  });
+  if (!response.ok) throw new Error("Subset creation failed");
   return response.json();
 }

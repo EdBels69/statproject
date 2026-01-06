@@ -1,0 +1,21 @@
+{
+  "protocol_name": "Test Protocol",
+  "dataset_id": "ds_proto_01",
+  "results": {
+    "t_test": {
+      "error": "Step t_test failed: Method t_test_welch not implemented"
+    },
+    "km_test": {
+      "method": "id='survival_km' name='Kaplan-Meier Survival Analysis' description='Estimates survival probability over time. Includes Log-Rank test to compare groups.' type='non-parametric' min_groups=2 max_groups=20",
+      "p_value": 1.0,
+      "significant": "False",
+      "km_stats": 0.0
+    }
+  },
+  "log": [
+    "Starting step t_test...",
+    "Step t_test failed: Method t_test_welch not implemented",
+    "Starting step km_test...",
+    "Step km_test completed."
+  ]
+}

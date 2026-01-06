@@ -1,37 +1,49 @@
 #!/bin/bash
 
-echo "Starting StatProject..."
+echo "🚀 Initializing Pro-CMT Dev Environment..."
 
-# Check if port 8000 is free (Backend)
-if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
-    echo "Warning: Port 8000 is busy. Attempting to kill..."
-    lsof -ti:8000 | xargs kill -9
-fi
+# 1. Backend Setup
+echo "📦 [Backend] Checking dependencies..."
+cd backend
+python3 -m pip install -r requirements.txt
+cd ..
 
-# Check if port 5173 is free (Frontend)
-if lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null ; then
-    echo "Warning: Port 5173 is busy. Attempting to kill..."
-    lsof -ti:5173 | xargs kill -9
-fi
-
-# Start Backend in background (Host 0.0.0.0)
-echo "-> Launching Backend..."
-source backend/venv/bin/activate
-nohup uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload > backend.log 2>&1 &
-BACKEND_PID=$!
-echo "   Backend PID: $BACKEND_PID"
-
-# Start Frontend (Host 0.0.0.0)
-echo "-> Launching Frontend..."
+# 2. Frontend Setup
+echo "📦 [Frontend] Checking dependencies..."
 cd frontend
-nohup npm run dev -- --host > frontend.log 2>&1 &
+npm install
+cd ..
+
+# 3. Cleanup Ports
+echo "🧹 Cleaning up old processes..."
+lsof -ti:8000 | xargs kill -9 2>/dev/null
+lsof -ti:5173 | xargs kill -9 2>/dev/null
+lsof -ti:8080 | xargs kill -9 2>/dev/null
+
+# 4. Start Backend
+echo "🔥 Starting Backend (Port 8000)..."
+# Use nohup to keep running, log to backend.log
+cd backend
+nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > ../backend.log 2>&1 &
+BACKEND_PID=$!
+echo "   PID: $BACKEND_PID"
+cd ..
+
+# 5. Start Frontend
+echo "✨ Starting Frontend (Port 5173)..."
+cd frontend
+# VITE_API_URL handles connection to backend
+nohup npm run dev -- --host > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
-echo "   Frontend PID: $FRONTEND_PID"
+echo "   PID: $FRONTEND_PID"
+cd ..
 
 echo ""
-echo "✅ Application started!"
-echo "   Frontend: http://localhost:5173"
-echo "   Backend:  http://localhost:8000"
+echo "✅ SYSTEM ONLINE"
+echo "------------------------------------------------"
+echo "🖥️  UI:      http://localhost:5173"
+echo "🔌 API:     http://localhost:8000/docs"
+echo "------------------------------------------------"
+echo "📝 Logs:    tail -f backend.log frontend.log"
+echo "🛑 Stop:    ./stop.sh (or kill $BACKEND_PID $FRONTEND_PID)"
 echo ""
-echo "Logs are being written to backend.log and frontend/frontend.log"
-echo "To stop everything, run: kill $BACKEND_PID $FRONTEND_PID"

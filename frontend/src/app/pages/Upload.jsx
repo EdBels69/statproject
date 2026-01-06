@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadDataset } from '../../lib/api';
+import SmartDataPreview from '../components/SmartDataPreview';
 
 export default function Upload() {
     const navigate = useNavigate();
@@ -8,6 +9,8 @@ export default function Upload() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [fileName, setFileName] = useState(null);
+    const [uploadedId, setUploadedId] = useState(null); // New state for sequential flow
+    const [uploadedData, setUploadedData] = useState(null); // Store response data
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -41,18 +44,37 @@ export default function Upload() {
         setFileName(file.name);
         try {
             const data = await uploadDataset(file);
-            navigate(`/profile/${data.id}`, {
-                state: {
-                    profile: data.profile,
-                    filename: data.filename
-                }
-            });
+            setUploadedId(data.id);
+            setUploadedData(data);
+            // Do NOT navigate yet. Show Smart Preview.
         } catch (err) {
             setError(err.message);
-        } finally {
             setUploading(false);
         }
     };
+
+    const handleSmartComplete = () => {
+        if (!uploadedData) return;
+        navigate(`/profile/${uploadedData.id}`, {
+            state: {
+                profile: uploadedData.profile,
+                filename: fileName
+            }
+        });
+    };
+
+    if (uploadedId) {
+        return (
+            <div className="max-w-4xl mx-auto py-8">
+                <SmartDataPreview
+                    datasetId={uploadedId}
+                    onComplete={handleSmartComplete}
+                />
+            </div>
+        );
+    }
+
+
 
     return (
         <div style={{ maxWidth: '600px', margin: '0 auto' }} className="animate-fadeIn">

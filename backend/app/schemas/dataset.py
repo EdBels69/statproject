@@ -48,3 +48,36 @@ class QualityReport(BaseModel):
     dataset_id: str
     issues: List[QualityIssue]
     summary: Optional[str] = None
+
+class CleanCommand(BaseModel):
+    column: str
+    action: str  # "to_numeric", "fill_mean", "drop_na"
+
+class PrepApplyRequest(BaseModel):
+    action: str # "sanitize", "melt", "set_header"
+    params: Dict[str, Any] = {}
+
+class DatasetListItem(BaseModel):
+    id: str
+    filename: str
+    created_at: Optional[str] = None
+
+class FilterCondition(BaseModel):
+    column: str
+    operator: str # eq, neq, gt, lt, gte, lte, contains, isnull, notnull
+    value: Optional[Any] = None
+
+class SubsetRequest(BaseModel):
+    new_name: str
+    filters: List[FilterCondition]
+
+class DataPreviewRequest(BaseModel):
+    limit: int = 50
+    offset: int = 0
+    filters: List[FilterCondition] = []
+
+class DataPreviewResponse(BaseModel):
+    rows: List[Dict[str, Any]]
+    total_rows: int
+    limit: int
+    offset: int
