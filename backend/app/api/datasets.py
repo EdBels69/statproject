@@ -69,7 +69,14 @@ def create_subset(dataset_id: str, req: SubsetRequest, manager: DataManagerServi
 def delete_dataset(dataset_id: str, service: DatasetService = Depends(get_service)):
     return service.delete_dataset(dataset_id)
 
+from pydantic import BaseModel
+from typing import Optional
+
+class AutoClassifyRequest(BaseModel):
+    context: Optional[str] = None
+
 @router.post("/{dataset_id}/auto_classify")
-def auto_classify_variables(dataset_id: str, service: DatasetService = Depends(get_service)):
-    """Automatically classify variables based on column names."""
-    return service.auto_classify_variables(dataset_id)
+def auto_classify_variables(dataset_id: str, req: AutoClassifyRequest = None, service: DatasetService = Depends(get_service)):
+    """Automatically classify variables based on column names and optional context."""
+    context = req.context if req else None
+    return service.auto_classify_variables(dataset_id, context)

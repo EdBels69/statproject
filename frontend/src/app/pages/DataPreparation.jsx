@@ -11,6 +11,8 @@ export default function DataPreparation() {
     const [columns, setColumns] = useState([]);
     const [datasetName, setDatasetName] = useState('');
     const [classificationSummary, setClassificationSummary] = useState(null);
+    const [showContextModal, setShowContextModal] = useState(false);
+    const [contextText, setContextText] = useState('');
 
     // Variable configuration state
     const [variableConfig, setVariableConfig] = useState({});
@@ -55,11 +57,12 @@ export default function DataPreparation() {
         }));
     };
 
-    const handleAutoClassify = async () => {
+    const handleAutoClassify = async (useContext = false) => {
         setClassifying(true);
         setError(null);
+        setShowContextModal(false);
         try {
-            const result = await autoClassifyVariables(id);
+            const result = await autoClassifyVariables(id, useContext ? contextText : null);
             // Apply classification to variable config
             setVariableConfig(result.classification);
             setClassificationSummary(result.summary);
@@ -112,23 +115,64 @@ export default function DataPreparation() {
                     <h1 className="text-xl font-bold text-gray-900">Подготовка данных</h1>
                     <p className="text-sm text-gray-500 mt-1">{datasetName} • {columns.length} переменных</p>
                 </div>
-                <button
-                    onClick={handleAutoClassify}
-                    disabled={classifying}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-purple-700 hover:to-blue-700 transition disabled:opacity-50"
-                >
-                    {classifying ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Анализирую...
-                        </>
-                    ) : (
-                        <>
-                            ✨ AI Автоклассификация
-                        </>
-                    )}
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowContextModal(true)}
+                        disabled={classifying}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-purple-700 hover:to-blue-700 transition disabled:opacity-50"
+                    >
+                        {classifying ? (
+                            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Анализирую...</>
+                        ) : (
+                            <>🧠 AI Ассистент</>
+                        )}
+                    </button>
+                    <button
+                        onClick={handleNext}
+                        className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                    >
+                        Начать анализ →
+                    </button>
+                </div>
             </div>
+
+            {/* Context Modal */}
+            {showContextModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 animate-fadeIn">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                🧠 AI Ассистент
+                            </h3>
+                            <button onClick={() => setShowContextModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Вставьте описание вашего исследования (Study Design) или протокол.
+                            AI использует этот текст, чтобы понять структуру данных, группы и временные точки.
+                        </p>
+                        <textarea
+                            value={contextText}
+                            onChange={(e) => setContextText(e.target.value)}
+                            placeholder="Пример: В исследовании участвовали две группы пациентов (Плацебо и Препарат). Измерения артериального давления проводились на Визите 1 (до лечения) и Визите 2 (через 4 недели)..."
+                            className="w-full h-32 p-3 text-sm border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-1 focus:ring-purple-500 mb-4"
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => handleAutoClassify(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                            >
+                                Без подсказки
+                            </button>
+                            <button
+                                onClick={() => handleAutoClassify(true)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition"
+                            >
+                                Применить AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Classification Summary */}
             {classificationSummary && (
@@ -176,8 +220,8 @@ export default function DataPreparation() {
                                         value={variableConfig[col.name]?.role || 'parameter'}
                                         onChange={(e) => updateConfig(col.name, 'role', e.target.value)}
                                         className={`w-full px-2 py-1 text-sm border rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none ${variableConfig[col.name]?.role === 'group' ? 'border-blue-400 bg-blue-50' :
-                                                variableConfig[col.name]?.role === 'exclude' ? 'border-gray-300 bg-gray-100' :
-                                                    'border-gray-200'
+                                            variableConfig[col.name]?.role === 'exclude' ? 'border-gray-300 bg-gray-100' :
+                                                'border-gray-200'
                                             }`}
                                     >
                                         <option value="parameter">Параметр</option>

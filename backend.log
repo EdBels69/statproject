@@ -2066,3 +2066,52 @@ INFO:     127.0.0.1:54130 - "GET /api/v1/datasets HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54142 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54144 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
 INFO:     127.0.0.1:54149 - "POST /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c/auto_classify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54199 - "GET /api/v1/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54201 - "GET /api/v1/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54205 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54207 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54459 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54542 - "POST /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c/auto_classify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54565 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54566 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54570 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54572 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54582 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54606 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54608 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54620 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54618 - "GET /api/v1/datasets/38370d81-0959-4712-8952-42c54ed6828c HTTP/1.1" 200 OK
+/Users/eduardbelskih/.gemini/antigravity/scratch/statproject/backend/venv/lib/python3.9/site-packages/scipy/stats/_axis_nan_policy.py:531: UserWarning: scipy.stats.shapiro: Input data has range zero. The results may not be accurate.
+  res = hypotest_fun_out(*samples, **kwds)
+/Users/eduardbelskih/.gemini/antigravity/scratch/statproject/backend/venv/lib/python3.9/site-packages/numpy/_core/fromnumeric.py:3596: RuntimeWarning: Mean of empty slice.
+  return _methods._mean(a, axis=axis, dtype=dtype,
+/Users/eduardbelskih/.gemini/antigravity/scratch/statproject/backend/venv/lib/python3.9/site-packages/numpy/_core/_methods.py:138: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+INFO:     127.0.0.1:54630 - "POST /api/v1/analysis/batch HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/api/datasets.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [76348]
+INFO:     Started server process [78574]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/services/dataset_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78574]
+INFO:     Started server process [78581]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54666 - "OPTIONS /api/v1/analysis/report/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54666 - "POST /api/v1/analysis/report/batch HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/modules/variable_classifier.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78581]
+INFO:     Started server process [78610]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

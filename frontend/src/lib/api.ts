@@ -32,9 +32,11 @@ export async function deleteDataset(id: string) {
   return response.json();
 }
 
-export async function autoClassifyVariables(id: string) {
+export async function autoClassifyVariables(id: string, context: string | null = null) {
   const response = await fetch(`${API_URL}/datasets/${id}/auto_classify`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ context }),
   });
   if (!response.ok) {
     throw new Error("Failed to auto-classify variables");

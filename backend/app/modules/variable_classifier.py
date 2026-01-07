@@ -40,18 +40,22 @@ EXCLUDE_KEYWORDS = [
 SEX_KEYWORDS = ['sex', 'пол', 'gender', 'male', 'female']
 
 
-def classify_variables(columns: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def classify_variables(columns: List[Dict[str, Any]], context: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Automatically classify variables based on column names and types.
+    Automatically classify variables based on column names, types, and optional context.
     
     Args:
         columns: List of column info dicts with 'name' and 'type' keys
+        context: Optional text description of the study design
         
     Returns:
         Dict mapping column names to suggested {type, role, timepoint, reason}
     """
     result = {}
     group_candidates = []
+    
+    # Context hints
+    context_hints = _parse_context_hints(context, [c['name'] for c in columns]) if context else {}
     
     for col in columns:
         name = col.get('name', '')
@@ -63,8 +67,17 @@ def classify_variables(columns: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any
         timepoint = None
         reason = None
         
+        # 0. Context overrides
+        if name in context_hints.get('groups', []):
+            role = 'group'
+            reason = "AI: Найдено в описании анализа как группа"
+            group_candidates.append((name, 0)) # High priority
+        elif name in context_hints.get('exclusions', []):
+            role = 'exclude'
+            reason = "AI: Найдено в описании как исключаемое"
+        
         # 1. Check for exclusion keywords
-        if any(kw in name_lower for kw in EXCLUDE_KEYWORDS):
+        elif any(kw in name_lower for kw in EXCLUDE_KEYWORDS):
             role = 'exclude'
             matched = [kw for kw in EXCLUDE_KEYWORDS if kw in name_lower]
             reason = f"Служебное поле ({matched[0]})"
@@ -90,6 +103,8 @@ def classify_variables(columns: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any
         
         # 5. Check for timepoint patterns (only for parameters)
         if role == 'parameter':
+            # Check context for timepoint count/names
+            # (Simple heuristic logic here if needed, but regex is usually stronger for standard formats)
             for pattern, extractor in TIMEPOINT_PATTERNS:
                 match = re.search(pattern, name_lower, re.IGNORECASE)
                 if match:
@@ -108,6 +123,8 @@ def classify_variables(columns: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any
         if col_type in ['categorical', 'text'] and role == 'parameter':
             role = 'exclude'
             reason = f"Не числовой тип ({col_type})"
+            
+        # Context Role Override if set (except if forced exclude)
         
         result[name] = {
             'type': col_type,
@@ -123,10 +140,41 @@ def classify_variables(columns: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any
         
         for name in result:
             if result[name]['role'] == 'group' and name != primary_group:
+                # If context explicitly said it's a group, keep it as subgroup or secondary group
+                # But system usually expects 1 main group. Let's demote others to subgroup.
                 result[name]['role'] = 'subgroup'
                 result[name]['reason'] = "Доп. группирующая переменная"
     
     return result
+
+def _parse_context_hints(context: str, column_names: List[str]) -> Dict[str, List[str]]:
+    """
+    Heuristically parse context text to identify groups and exclusions.
+    Very basic implementation looking for keywords near column names.
+    """
+    hints = {'groups': [], 'exclusions': []}
+    if not context:
+        return hints
+        
+    context_lower = context.lower()
+    
+    # Simple logic: iterate columns, see if they appear in context near key terms
+    for col in column_names:
+        if col.lower() not in context_lower:
+            continue
+            
+        # Check for group context
+        # Regex: "group" ... "col_name" or "col_name" ... "group" within ~50 chars
+        if re.search(f"(group|группа|arm|cohort).{{0,50}}{re.escape(col.lower())}", context_lower) or \
+           re.search(f"{re.escape(col.lower())}.{{0,50}}(group|группа|arm|cohort)", context_lower):
+            hints['groups'].append(col)
+            
+        # Check for exclusion context
+        if re.search(f"(exclude|исключить|remove|ignore|id).{{0,50}}{re.escape(col.lower())}", context_lower) or \
+           re.search(f"{re.escape(col.lower())}.{{0,50}}(exclude|исключить|remove|ignore|id)", context_lower):
+            hints['exclusions'].append(col)
+            
+    return hints
 
 
 

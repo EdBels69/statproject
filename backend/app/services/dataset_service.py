@@ -287,8 +287,8 @@ class DatasetService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
 
-    def auto_classify_variables(self, dataset_id: str):
-        """Automatically classify variables based on column names."""
+    def auto_classify_variables(self, dataset_id: str, context: str = None):
+        """Automatically classify variables based on column names and context."""
         from app.modules.variable_classifier import classify_variables, get_classification_summary
         
         try:
@@ -297,7 +297,7 @@ class DatasetService:
             columns = [{"name": c.name, "type": c.type} for c in profile.columns]
             
             # Run classification
-            classification = classify_variables(columns)
+            classification = classify_variables(columns, context)
             summary = get_classification_summary(classification)
             
             return {
