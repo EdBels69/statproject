@@ -10,6 +10,7 @@ from sklearn.metrics import roc_curve, auc
 from lifelines import KaplanMeierFitter
 from lifelines.statistics import logrank_test
 from app.stats.registry import METHODS
+from app.core.logging import logger
 
 GROUP_TESTS = ["t_test_ind", "t_test_welch", "mann_whitney", "t_test_rel", "wilcoxon", "anova", "anova_welch", "kruskal"]
 
@@ -222,10 +223,7 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
             
         all_vals_np = np.array(all_vals)
         all_groups_np = np.array(all_groups)
-        
-        # print(f"DEBUG Welch: Vals Shape {all_vals_np.shape}, Groups Shape {all_groups_np.shape}")
-        # print(f"DEBUG Welch Sample: {all_vals_np[:5]}")
-        
+
         res = anova_oneway(data=all_vals_np, groups=all_groups_np, use_var='unequal')
         stat_val = res.statistic
         p_val = res.pvalue
@@ -298,7 +296,7 @@ def _run_tukey_posthoc(data_groups, groups):
             })
         return post_hoc
     except Exception as e:
-        print(f"Post-hoc failed: {e}")
+        logger.error(f"Post-hoc failed: {e}", exc_info=True)
         return None
 
 def _handle_one_sample(df, method_id, col_a, kwargs):
@@ -634,7 +632,7 @@ def run_batch_analysis(df: pd.DataFrame, targets: List[str], group_col: str, met
             p_values.append(res["p_value"])
             
         except Exception as e:
-            print(f"Batch Error for {target}: {e}")
+            logger.error(f"Batch Error for {target}: {e}", exc_info=True)
             results.append({"target": target, "error": str(e), "p_value": 1.0})
             p_values.append(1.0)
             

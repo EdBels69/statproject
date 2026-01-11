@@ -1,6 +1,7 @@
 import httpx
 from app.core.config import settings
 from app.schemas.analysis import AnalysisResult
+from app.core.logging import logger
 
 async def get_ai_conclusion(result: AnalysisResult) -> str:
     """
@@ -55,7 +56,7 @@ Instructions:
             conclusion = data["choices"][0]["message"]["content"].strip()
             return conclusion
     except Exception as e:
-        print(f"LLM Error: {e}")
+        logger.error(f"LLM Error: {e}", exc_info=True)
         return result.conclusion # Fallback on error
 
 async def scan_data_quality(csv_head: str, columns_info: str) -> list:
@@ -121,5 +122,5 @@ Return ONLY JSON. No markdown, no commentary.
             import json
             return json.loads(content.strip())
     except Exception as e:
-        print(f"LLM Quality Scan Error: {e}")
+        logger.error(f"LLM Quality Scan Error: {e}", exc_info=True)
         return []

@@ -16,6 +16,7 @@ from app.core.protocol_engine import ProtocolEngine
 from app.modules.parsers import get_dataframe, get_dataset_path
 from app.core.study_designer import StudyDesignEngine
 from app.modules.reporting import generate_pdf_report
+from app.core.logging import logger
 
 from app.api.datasets import DATA_DIR, parse_file
 
@@ -282,7 +283,7 @@ async def download_report(
             if ai_text:
                 analysis_result.conclusion = ai_text
         except Exception as e:
-            print(f"AI Enhancement failed: {e}")
+            logger.warning(f"AI Enhancement failed: {e}", exc_info=True)
             
     # 6. Render HTML
     html_content = render_report(analysis_result, target_col, group_col, dataset_name=files[0])
@@ -407,7 +408,7 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
             results[col] = result_obj
             
         except Exception as e:
-            print(f"Batch analysis failed for {col}: {e}")
+            logger.error(f"Batch analysis failed for {col}: {e}", exc_info=True)
             pass
 
     return BatchAnalysisResponse(descriptives=descriptives, results=results)

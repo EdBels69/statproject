@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 from typing import Dict, Any, List
 from pathlib import Path
 from app.schemas.analysis import AnalysisResult
+from app.core.logging import logger
 
 # Configure matplotlib for non-interactive backend
 plt.switch_backend('Agg')
@@ -83,7 +84,7 @@ def render_report(
         try:
             plot_img = generate_plot_image(analysis_result.plot_data, analysis_result.method.id)
         except Exception as e:
-            print(f"Error generating plot: {e}")
+            logger.error(f"Error generating plot: {e}", exc_info=True)
 
     # Prepare Context
     context = {

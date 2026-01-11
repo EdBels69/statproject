@@ -98,12 +98,7 @@ def test_full_flow():
          keys = list(results['results'].keys())
          step_res = results['results'][keys[-1]] # Usually last step is the test
     
-    print(f"DEBUG Step Results Keys: {step_res.keys()}")
-    print(f"DEBUG Step Results: {step_res}")
     print(f"Result P-Value: {step_res['p_value']}")
-    print(f"Effect Size: {step_res.get('effect_size')}")
-    print(f"Conclusion: {step_res['conclusion']}")
-    
     print(f"Effect Size: {step_res.get('effect_size')}")
     print(f"Conclusion: {step_res['conclusion']}")
     

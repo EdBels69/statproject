@@ -4,6 +4,7 @@ from app.stats.engine import run_analysis, select_test
 from app.core.pipeline import PipelineManager
 from app.stats.registry import get_method
 from app.modules.text_generator import TextGenerator
+from app.core.logging import logger
 
 class ProtocolEngine:
     """
@@ -67,7 +68,7 @@ class ProtocolEngine:
                 
             except Exception as e:
                 import traceback
-                traceback.print_exc() # DEBUG
+                logger.error(f"Step {step_id} failed: {str(e)}", exc_info=True)
                 error_msg = f"Step {step_id} failed: {str(e)}"
                 log.append(error_msg)
                 results_map[step_id] = {"error": error_msg}

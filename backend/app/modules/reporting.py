@@ -8,6 +8,7 @@ matplotlib.use('Agg') # Non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, Any, List
+from app.core.logging import logger
 
 class ProtocolReport:
     """
@@ -274,7 +275,7 @@ class ProtocolReport:
             return base64.b64encode(buf.getvalue()).decode('utf-8')
             
         except Exception as e:
-            print(f"Plotting failed: {e}")
+            logger.error(f"Plotting failed: {e}", exc_info=True)
             return ""
 
 def render_protocol_report(run_data: Dict, dataset_name: str) -> str:
