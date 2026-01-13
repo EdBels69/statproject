@@ -6,6 +6,7 @@
 > 1. Задача помечена как `🟢 AUTO` (автоматическое выполнение разрешено)
 > 2. Все тесты проходят после изменений
 > 3. Нет breaking changes в API
+> 4. **Следуешь стандартам из `SCIENTIFIC_STANDARDS.md`**
 
 ---
 
@@ -14,9 +15,161 @@
 | Версия | Название | Статус | Ключевые фичи |
 |--------|----------|--------|---------------|
 | v0.9 | MVP | ✅ Готово | 26 методов, импутация, AI рекомендации |
-| v1.0 | Production | 🔄 В работе | JASP-кастомизация, Effect sizes, AI-интерпретации |
-| v1.1 | Polish | 📋 Планируется | ag-grid, Variable Workspace, Templates |
-| v1.2 | Advanced | 📋 Планируется | AI-консультант, Batch ML, Multi-dataset |
+| v1.0 | Scientific | 🔄 В работе | Parquet, Pingouin, Effect sizes, AI-интерпретации |
+| v1.1 | Visualization | 📋 Планируется | Publication-ready графики, Plot export |
+| v1.2 | UX | 📋 Планируется | ag-grid, Variable Workspace, Templates |
+| v1.3 | AI | 📋 Планируется | AI-консультант, Batch ML, Multi-dataset |
+
+---
+
+## 🔬 ФАЗА 0: Scientific Python Standards (ПРИОРИТЕТ)
+
+### Статус: 🔄 В работе — ДЕЛАТЬ ПЕРВЫМ
+
+---
+
+#### TASK-SCI-001: Добавить Pingouin 🟢 AUTO
+
+**Файлы:**
+
+- `backend/requirements.txt`
+- `backend/app/stats/engine.py`
+
+**Что сделать:**
+
+1. Добавить в requirements.txt: `pingouin>=0.5.3`
+2. Заменить ручные расчёты на pingouin:
+
+```python
+import pingouin as pg
+
+# Вместо ручного t-test
+result = pg.ttest(group1, group2)  # Возвращает d, CI, power, BF10
+```
+
+**Критерии готовности:**
+
+- [ ] pingouin установлен
+- [ ] t-test использует pg.ttest
+- [ ] ANOVA использует pg.anova
+- [ ] Тесты проходят
+
+---
+
+#### TASK-SCI-002: Parquet вместо CSV 🟢 AUTO
+
+**Файлы:**
+
+- `backend/requirements.txt`
+- `backend/app/core/pipeline.py`
+- `backend/app/modules/parsers.py`
+
+**Что сделать:**
+
+1. Добавить: `pyarrow>=14.0.0`
+2. Заменить:
+
+```python
+# Было
+df.to_csv(path)
+df = pd.read_csv(path)
+
+# Стало
+df.to_parquet(path, engine='pyarrow')
+df = pd.read_parquet(path)
+```
+
+**Критерии готовности:**
+
+- [ ] pyarrow установлен
+- [ ] Processed data сохраняется в .parquet
+- [ ] Чтение ускорено в 5x+
+
+---
+
+#### TASK-SCI-003: Оптимизация типов данных 🟢 AUTO
+
+**Файлы:**
+
+- `backend/app/modules/smart_scanner.py`
+
+**Что сделать:**
+
+```python
+def optimize_dtypes(df):
+    for col in df.columns:
+        if df[col].dtype == 'int64':
+            df[col] = df[col].astype('int32')
+        elif df[col].dtype == 'float64':
+            df[col] = df[col].astype('float32')
+        elif df[col].dtype == 'object' and df[col].nunique() < 50:
+            df[col] = df[col].astype('category')
+    return df
+```
+
+**Критерии готовности:**
+
+- [ ] Функция optimize_dtypes создана
+- [ ] Вызывается после parse_file
+- [ ] Экономия памяти 50%+
+
+---
+
+## 📊 ФАЗА 0.5: Visualization Standards
+
+### Статус: 📋 Планируется
+
+---
+
+#### TASK-VIS-001: Matplotlib Publication Config 🟢 AUTO
+
+**Файлы:**
+
+- `backend/app/modules/plot_config.py` (новый)
+- `backend/app/modules/reporting.py`
+
+**Что сделать:**
+
+```python
+PUBLICATION_CONFIG = {
+    'figure.dpi': 300,
+    'font.family': 'sans-serif',
+    'font.size': 10,
+    'axes.spines.top': False,
+    'axes.spines.right': False,
+    'axes.linewidth': 1.0,
+}
+plt.rcParams.update(PUBLICATION_CONFIG)
+sns.set_theme(style="whitegrid", palette="colorblind")
+```
+
+**Критерии готовности:**
+
+- [ ] Конфиг создан
+- [ ] Все графики используют 300 DPI
+- [ ] Colorblind-safe палитра
+- [ ] SVG/PDF экспорт
+
+---
+
+#### TASK-VIS-002: Стандартные графики для тестов 🟢 AUTO
+
+**Файлы:**
+
+- `backend/app/modules/plot_templates.py` (новый)
+
+**Что сделать:**
+
+1. `plot_group_comparison(df, x, y)` — Box + Strip
+2. `plot_correlation_matrix(corr_matrix)` — Heatmap
+3. `plot_distribution(data)` — Histogram + KDE
+4. `plot_regression(x, y, model)` — Scatter + Line
+
+**Критерии готовности:**
+
+- [ ] 4 шаблона созданы
+- [ ] Используют publication config
+- [ ] Тесты визуализации
 
 ---
 

@@ -108,6 +108,89 @@
 
 ---
 
+## 🔬 НАУЧНЫЕ СТАНДАРТЫ (Python Data Science Handbook)
+
+> **ВАЖНО:** Все AI-агенты ОБЯЗАНЫ следовать стандартам из `SCIENTIFIC_STANDARDS.md`
+
+### Обязательные практики
+
+| Область | Стандарт | Почему |
+|---------|----------|--------|
+| **Данные** | Parquet вместо CSV | В 5-10x быстрее |
+| **Память** | int32, float32, category | Экономия 50-75% |
+| **Код** | Vectorization, method chaining | Читаемость + скорость |
+| **Графики** | 300 DPI, viridis, PDF/SVG | Для публикаций |
+| **Статистика** | Effect size + 95% CI всегда | Научный стандарт |
+| **Формат** | APA 7th edition | Для статей |
+
+### Ключевые библиотеки
+
+```python
+# Данные
+import numpy as np
+import pandas as pd
+
+# Статистика
+from scipy import stats
+import statsmodels.api as sm
+import pingouin as pg  # Биомед статистика с effect sizes
+
+# Визуализация
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# ML / Импутация
+from sklearn.impute import IterativeImputer  # MICE
+```
+
+### Примеры правильного кода
+
+```python
+# ✅ ПРАВИЛЬНО — Vectorization + method chaining
+result = (
+    df
+    .query("age >= 18")
+    .assign(bmi=lambda x: x['weight'] / x['height']**2)
+    .groupby('treatment')
+    .agg({'outcome': ['mean', 'std']})
+)
+
+# ❌ НЕПРАВИЛЬНО — Python циклы
+for i, row in df.iterrows():
+    df.at[i, 'bmi'] = row['weight'] / row['height']**2
+```
+
+### Стандарт визуализации
+
+```python
+# Настройки для публикаций
+plt.rcParams.update({
+    'figure.dpi': 300,
+    'font.family': 'sans-serif',
+    'font.size': 10,
+    'axes.spines.top': False,
+    'axes.spines.right': False
+})
+sns.set_theme(style="whitegrid", palette="colorblind")
+```
+
+### Pingouin — Биомед статистика
+
+```python
+# T-test с effect size (автоматически)
+result = pg.ttest(group1, group2)
+# Возвращает: T, p, Cohen's d, CI, power, BF10
+
+# ANOVA с eta-squared
+aov = pg.anova(data=df, dv='outcome', between='group')
+# Возвращает: F, p, η²
+
+# Post-hoc с коррекцией
+posthoc = pg.pairwise_tukey(data=df, dv='outcome', between='group')
+```
+
+---
+
 ## 🏗 АРХИТЕКТУРА ПРОЕКТА
 
 ```
