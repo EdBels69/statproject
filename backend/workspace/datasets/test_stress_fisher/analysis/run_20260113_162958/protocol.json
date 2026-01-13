@@ -1,0 +1,12 @@
+{
+  "name": "Stress test fisher",
+  "steps": [
+    {
+      "id": "step_fisher",
+      "type": "hypothesis_test",
+      "method": "fisher",
+      "target": "Treatment",
+      "group": "Outcome"
+    }
+  ]
+}

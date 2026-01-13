@@ -301,10 +301,12 @@ def generate_legacy_plot_image(plot_data: List[Dict[str, Any]], method_id: str) 
         data=df, 
         x="group", 
         y="value", 
+        hue="group",
         jitter=True, 
         alpha=0.6, 
         palette="viridis",
-        size=8
+        size=8,
+        legend=False
     )
     
     sns.boxplot(

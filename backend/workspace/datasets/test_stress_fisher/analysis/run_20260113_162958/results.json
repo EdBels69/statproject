@@ -1,0 +1,13 @@
+{
+  "protocol_name": "Stress test fisher",
+  "dataset_id": "test_stress_fisher",
+  "results": {
+    "step_fisher": {
+      "error": "Method fisher not implemented"
+    }
+  },
+  "log": [
+    "Starting step step_fisher...",
+    "Step step_fisher completed."
+  ]
+}

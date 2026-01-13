@@ -1,0 +1,12 @@
+{
+  "name": "Stress test spearman",
+  "steps": [
+    {
+      "id": "step_spearman",
+      "type": "hypothesis_test",
+      "method": "spearman",
+      "target": "X",
+      "group": "Y"
+    }
+  ]
+}

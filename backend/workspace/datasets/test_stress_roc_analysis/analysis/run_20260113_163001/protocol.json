@@ -1,0 +1,12 @@
+{
+  "name": "Stress test roc_analysis",
+  "steps": [
+    {
+      "id": "step_roc_analysis",
+      "type": "hypothesis_test",
+      "method": "roc_analysis",
+      "target": "Outcome",
+      "group": "Predictor"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "Comparison of Value by Group",
+  "goal": "compare_groups",
+  "steps": [
+    {
+      "id": "desc_stats",
+      "type": "descriptive_compare",
+      "target": "Value",
+      "group": "Group"
+    },
+    {
+      "id": "hypothesis_test",
+      "type": "compare",
+      "target": "Value",
+      "group": "Group",
+      "assumptions_checked": [
+        "normality",
+        "homogeneity"
+      ],
+      "method": {
+        "id": "auto",
+        "name": "Auto-Detect Test",
+        "category": "parametric",
+        "params": {
+          "target": "Value",
+          "group": "Group"
+        }
+      }
+    }
+  ],
+  "required_visualization": "dashboard_v1"
+}

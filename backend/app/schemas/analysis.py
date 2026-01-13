@@ -130,7 +130,7 @@ class BatchAnalysisResponse(BaseModel):
 class ClusteredCorrelationRequest(BaseModel):
     """Request schema for clustered correlation analysis (jYS-style)."""
     dataset_id: str = Field(..., min_length=1, description="Unique identifier for the dataset")
-    variables: List[str] = Field(..., min_items=2, description="Variables to include in correlation matrix (at least 2)")
+    variables: List[str] = Field(..., min_length=2, description="Variables to include in correlation matrix (at least 2)")
     method: Literal["pearson", "spearman"] = Field(default="pearson", description="Correlation method")
     linkage_method: Literal["ward", "complete", "average", "single"] = Field(default="ward", description="Hierarchical clustering linkage")
     n_clusters: Optional[int] = Field(None, ge=2, description="Number of clusters (auto-detect if None)")

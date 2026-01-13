@@ -143,7 +143,7 @@ class SmartScanner:
             stats["example"] = float(series.iloc[0]) if len(series) > 0 else None
 
         # C. Categorical Intelligence
-        if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_categorical_dtype(series.dtype):
+        if pd.api.types.is_object_dtype(series.dtype) or isinstance(series.dtype, pd.CategoricalDtype):
              if unique_c < 20:
                  stats["categories"] = [str(x) for x in series.dropna().unique()]
              stats["example"] = str(series.iloc[0]) if len(series) > 0 else None

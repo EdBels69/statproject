@@ -1,0 +1,13 @@
+{
+  "protocol_name": "Stress test pearson",
+  "dataset_id": "test_stress_pearson",
+  "results": {
+    "step_pearson": {
+      "error": "type object 'TextGenerator' has no attribute 'interpret_correlation_strength'"
+    }
+  },
+  "log": [
+    "Starting step step_pearson...",
+    "Step step_pearson completed."
+  ]
+}
