@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { reparseDataset, modifyDataset, getDataset, scanDataset, getSheets } from '../../lib/api';
+import EditableDataGrid from '../components/EditableDataGrid';
 
 export default function Profile() {
     const { id } = useParams();
@@ -12,7 +13,6 @@ export default function Profile() {
     const [filename] = useState(location.state?.filename || "Unknown file");
     const [sheets, setSheets] = useState([]);
     const [selectedSheet, setSelectedSheet] = useState(null);
-    const [editingCell, setEditingCell] = useState(null);
 
     // Pagination Removed (Show All Mode)
     // We set a high limit effectively disabling pagination for typical datasets
@@ -131,6 +131,10 @@ export default function Profile() {
             state: { columns: profile.columns }
         });
     };
+
+    const handleHeaderMenu = useCallback(({ colName, x, y }) => {
+        setActiveMenu({ colName, x, y });
+    }, []);
 
     if (!profile) {
         return (
@@ -378,90 +382,14 @@ export default function Profile() {
 
                         <div className="flex-1 overflow-auto custom-scrollbar max-h-[800px]">
                             <ColumnMenu />
-                            <table className="w-full text-sm text-left text-slate-600 border-separate border-spacing-0">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                    <tr>
-                                        <th className="px-4 py-3 border-b border-r border-slate-200 font-medium w-14 text-center bg-slate-50">#</th>
-                                        {profile.columns.map(col => (
-                                            <th
-                                                key={col.name}
-                                                className="px-4 py-3 border-b border-r border-slate-200 font-bold text-slate-700 min-w-[150px] cursor-pointer hover:bg-indigo-50/50 transition-colors select-none group"
-                                                onClick={(e) => {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setActiveMenu({ colName: col.name, x: rect.left, y: rect.bottom + 5 });
-                                                }}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <TypeIcon type={col.type} />
-                                                    <span>{col.name}</span>
-                                                    <span className="opacity-0 group-hover:opacity-100 text-[9px] text-slate-400">▼</span>
-                                                </div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {profile.head && profile.head.map((row, rowIdxPage) => {
-                                        // Since we effectively have page 1 always, absIndex is just rowIdxPage
-                                        const absIndex = rowIdxPage;
-                                        return (
-                                            <tr key={rowIdxPage} className="hover:bg-indigo-50/20 transition-colors group">
-                                                <td className="px-2 py-2 text-center text-xs text-slate-400 border-r border-slate-100 font-mono relative bg-slate-50/50">
-                                                    <span className="group-hover:hidden">{absIndex + 1}</span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (confirm("Delete row?")) handleAction({ type: 'drop_row', row_index: absIndex });
-                                                        }}
-                                                        className="hidden group-hover:flex absolute inset-0 items-center justify-center bg-red-50 text-red-500 hover:text-red-700"
-                                                    >
-                                                        🗑
-                                                    </button>
-                                                </td>
-                                                {profile.columns.map(col => {
-                                                    const val = row[col.name];
-                                                    const isNull = val === null || val === undefined || val === "";
-                                                    const isEditing = editingCell?.rowIdx === rowIdxPage && editingCell?.colName === col.name;
-
-                                                    return (
-                                                        <td
-                                                            key={col.name}
-                                                            className={`px-4 py-2 border-r border-slate-100 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px] font-mono text-xs ${isEditing ? 'p-0 ring-2 ring-indigo-500 z-10' : ''}`}
-                                                            onDoubleClick={() => setEditingCell({ rowIdx: rowIdxPage, colName: col.name, value: val ?? "" })}
-                                                        >
-                                                            {isEditing ? (
-                                                                <input
-                                                                    autoFocus
-                                                                    className="w-full h-full px-4 py-2 bg-white outline-none text-slate-900"
-                                                                    value={editingCell.value}
-                                                                    onChange={(e) => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
-                                                                    onBlur={() => {
-                                                                        if (editingCell.value !== String(val ?? "")) {
-                                                                            handleAction({
-                                                                                type: 'update_cell',
-                                                                                row_index: absIndex,
-                                                                                column: col.name,
-                                                                                value: editingCell.value
-                                                                            });
-                                                                        }
-                                                                        setEditingCell(null);
-                                                                    }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') e.target.blur();
-                                                                        if (e.key === 'Escape') setEditingCell(null);
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                isNull ? <span className="text-slate-300 italic opacity-50">null</span> : <span className="text-slate-700">{String(val)}</span>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
+                            <EditableDataGrid
+                                columns={profile.columns}
+                                rows={profile.head}
+                                loading={loading}
+                                onHeaderMenu={handleHeaderMenu}
+                                onDropRow={(rowIndex) => handleAction({ type: 'drop_row', row_index: rowIndex })}
+                                onUpdateCell={({ rowIndex, colName, value }) => handleAction({ type: 'update_cell', row_index: rowIndex, column: colName, value })}
+                            />
                         </div>
                     </div>
                 </div>

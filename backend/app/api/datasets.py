@@ -199,24 +199,66 @@ def reparse_dataset(dataset_id: str, request: DatasetReparse):
 
 @router.post("/{dataset_id}/modify", response_model=DatasetProfile)
 def modify_dataset(dataset_id: str, modification: DatasetModification):
-    upload_dir = os.path.join(DATA_DIR, dataset_id)
-    processed_path = os.path.join(upload_dir, "processed", "data.csv")
-    
-    # Fallback for old structure
-    if not os.path.exists(processed_path):
-         old_proc = os.path.join(upload_dir, "processed.csv")
-         if os.path.exists(old_proc):
-             processed_path = old_proc
-         else:
-             raise HTTPException(status_code=404, detail="Dataset not found")
-
     try:
-        # Load from Processed Snapshot
-        df = pd.read_csv(processed_path)
-        # Basic modification logic here (omitted for brevity, usually handled by clean)
+        df = get_dataframe(dataset_id, DATA_DIR)
+        actions = list((modification.actions or []))
+
+        for action in actions:
+            if action.type == "drop_col":
+                if action.column and action.column in df.columns:
+                    df = df.drop(columns=[action.column])
+            elif action.type == "rename_col":
+                if action.column and action.new_name and action.column in df.columns:
+                    if action.new_name in df.columns and action.new_name != action.column:
+                        raise ValueError(f"Column already exists: {action.new_name}")
+                    df = df.rename(columns={action.column: action.new_name})
+            elif action.type == "change_type":
+                if action.column and action.new_type and action.column in df.columns:
+                    if action.new_type == "numeric":
+                        df[action.column] = pd.to_numeric(df[action.column], errors="coerce")
+                    elif action.new_type == "datetime":
+                        df[action.column] = pd.to_datetime(df[action.column], errors="coerce")
+                    elif action.new_type in ("text", "categorical"):
+                        df[action.column] = df[action.column].astype(str)
+                    else:
+                        raise ValueError(f"Unsupported new_type: {action.new_type}")
+            elif action.type == "drop_row":
+                if action.row_index is not None and isinstance(action.row_index, int):
+                    if 0 <= action.row_index < len(df.index):
+                        df = df.drop(index=action.row_index)
+            elif action.type == "update_cell":
+                if action.row_index is None or not isinstance(action.row_index, int):
+                    continue
+                if not action.column or action.column not in df.columns:
+                    continue
+
+                if 0 <= action.row_index < len(df.index):
+                    v = action.value
+                    if v == "":
+                        v = None
+                    df.at[action.row_index, action.column] = v
+            else:
+                raise ValueError(f"Unknown modification type: {action.type}")
+
+        df = df.reset_index(drop=True)
+
+        pipeline.create_processed_snapshot(
+            dataset_id,
+            df,
+            cleaning_log={"action": "modify", "count": len(actions)}
+        )
+
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        scan_report = scanner.scan_dataset(df)["scan_report"]
+
+        report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        with open(report_path, "w") as f:
+            json.dump(scan_report, f, indent=2, default=str)
+
         return generate_profile(df)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=f"Failed to modify dataset: {str(e)}")
 
 class CleanCommand(BaseModel):
     column: str
@@ -369,34 +411,6 @@ def get_scan_report(dataset_id: str):
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=404, detail="Report not found")
-        
-        # Apply Modifications
-        for action in modification.actions:
-            if action.type == "drop_col":
-                if action.column in df.columns: df = df.drop(columns=[action.column])
-            elif action.type == "rename_col":
-                if action.column in df.columns and action.new_name:
-                    df = df.rename(columns={action.column: action.new_name})
-            elif action.type == "change_type":
-                if action.column in df.columns and action.new_type:
-                    if action.new_type == "numeric": df[action.column] = pd.to_numeric(df[action.column], errors='coerce')
-                    elif action.new_type == "datetime": df[action.column] = pd.to_datetime(df[action.column], errors='coerce')
-                    elif action.new_type == "text" or action.new_type == "categorical": df[action.column] = df[action.column].astype(str)
-            elif action.type == "drop_row":
-                if action.row_index is not None and action.row_index in df.index: df = df.drop(index=action.row_index)
-            elif action.type == "update_cell":
-                if (action.row_index is not None and action.column in df.columns and action.row_index in df.index):
-                    df.at[action.row_index, action.column] = action.value
-        
-        df = df.reset_index(drop=True)
-        
-        # Save NEW Snapshot (In simple MVP this overwrites 'data.csv', in full version it could version it)
-        # We reuse pipeline create logic to ensure consistency
-        pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"action": "modify", "modifications": len(modification.actions)})
-        
-    except Exception as e: raise HTTPException(status_code=400, detail=f"Failed to modify dataset: {str(e)}")
-    
-    return generate_profile(df)
 
 @router.get("/{dataset_id}", response_model=DatasetProfile)
 def get_dataset(dataset_id: str, page: int = 1, limit: int = 100):

@@ -146,7 +146,7 @@ export async function modifyDataset(id, modifications) {
   const response = await fetch(`${API_URL}/datasets/${id}/modify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(modifications),
+    body: JSON.stringify({ actions: modifications }),
   });
   if (!response.ok) throw new Error("Failed to modify dataset");
   return response.json();
