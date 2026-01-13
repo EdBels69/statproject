@@ -1,5 +1,11 @@
 #!/bin/bash
-echo "Stopping Pro-CMT..."
-lsof -ti:8000 | xargs kill -9 2>/dev/null
-lsof -ti:5173 | xargs kill -9 2>/dev/null
-echo "Shutdown complete."
+
+set -e
+
+echo "🛑 Stopping Stat Analyzer..."
+docker-compose down
+
+echo "🧹 Cleaning up..."
+docker-compose down -v || true
+
+echo "✅ Stopped successfully!"

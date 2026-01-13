@@ -4,7 +4,6 @@ import {
     Scatter,
     XAxis,
     YAxis,
-    ZAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
@@ -14,94 +13,100 @@ import {
     Legend
 } from 'recharts';
 
+function VisualizeTooltip({ active, payload }) {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const d = payload[0]?.payload;
+    if (!d) return null;
+
+    if (d.error && d.stats) {
+        return (
+            <div className="bg-slate-800 text-white p-2 rounded shadow text-xs">
+                <p className="font-bold">{d.group}</p>
+                <p>Mean: {Number(d.mean).toFixed(2)}</p>
+                <p>CI: [{Number(d.stats.ci_lower).toFixed(2)}, {Number(d.stats.ci_upper).toFixed(2)}]</p>
+            </div>
+        );
+    }
+
+    if (typeof d.value === 'number') {
+        return (
+            <div className="bg-slate-800 text-white p-2 rounded shadow text-xs">
+                <p>{d.group}: {d.value.toFixed(2)}</p>
+            </div>
+        );
+    }
+
+    return null;
+}
+
 export default function VisualizePlot({ data, stats, groups }) {
-    if (!data || !data.length) return null;
+    const safeData = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
-    // 1. Prepare Data
+    const isROC = useMemo(() => {
+        if (safeData.length === 0) return false;
+        const first = safeData[0];
+        return first && typeof first === 'object' && 'x' in first && 'y' in first && !('group' in first);
+    }, [safeData]);
+
     const chartData = useMemo(() => {
-        // Unique Groups
-        const uniqueGroups = groups || [...new Set(data.map(d => d.group))].sort();
+        if (safeData.length === 0 || isROC) return null;
 
-        // Group Mapping to Integers (for X-axis positioning)
+        const uniqueGroups = groups || [...new Set(safeData.map(d => d.group))].filter(Boolean).sort();
+        if (uniqueGroups.length === 0) return null;
+
         const groupMap = {};
-        uniqueGroups.forEach((g, i) => { groupMap[g] = i + 1; }); // 1-based to give padding
+        uniqueGroups.forEach((g, i) => { groupMap[g] = i + 1; });
 
-        // Raw Data with Jitter
-        const jitteredData = data.map(d => {
-            const xBase = groupMap[d.group];
-            // Deterministic jitter based on value
-            const jitter = ((d.value * 123.45) % 1 - 0.5) * 0.3;
-            return {
-                ...d,
-                xJitter: xBase + jitter,
-                index: xBase, // Real group index
-            };
-        });
+        const jitteredData = safeData
+            .filter(d => d && typeof d.value === 'number' && d.group != null)
+            .map(d => {
+                const xBase = groupMap[d.group];
+                const jitter = ((d.value * 123.45) % 1 - 0.5) * 0.3;
+                return {
+                    ...d,
+                    xPos: xBase + jitter,
+                    xTick: xBase
+                };
+            });
 
-        // Summary Statistics (Mean + CI)
-        const summaryData = uniqueGroups.map(g => {
-            const s = stats ? stats[g] : null;
-            if (!s) return null;
+        const summaryData = uniqueGroups
+            .map(g => {
+                const s = stats ? stats[g] : null;
+                if (!s || typeof s.mean !== 'number' || typeof s.ci_lower !== 'number' || typeof s.ci_upper !== 'number') return null;
 
-            // Recharts ErrorBar expects error relative to value [neg, pos]
-            // CI Lower/Upper are absolute. 
-            // Error = [Mean - Lower, Upper - Mean]
-            const errorNeg = s.mean - s.ci_lower;
-            const errorPos = s.ci_upper - s.mean;
+                const errorNeg = s.mean - s.ci_lower;
+                const errorPos = s.ci_upper - s.mean;
 
-            return {
-                group: g,
-                x: groupMap[g], // Center of the group
-                mean: s.mean,
-                error: [errorNeg, errorPos],
-                stats: s
-            };
-        }).filter(Boolean);
+                return {
+                    group: g,
+                    xPos: groupMap[g],
+                    xTick: groupMap[g],
+                    mean: s.mean,
+                    error: [errorNeg, errorPos],
+                    stats: s
+                };
+            })
+            .filter(Boolean);
 
-        return { uniqueGroups, jitteredData, summaryData };
-    }, [data, stats, groups]);
+        const yValues = jitteredData.map(d => d.value);
+        const minVal = Math.min(...yValues);
+        const maxVal = Math.max(...yValues);
+        const pad = (maxVal - minVal) * 0.1 || 1;
+        const yDomain = [minVal - pad, maxVal + pad];
 
-    const { uniqueGroups, jitteredData, summaryData } = chartData;
+        const combinedData = [...jitteredData, ...summaryData];
 
-    // Y Axis Domain with padding
-    const yValues = data.map(d => d.value);
-    const minVal = Math.min(...yValues);
-    const maxVal = Math.max(...yValues);
-    const padding = (maxVal - minVal) * 0.1 || 1;
-    const yDomain = [minVal - padding, maxVal + padding];
+        return { uniqueGroups, jitteredData, summaryData, yDomain, combinedData };
+    }, [safeData, stats, groups, isROC]);
 
-    // Tooltip Formatter
-    const CustomTooltip = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            const d = payload[0].payload;
-            // Distinguish Raw Point vs Summary
-            if (d.error) {
-                return (
-                    <div className="bg-slate-800 text-white p-2 rounded shadow text-xs">
-                        <p className="font-bold">{d.group}</p>
-                        <p>Mean: {d.mean.toFixed(2)}</p>
-                        <p>CI: [{d.stats.ci_lower.toFixed(2)}, {d.stats.ci_upper.toFixed(2)}]</p>
-                    </div>
-                );
-            }
-            return (
-                <div className="bg-slate-800 text-white p-2 rounded shadow text-xs">
-                    <p>{d.group}: {d.value.toFixed(2)}</p>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    // ROC / Line Chart Support
-    // Infer if this is ROC data: has x/y but no group
-    const isROC = data && data.length > 0 && 'x' in data[0] && 'y' in data[0] && !('group' in data[0]);
+    if (safeData.length === 0) return null;
 
     if (isROC) {
         return (
             <div style={{ width: '100%', height: 400 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <LineChart data={safeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                         <XAxis
                             type="number"
@@ -139,17 +144,22 @@ export default function VisualizePlot({ data, stats, groups }) {
         );
     }
 
+    if (!chartData) return null;
+
+    const { uniqueGroups, jitteredData, summaryData, yDomain, combinedData } = chartData;
+
     return (
         <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
+                    data={combinedData}
                     margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                 >
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
 
                     {/* X Axis: Categorical mapped to Number */}
                     <XAxis
-                        dataKey="x"
+                        dataKey="xPos"
                         type="number"
                         domain={[0, uniqueGroups.length + 1]}
                         ticks={uniqueGroups.map((_, i) => i + 1)}
@@ -162,7 +172,7 @@ export default function VisualizePlot({ data, stats, groups }) {
                         stroke="#a3a3a3"
                     />
 
-                    <Tooltip content={<CustomTooltip />} cursor={false} />
+                    <Tooltip content={<VisualizeTooltip />} cursor={false} />
 
                     {/* 1. Raw Data Scatter (Blue, Transparent) */}
                     <Scatter
@@ -172,29 +182,7 @@ export default function VisualizePlot({ data, stats, groups }) {
                         fill="#60a5fa"
                         fillOpacity={0.4}
                         shape="circle"
-                    >
-                        {/* We override 'x' position with 'xJitter' */}
-                    </Scatter>
-                    {/* Hack: Scatter must bind x/y keys. We create ReferenceDots or just map data correctly. 
-                        Actually easier: pass `data={jitteredData}` and specify `dataKey` for axes?
-                        Recharts Scatter: <XAxis dataKey="xJitter" ... />. 
-                        But we share XAxis. 
-                        We can specify `data` prop on Scatter. 
-                        Let's use `data` prop and specify `dataKey="xJitter"` for x, `dataKey="value"` for y.
-                    */}
-
-                    {/* Re-declare Scatter cleanly */}
-                    <Scatter
-                        data={jitteredData}
-                        name="Raw Points"
-                        fill="#60a5fa"
-                        fillOpacity={0.6}
-                    >
-                        {/* Bind Scatter X to xJitter */}
-                        {/* Note: In ComposedChart, Scatter behaves like a Series. 
-                            We need to ensure it uses the numeric X axis correctly.
-                        */}
-                    </Scatter>
+                    />
 
                     {/* 2. Mean + CI (Orange, Large) */}
                     <Scatter
@@ -209,17 +197,6 @@ export default function VisualizePlot({ data, stats, groups }) {
 
                 </ComposedChart>
             </ResponsiveContainer>
-
-            {/* Quick hack: Recharts Scatter data binding is tricky in ComposedChart. 
-                We might need to map specific keys.
-                Trying to customize the Scatter props above.
-            */}
         </div>
     );
 }
-
-// Helper to fix Scatter Key binding:
-// Recharts ComposedChart usually shares 'data' prop from parent, but we can pass 'data' to children.
-// For Raw Scatter: data={jitteredData}, xKey="xJitter", yKey="value"
-// For Summary Scatter: data={summaryData}, xKey="x", yKey="mean"
-

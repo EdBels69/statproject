@@ -1,35 +1,121 @@
 import React, { useState, useEffect } from 'react';
-import { getDatasets, getDataset, scanDataset as getScanReport, cleanColumn } from '@/lib/api';
-import { DocumentIcon, ArrowPathIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { getDatasets, getDataset, getScanReport, cleanColumn, imputeMice } from '@/lib/api';
+import { DocumentIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 /* -- HELPER: Cleaning Alert -- */
-const CleaningWizardAlert = ({ report, onFix }) => {
-    if (!report || !report.issues || report.issues.length === 0) return null;
+const CleaningWizardAlert = ({ report, onFix, onMice }) => {
+    if (!report) return null;
+
+    const issues = Array.isArray(report.issues) ? report.issues : [];
+    const hasIssues = issues.length > 0;
+    const missingReport = report.missing_report;
+    const missingByColumn = Array.isArray(missingReport?.by_column) ? missingReport.by_column : [];
+    const hasMissing = missingByColumn.length > 0;
+
+    if (!hasIssues && !hasMissing) return null;
+
+    const isNumericColumn = (columnName) => {
+        const col = report?.columns?.[columnName];
+        const t = String(col?.type || '').toLowerCase();
+        return t.includes('int') || t.includes('float');
+    };
 
     return (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 animate-fadeIn">
             <div className="flex items-start">
                 <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 mt-0.5 mr-3" />
                 <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-amber-900">
-                        Data Quality Issues Detected
-                    </h3>
-                    <div className="mt-2 space-y-2">
-                        {report.issues.map((issue, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm text-amber-800 bg-amber-100 p-2 rounded">
-                                <span>
-                                    <strong>{issue.column}</strong>: {issue.details}
-                                </span>
+                    <h3 className="text-sm font-semibold text-amber-900">Data Preparation</h3>
+
+                    {hasMissing && (
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-amber-700/80">Missing Values</div>
                                 <button
-                                    onClick={() => onFix(issue.column, "to_numeric")}
-                                    className="ml-4 flex items-center px-3 py-1 bg-white border border-amber-300 rounded hover:bg-amber-50 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                    type="button"
+                                    onClick={() => {
+                                        const cols = missingByColumn
+                                            .map(m => m?.column)
+                                            .filter(Boolean)
+                                            .filter(isNumericColumn);
+                                        if (cols.length > 0) onMice(cols);
+                                    }}
+                                    className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
                                 >
-                                    <SparklesIcon className="w-3 h-3 mr-1.5 inline" />
-                                    Auto-Fix
+                                    MICE
                                 </button>
                             </div>
-                        ))}
-                    </div>
+                            <div className="mt-2 space-y-2">
+                                {missingByColumn.slice(0, 8).map((m) => (
+                                    <div key={m.column} className="flex items-center justify-between gap-3 text-sm text-amber-900 bg-amber-100/70 p-2 rounded">
+                                        <div className="min-w-0">
+                                            <div className="truncate font-semibold">{m.column}</div>
+                                            <div className="text-xs text-amber-800/80">{m.missing_count} missing ({m.missing_percent}%)</div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            {isNumericColumn(m.column) && (
+                                                <>
+                                                    <button
+                                                        onClick={() => onFix(m.column, 'fill_mean')}
+                                                        className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
+                                                    >
+                                                        Mean
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onFix(m.column, 'fill_median')}
+                                                        className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
+                                                    >
+                                                        Median
+                                                    </button>
+                                                </>
+                                            )}
+                                            <button
+                                                onClick={() => onFix(m.column, 'fill_locf')}
+                                                className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
+                                            >
+                                                LOCF
+                                            </button>
+                                            <button
+                                                onClick={() => onFix(m.column, 'fill_nocb')}
+                                                className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
+                                            >
+                                                NOCB
+                                            </button>
+                                            <button
+                                                onClick={() => onFix(m.column, 'drop_na')}
+                                                className="px-2 py-1 rounded border border-amber-300 bg-white text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
+                                            >
+                                                Drop
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {hasIssues && (
+                        <div className="mt-4">
+                            <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-amber-700/80">Type Issues</div>
+                            <div className="mt-2 space-y-2">
+                                {issues.filter(i => i?.type === 'mixed_type').slice(0, 8).map((issue, idx) => (
+                                    <div key={`${issue.column}-${idx}`} className="flex items-center justify-between text-sm text-amber-800 bg-amber-100 p-2 rounded">
+                                        <span>
+                                            <strong>{issue.column}</strong>: {issue.details}
+                                        </span>
+                                        <button
+                                            onClick={() => onFix(issue.column, "to_numeric")}
+                                            className="ml-4 flex items-center px-3 py-1 rounded text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                        >
+                                            <SparklesIcon className="w-3 h-3 mr-1.5 inline" />
+                                            To Numeric
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -38,7 +124,6 @@ const CleaningWizardAlert = ({ report, onFix }) => {
 
 /* -- HELPER: Variable Mapper -- */
 const VariableMapper = ({ columns, goal, variables, setVariables }) => {
-    // Define required fields based on goal
     const fields = {
         compare_groups: [
             { key: 'target', label: 'Dependent Variable (Outcome)', type: 'numeric' },
@@ -56,6 +141,11 @@ const VariableMapper = ({ columns, goal, variables, setVariables }) => {
             { key: 'duration', label: 'Time to Event', type: 'numeric' },
             { key: 'event', label: 'Event Status (0/1)', type: 'binary' },
             { key: 'group', label: 'Group (Optional)', type: 'categorical' },
+        ],
+        repeated_measures: [
+            { key: 'target', label: 'Dependent Variable (Outcome)', type: 'numeric' },
+            { key: 'time', label: 'Timepoint / Condition', type: 'categorical' },
+            { key: 'subject', label: 'Subject ID (Repeated Measures)', type: 'categorical' },
         ]
     }[goal] || [];
 
@@ -155,9 +245,6 @@ const StepData = ({ goal, onDataReady, onNext }) => {
             getScanReport(selectedDataset)
                 .then(setScanReport)
                 .catch(err => console.error("Scan report load failed", err));
-        } else {
-            setColumns([]);
-            setScanReport(null);
         }
     }, [selectedDataset]);
 
@@ -166,11 +253,24 @@ const StepData = ({ goal, onDataReady, onNext }) => {
             // Apply fix
             const newProfile = await cleanColumn(selectedDataset, column, action);
             // Refresh columns and report
-            setColumns(newProfile.columns || []);
+            const cols = (newProfile.columns || []).map(c => (typeof c === 'string' ? c : c.name));
+            setColumns(cols);
             const newReport = await getScanReport(selectedDataset);
             setScanReport(newReport);
         } catch (e) {
             alert("Fix failed: " + e.message);
+        }
+    };
+
+    const handleMice = async (cols) => {
+        try {
+            const newProfile = await imputeMice(selectedDataset, cols);
+            const nextCols = (newProfile.columns || []).map(c => (typeof c === 'string' ? c : c.name));
+            setColumns(nextCols);
+            const newReport = await getScanReport(selectedDataset);
+            setScanReport(newReport);
+        } catch (e) {
+            alert("MICE failed: " + e.message);
         }
     };
 
@@ -207,7 +307,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
             <div className="lg:col-span-2 pl-4 flex flex-col h-full">
                 <h3 className="text-lg font-semibold mb-4">2. Map Variables</h3>
 
-                <CleaningWizardAlert report={scanReport} onFix={handleClean} />
+                <CleaningWizardAlert report={scanReport} onFix={handleClean} onMice={handleMice} />
 
                 {!selectedDataset ? (
                     <div className="text-gray-400 text-sm italic py-10 bg-gray-50 rounded-lg text-center border border-dashed border-gray-200">

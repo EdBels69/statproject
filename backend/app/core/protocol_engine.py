@@ -1,10 +1,26 @@
 import pandas as pd
-from typing import List, Dict, Any
+import numpy as np
+from typing import List, Dict, Any, Optional
 from app.stats.engine import run_analysis, select_test
 from app.core.pipeline import PipelineManager
 from app.stats.registry import get_method
 from app.modules.text_generator import TextGenerator
 from app.core.logging import logger
+from app.stats.mixed_effects import MixedEffectsEngine
+from app.stats.clustered_correlation import ClusteredCorrelationEngine
+
+# Standard statistical methods for protocol fallback
+STANDARD_METHODS = [
+    "t_test_independent",
+    "t_test_paired",
+    "anova_one_way",
+    "anova_repeated",
+    "correlation_pearson",
+    "correlation_spearman",
+    "chi_square",
+    "regression_linear",
+    "regression_logistic"
+]
 
 class ProtocolEngine:
     """
@@ -29,7 +45,7 @@ class ProtocolEngine:
             return [self._sanitize(v) for v in obj]
         return obj
 
-    def execute_protocol(self, dataset_id: str, df: pd.DataFrame, protocol: Dict[str, Any]) -> str:
+    def execute_protocol(self, dataset_id: str, df: pd.DataFrame, protocol: Dict[str, Any], alpha: float = 0.05) -> str:
         """
         Runs the full protocol.
         """
@@ -49,22 +65,30 @@ class ProtocolEngine:
                 
                 # Dynamic Dispatch based on step type
                 if step_type == "compare" or step_type == "correlation":
-                    res = self._run_compare(df, step)
+                    res = self._run_compare(df, step, alpha)
                 elif step_type == "survival":
-                    res = self._run_survival(df, step)
+                    res = self._run_survival(df, step, alpha)
                 elif step_type == "regression":
-                    res = self._run_regression(df, step)
+                    res = self._run_regression(df, step, alpha)
                 elif step_type == "descriptive_compare":
                     res = self._run_desc_compare(df, step)
                 elif step_type == "batch_compare_by_factor":
-                    res = self._run_batch_compare_by_factor(df, step)
+                    res = self._run_batch_compare_by_factor(df, step, alpha)
                 elif step_type == "hypothesis_test":
-                    res = self._run_hypothesis_test(df, step)
+                    res = self._run_hypothesis_test(df, step, alpha)
+                elif step_type == "mixed_effects":
+                    res = self._run_mixed_effects(df, step, alpha)
+                elif step_type == "clustered_correlation":
+                    res = self._run_clustered_correlation(df, step, alpha)
                 else:
                     res = {"error": f"Unknown step type: {step_type}"}
                 
                 results_map[step_id] = res
                 log.append(f"Step {step_id} completed.")
+                
+                # Force garbage collection after each step for M1 8GB
+                import gc
+                gc.collect()
                 
             except Exception as e:
                 import traceback
@@ -87,6 +111,107 @@ class ProtocolEngine:
         
         return run_dir.split("/")[-1]
 
+    def execute_v2_protocol(self, dataset_id: str, df: pd.DataFrame, protocol: List[Dict], alpha: float = 0.05) -> Dict[str, Any]:
+        """
+        Execute v2 protocol with support for mixed_effects and clustered_correlation.
+        
+        Args:
+            dataset_id: Dataset identifier
+            df: DataFrame to analyze
+            protocol: List of analysis steps with method and config
+            alpha: Significance level
+        
+        Returns:
+            Dict with results, errors, and statistics
+        """
+        results = []
+        errors = []
+        
+        for step in protocol:
+            method_id = step.get("method")
+            config = step.get("config", {})
+            step_id = step.get("id", f"step_{len(results) + 1}")
+            
+            try:
+                if method_id == "mixed_effects":
+                    outcome = config.get("outcome")
+                    time_col = config.get("time")
+                    group_col = config.get("group")
+                    subject_col = config.get("subject")
+                    covariates = config.get("covariates", [])
+                    random_slope = config.get("random_slope", False)
+                    
+                    engine = MixedEffectsEngine(max_memory_mb=800)
+                    result = engine.fit(df, outcome, time_col, group_col, subject_col, covariates, random_slope, alpha)
+                    
+                    results.append({
+                        "step_id": step_id,
+                        "method": method_id,
+                        "status": "completed",
+                        "results": result
+                    })
+                
+                elif method_id == "clustered_correlation":
+                    variables = config.get("variables", [])
+                    method = config.get("method", "pearson")
+                    linkage_method = config.get("linkage_method", "ward")
+                    n_clusters = config.get("n_clusters")
+                    distance_threshold = config.get("distance_threshold")
+                    show_p_values = config.get("show_p_values", True)
+                    
+                    engine = ClusteredCorrelationEngine()
+                    result = engine.analyze(
+                        df, variables, method, linkage_method, n_clusters,
+                        distance_threshold, show_p_values, alpha
+                    )
+                    
+                    results.append({
+                        "step_id": step_id,
+                        "method": method_id,
+                        "status": "completed",
+                        "results": result
+                    })
+                
+                elif method_id in STANDARD_METHODS:
+                    outcome = config.get("outcome")
+                    group = config.get("group")
+                    
+                    if outcome and group:
+                        raw_res = run_analysis(df, method_id, outcome, group, alpha)
+                        
+                        results.append({
+                            "step_id": step_id,
+                            "method": method_id,
+                            "status": "completed",
+                            "results": raw_res
+                        })
+                    else:
+                        raise ValueError(f"Missing required config for {method_id}")
+                
+                else:
+                    raise ValueError(f"Method {method_id} not implemented")
+                
+                # Force garbage collection after each step
+                import gc
+                gc.collect()
+                
+            except Exception as e:
+                logger.error(f"Step {step_id} failed: {e}", exc_info=True)
+                errors.append({
+                    "step_id": step_id,
+                    "method": method_id,
+                    "error": str(e)
+                })
+        
+        return {
+            "status": "completed" if not errors else "partial",
+            "results": results,
+            "errors": errors,
+            "total_steps": len(protocol),
+            "completed_steps": len(results),
+            "failed_steps": len(errors)
+        }
+
     def _run_desc_compare(self, df: pd.DataFrame, step: Dict) -> Dict:
         from app.stats.engine import compute_descriptive_compare
         return {
@@ -94,7 +219,7 @@ class ProtocolEngine:
             "data": compute_descriptive_compare(df, step["target"], step["group"])
         }
 
-    def _run_batch_compare_by_factor(self, df: pd.DataFrame, step: Dict) -> Dict:
+    def _run_batch_compare_by_factor(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         """
         Iterates over a splitting factor (e.g. Timepoint) and runs comparison for each slice.
         """
@@ -115,7 +240,7 @@ class ProtocolEngine:
             sub_step = {"target": target, "group": group, "method": step.get("method")}
             
             # Re-use existing compare logic
-            results[str(s)] = self._run_compare(sub_df, sub_step)
+            results[str(s)] = self._run_compare(sub_df, sub_step, alpha)
             
         return {
             "type": "longitudinal_comparison",
@@ -123,7 +248,7 @@ class ProtocolEngine:
             "slices": results
         }
 
-    def _run_hypothesis_test(self, df: pd.DataFrame, step: Dict[str, Any]) -> Dict[str, Any]:
+    def _run_hypothesis_test(self, df: pd.DataFrame, step: Dict[str, Any], alpha: float = 0.05) -> Dict[str, Any]:
         """
         Runs a statistical test (T-test, ANOVA, etc.)
         """
@@ -152,6 +277,7 @@ class ProtocolEngine:
         # 2. Run
         try:
             # Pass full step config as kwargs (allows 'test_value' for one-sample, 'detailed' flags, etc.)
+            step["alpha"] = alpha
             raw_res = run_analysis(df, method_id, target, group, **step)
             
             # Start with raw results (preserves AUC, custom stats)
@@ -174,7 +300,7 @@ class ProtocolEngine:
         except Exception as e:
             return {"error": str(e)}
 
-    def _run_compare(self, df: pd.DataFrame, step: Dict) -> Dict:
+    def _run_compare(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         target = step.get("target")
         group = step.get("group")
         
@@ -195,6 +321,7 @@ class ProtocolEngine:
         if not method_id:
             return {"error": "Could not select method"}
             
+        step["alpha"] = alpha
         raw_res = run_analysis(df, method_id, target, group, **step)
         
         # Format for storage
@@ -214,12 +341,12 @@ class ProtocolEngine:
         
         return result_dict
 
-    def _run_survival(self, df: pd.DataFrame, step: Dict) -> Dict:
+    def _run_survival(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         time_col = step.get("time")
         event_col = step.get("event")
         group_col = step.get("group")
         
-        raw_res = run_analysis(df, "survival_km", time_col, event_col, group_col=group_col)
+        raw_res = run_analysis(df, "survival_km", time_col, event_col, group_col=group_col, alpha=alpha)
         
         return {
             "method": get_method("survival_km"),
@@ -228,14 +355,14 @@ class ProtocolEngine:
             "km_stats": raw_res.get("stat_value")
         }
 
-    def _run_regression(self, df: pd.DataFrame, step: Dict) -> Dict:
+    def _run_regression(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         target = step.get("target")
         predictors = step.get("predictors", [])
         kind = step.get("kind", "linear") # linear or logistic
         
         method_id = "logistic_regression" if kind == "logistic" else "linear_regression"
         
-        raw_res = run_analysis(df, method_id, target, predictors[0], predictors=predictors)
+        raw_res = run_analysis(df, method_id, target, predictors[0], predictors=predictors, alpha=alpha)
         
         return {
             "method": get_method(method_id),
@@ -243,3 +370,65 @@ class ProtocolEngine:
             "coefficients": raw_res.get("coefficients"),
             "p_value": raw_res.get("p_value")
         }
+
+    def _run_mixed_effects(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
+        """
+        Run Linear Mixed Model (LMM) analysis.
+        """
+        outcome = step.get("outcome")
+        time_col = step.get("time_column")
+        group_col = step.get("group_column")
+        subject_col = step.get("subject_column")
+        covariates = step.get("covariates", [])
+        random_slope = step.get("random_slopes", False)
+        
+        try:
+            engine = MixedEffectsEngine(max_memory_mb=800)
+            result = engine.fit(df, outcome, time_col, group_col, subject_col, covariates, random_slope, alpha)
+            
+            return {
+                "type": "mixed_effects",
+                "method": get_method("mixed_effects"),
+                "fixed_effects": result.get("fixed_effects"),
+                "random_effects": result.get("random_effects"),
+                "interaction_p_value": result.get("interaction_p_value"),
+                "model_statistics": result.get("model_statistics"),
+                "estimated_means": result.get("estimated_means"),
+                "plot_data": result.get("plot_data")
+            }
+        except Exception as e:
+            logger.error(f"Mixed effects analysis failed: {e}", exc_info=True)
+            return {"error": str(e)}
+
+    def _run_clustered_correlation(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
+        """
+        Run clustered correlation analysis with dendrogram.
+        """
+        variables = step.get("variables", [])
+        method = step.get("method", "pearson")
+        linkage_method = step.get("linkage_method", "ward")
+        n_clusters = step.get("n_clusters")
+        distance_threshold = step.get("distance_threshold")
+        show_p_values = step.get("show_p_values", True)
+        
+        try:
+            engine = ClusteredCorrelationEngine()
+            result = engine.analyze(
+                df, variables, method, linkage_method, n_clusters,
+                distance_threshold, show_p_values, alpha
+            )
+            
+            return {
+                "type": "clustered_correlation",
+                "method": get_method("clustered_correlation"),
+                "correlation_matrix": result.get("correlation_matrix"),
+                "p_values": result.get("p_values"),
+                "cluster_assignments": result.get("cluster_assignments"),
+                "dendrogram_data": result.get("dendrogram_data"),
+                "optimal_n_clusters": result.get("optimal_n_clusters"),
+                "cluster_stats": result.get("cluster_stats"),
+                "plot_data": result.get("plot_data")
+            }
+        except Exception as e:
+            logger.error(f"Clustered correlation analysis failed: {e}", exc_info=True)
+            return {"error": str(e)}

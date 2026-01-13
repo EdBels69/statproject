@@ -2,25 +2,64 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/workspace:/app/workspace
+      - backend_data:/app/workspace
     environment:
       - DATA_DIR=/app/workspace/datasets
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - PYTHON_MEMORY_LIMIT=1200M
+      - PANDAS_MEMORY_MODE=conservative
+      - MALLOC_ARENA_MAX=2
+      - PYTHONHASHSEED=0
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
-      - pro-cmt-net
+      - statproject-net
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 200M
+        reservations:
+          cpus: '0.25'
+          memory: 100M
+    restart: unless-stopped
     networks:
-      - pro-cmt-net
+      - statproject-net
+
+volumes:
+  backend_data:
+    driver: local
 
 networks:
-  pro-cmt-net:
+  statproject-net:
     driver: bridge

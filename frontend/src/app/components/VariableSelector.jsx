@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 
 const TypeIcon = ({ type }) => {
     const getLabel = () => {
@@ -25,44 +25,40 @@ const TypeIcon = ({ type }) => {
 };
 
 export default function VariableSelector({ allColumns, onRun, loading }) {
-    const [available, setAvailable] = useState([]);
     const [targetCols, setTargetCols] = useState([]);
     const [groupCol, setGroupCol] = useState(null);
-    const [selectedAvailable, setSelectedAvailable] = useState([]);
-    const [selectedTargets, setSelectedTargets] = useState([]);
+    const [selectedAvailableNames, setSelectedAvailableNames] = useState([]);
+    const [selectedTargetNames, setSelectedTargetNames] = useState([]);
 
-    useEffect(() => {
-        if (allColumns.length > 0 && available.length === 0 && targetCols.length === 0 && !groupCol) {
-            setAvailable(allColumns);
-        }
-    }, [allColumns]);
+    const available = useMemo(() => {
+        const taken = new Set([
+            ...targetCols.map(c => c?.name).filter(Boolean),
+            groupCol?.name
+        ].filter(Boolean));
+        return (Array.isArray(allColumns) ? allColumns : []).filter(c => c && !taken.has(c.name));
+    }, [allColumns, targetCols, groupCol]);
 
     const moveRightTarget = () => {
-        const toMove = selectedAvailable.filter(c => !groupCol || c.name !== groupCol.name);
+        const toMove = available.filter(c => selectedAvailableNames.includes(c.name));
         setTargetCols([...targetCols, ...toMove]);
-        setAvailable(available.filter(c => !toMove.includes(c)));
-        setSelectedAvailable([]);
+        setSelectedAvailableNames([]);
     };
 
     const moveRightGroup = () => {
-        if (selectedAvailable.length !== 1) return;
-        const col = selectedAvailable[0];
-        setGroupCol(col);
-        setAvailable(available.filter(c => c !== col));
-        setSelectedAvailable([]);
+        if (selectedAvailableNames.length !== 1) return;
+        const next = available.find(c => c.name === selectedAvailableNames[0]);
+        if (!next) return;
+        setGroupCol(next);
+        setSelectedAvailableNames([]);
     };
 
     const moveLeftTarget = () => {
-        setAvailable([...available, ...selectedTargets]);
-        setTargetCols(targetCols.filter(c => !selectedTargets.includes(c)));
-        setSelectedTargets([]);
+        setTargetCols(targetCols.filter(c => !selectedTargetNames.includes(c.name)));
+        setSelectedTargetNames([]);
     };
 
     const removeGroup = () => {
-        if (groupCol) {
-            setAvailable([...available, groupCol]);
-            setGroupCol(null);
-        }
+        if (groupCol) setGroupCol(null);
     };
 
     const renderItem = (col, isSelected, onClick) => (
@@ -165,25 +161,26 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         <span style={labelStyle}>Available</span>
                         <span style={countStyle}>{available.length}</span>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto' }}>
-                        {available.map(col => renderItem(
-                            col,
-                            selectedAvailable.includes(col),
-                            () => {
-                                if (selectedAvailable.includes(col))
-                                    setSelectedAvailable(selectedAvailable.filter(c => c !== col));
-                                else
-                                    setSelectedAvailable([...selectedAvailable, col]);
-                            }
-                        ))}
-                    </div>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                    {available.map(col => renderItem(
+                        col,
+                        selectedAvailableNames.includes(col.name),
+                        () => {
+                                if (selectedAvailableNames.includes(col.name)) {
+                                    setSelectedAvailableNames(selectedAvailableNames.filter(n => n !== col.name));
+                                } else {
+                                    setSelectedAvailableNames([...selectedAvailableNames, col.name]);
+                                }
+                        }
+                    ))}
+                </div>
                 </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                     <button
                         onClick={moveRightTarget}
-                        disabled={selectedAvailable.length === 0}
+                        disabled={selectedAvailableNames.length === 0}
                         className="btn-secondary"
                         style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
@@ -191,7 +188,7 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                     </button>
                     <button
                         onClick={moveLeftTarget}
-                        disabled={selectedTargets.length === 0}
+                        disabled={selectedTargetNames.length === 0}
                         className="btn-secondary"
                         style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
@@ -221,12 +218,13 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         )}
                         {targetCols.map(col => renderItem(
                             col,
-                            selectedTargets.includes(col),
+                            selectedTargetNames.includes(col.name),
                             () => {
-                                if (selectedTargets.includes(col))
-                                    setSelectedTargets(selectedTargets.filter(c => c !== col));
-                                else
-                                    setSelectedTargets([...selectedTargets, col]);
+                                if (selectedTargetNames.includes(col.name)) {
+                                    setSelectedTargetNames(selectedTargetNames.filter(n => n !== col.name));
+                                } else {
+                                    setSelectedTargetNames([...selectedTargetNames, col.name]);
+                                }
                             }
                         ))}
                     </div>
@@ -242,14 +240,14 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         <span style={labelStyle}>Grouping (X)</span>
                         <button
                             onClick={moveRightGroup}
-                            disabled={selectedAvailable.length !== 1 || !!groupCol}
+                            disabled={selectedAvailableNames.length !== 1 || !!groupCol}
                             style={{
                                 fontSize: '9px',
                                 color: 'var(--accent)',
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                opacity: selectedAvailable.length !== 1 || !!groupCol ? 0 : 1
+                                opacity: selectedAvailableNames.length !== 1 || !!groupCol ? 0 : 1
                             }}
                         >
                             Assign

@@ -32,8 +32,15 @@ class SmartScanner:
         report = {
             "columns": {},
             "issues": [],
-            "reorder_suggestion": []
+            "reorder_suggestion": [],
+            "missing_report": {
+                "total_rows": int(len(df)),
+                "columns_with_missing": 0,
+                "by_column": []
+            }
         }
+
+        missing_by_column = []
         
         for col in df.columns:
             # Analyze column (Combines profiling + smart checks)
@@ -48,9 +55,33 @@ class SmartScanner:
                     "severity": "high",
                     "details": f"Contains {col_report['numeric_convertible_percent']}% numbers but formatted as text."
                 })
+
+            missing_count = int(col_report.get("missing_count") or 0)
+            if missing_count > 0:
+                missing_percent = round((missing_count / max(1, len(df))) * 100, 2)
+                missing_by_column.append({
+                    "column": str(col),
+                    "missing_count": missing_count,
+                    "missing_percent": missing_percent,
+                    "total": int(len(df))
+                })
+
+                report["issues"].append({
+                    "column": str(col),
+                    "type": "missing",
+                    "severity": "medium",
+                    "details": f"{missing_count} missing ({missing_percent}%)."
+                })
         
         # Reorder suggestions
         report["reorder_suggestion"] = self._suggest_order(df, report["columns"])
+
+        missing_by_column.sort(key=lambda x: x["missing_count"], reverse=True)
+        report["missing_report"] = {
+            "total_rows": int(len(df)),
+            "columns_with_missing": int(len(missing_by_column)),
+            "by_column": missing_by_column
+        }
 
         # Merge for API convenience
         # The frontend expects 'profile' to be the top level object for /upload response

@@ -157,7 +157,7 @@ export default function AnalyticsChart({ result }) {
                             <Tooltip
                                 cursor={{ fill: 'transparent' }}
                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                formatter={(val, name, props) => {
+                                formatter={(val, name) => {
                                     if (isLogistic && name === "OR") return [val.toFixed(2), "Odds Ratio"];
                                     return [val.toFixed(3), name];
                                 }}

@@ -1,6 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
-export async function uploadDataset(file: File) {
+export function getAlphaSetting() {
+  const savedAlpha = localStorage.getItem('statwizard_alpha');
+  return savedAlpha ? parseFloat(savedAlpha) : 0.05;
+}
+
+export async function uploadDataset(file) {
   const formData = new FormData();
   formData.append("file", file);
   const response = await fetch(`${API_URL}/datasets`, {
@@ -22,7 +27,7 @@ export async function getDatasets() {
   return response.json();
 }
 
-export async function deleteDataset(id: string) {
+export async function deleteDataset(id) {
   const response = await fetch(`${API_URL}/datasets/${id}`, {
     method: "DELETE",
   });
@@ -32,7 +37,7 @@ export async function deleteDataset(id: string) {
   return response.json();
 }
 
-export async function getWizardRecommendation(data: any) {
+export async function getWizardRecommendation(data) {
   const response = await fetch(`${API_URL}/wizard/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,7 +47,7 @@ export async function getWizardRecommendation(data: any) {
   return response.json();
 }
 
-export async function applyStrategy(data: any) {
+export async function applyStrategy(data) {
   const response = await fetch(`${API_URL}/wizard/apply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -58,13 +63,13 @@ export async function listDatasets() {
   return response.json();
 }
 
-export async function getDataset(id: string) {
+export async function getDataset(id) {
   const response = await fetch(`${API_URL}/datasets/${id}`);
   if (!response.ok) throw new Error("Failed to fetch dataset");
   return response.json();
 }
 
-export async function exportReport(payload: { results: any, variables: any, dataset_id: string }) {
+export async function exportReport(payload) {
   const response = await fetch(`${API_URL}/wizard/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,13 +79,13 @@ export async function exportReport(payload: { results: any, variables: any, data
   return await response.blob();
 }
 
-export async function getSheets(datasetId: string) {
+export async function getSheets(datasetId) {
   const response = await fetch(`${API_URL}/datasets/${datasetId}/sheets`);
   if (!response.ok) throw new Error("Failed to fetch sheets");
   return response.json();
 }
 
-export async function getDatasetContent(datasetId: string, sheetName?: string) {
+export async function getDatasetContent(datasetId, sheetName) {
   const url = sheetName
     ? `${API_URL}/datasets/${datasetId}/content?sheet=${encodeURIComponent(sheetName)}`
     : `${API_URL}/datasets/${datasetId}/content`;
@@ -89,7 +94,7 @@ export async function getDatasetContent(datasetId: string, sheetName?: string) {
   return response.json();
 }
 
-export async function cleanColumn(id: string, column: string, action: string) {
+export async function cleanColumn(id, column, action) {
   const response = await fetch(`${API_URL}/datasets/${id}/clean_column`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -99,9 +104,19 @@ export async function cleanColumn(id: string, column: string, action: string) {
   return response.json();
 }
 
+export async function imputeMice(id, columns, options = {}) {
+  const response = await fetch(`${API_URL}/datasets/${id}/impute_mice`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ columns, ...options }),
+  });
+  if (!response.ok) throw new Error("Failed to run MICE imputation");
+  return response.json();
+}
+
 /* -- ANALYSIS PROTOCOL API -- */
 
-export async function suggestAnalysisDesign(datasetId: string, goal: string, variables: any) {
+export async function suggestAnalysisDesign(datasetId, goal, variables) {
   const response = await fetch(`${API_URL}/analysis/design`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -111,24 +126,23 @@ export async function suggestAnalysisDesign(datasetId: string, goal: string, var
   return response.json();
 }
 
-export async function runAnalysisProtocol(datasetId: string, protocol: any) {
+export async function runAnalysisProtocol(datasetId, protocol) {
   const response = await fetch(`${API_URL}/analysis/protocol/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataset_id: datasetId, protocol }),
+    body: JSON.stringify({ dataset_id: datasetId, protocol, alpha: getAlphaSetting() }),
   });
   if (!response.ok) throw new Error("Failed to run analysis protocol");
-  return response.json(); // Expected { run_id: "...", status: "completed" }
+  return response.json();
 }
 
-export async function getAnalysisResults(datasetId: string, runId: string) {
-  // Note: backend requires dataset_id param for hierarchy lookup
+export async function getAnalysisResults(datasetId, runId) {
   const response = await fetch(`${API_URL}/analysis/run/${runId}?dataset_id=${datasetId}`);
   if (!response.ok) throw new Error("Failed to get analysis results");
   return response.json();
 }
 
-export async function modifyDataset(id: string, modifications: any) {
+export async function modifyDataset(id, modifications) {
   const response = await fetch(`${API_URL}/datasets/${id}/modify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -138,7 +152,7 @@ export async function modifyDataset(id: string, modifications: any) {
   return response.json();
 }
 
-export async function reparseDataset(id: string, something: any, sheetName: string) {
+export async function reparseDataset(id, something, sheetName) {
   const response = await fetch(`${API_URL}/datasets/${id}/reparse?sheet=${encodeURIComponent(sheetName)}`, {
     method: "POST"
   });
@@ -146,15 +160,20 @@ export async function reparseDataset(id: string, something: any, sheetName: stri
   return response.json();
 }
 
-export async function scanDataset(id: string) {
+export async function scanDataset(id) {
   const response = await fetch(`${API_URL}/quality/scan/${id}`);
   if (!response.ok) throw new Error("Scan failed");
   return response.json();
 }
 
-export async function downloadBatchReport(datasetId: string, batchResult: any, selectedVar: string | null) {
+export async function getScanReport(id) {
+  const response = await fetch(`${API_URL}/datasets/${id}/scan_report`);
+  if (!response.ok) throw new Error("Scan report failed");
+  return response.json();
+}
+
+export async function downloadBatchReport(datasetId, batchResult, selectedVar) {
   try {
-    // Prepare export data from batch results
     const varResult = selectedVar && batchResult?.results?.[selectedVar];
     const results = varResult
       ? {
@@ -200,11 +219,11 @@ export async function downloadBatchReport(datasetId: string, batchResult: any, s
   }
 }
 
-export function getPDFExportUrl(datasetId: string, variable: string, groupColumn: string = 'Group') {
+export function getPDFExportUrl(datasetId, variable, groupColumn = 'Group') {
   return `${API_URL}/wizard/export/${datasetId}/${encodeURIComponent(variable)}?group_column=${encodeURIComponent(groupColumn)}`;
 }
 
-export async function reprocessDataset(id: string) {
+export async function reprocessDataset(id) {
   const response = await fetch(`${API_URL}/datasets/${id}/reprocess`, {
     method: "POST"
   });
@@ -212,11 +231,11 @@ export async function reprocessDataset(id: string) {
   return response.json();
 }
 
-export async function runBatchAnalysis(datasetId: string, targets: string[], groupColumn: string) {
+export async function runBatchAnalysis(datasetId, targets, groupColumn) {
   const response = await fetch(`${API_URL}/analysis/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn }),
+    body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn, alpha: getAlphaSetting() }),
   });
   if (!response.ok) throw new Error("Batch analysis failed");
   return response.json();

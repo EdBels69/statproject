@@ -70,6 +70,10 @@ def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
     parquet_path = os.path.join(upload_dir, "processed", f"{dataset_id}.parquet")
     if os.path.exists(parquet_path):
         return pd.read_parquet(parquet_path)
+
+    pipeline_csv_path = os.path.join(upload_dir, "processed", "data.csv")
+    if os.path.exists(pipeline_csv_path):
+        return pd.read_csv(pipeline_csv_path)
         
     processed_path = os.path.join(upload_dir, "processed.csv")
     if os.path.exists(processed_path):

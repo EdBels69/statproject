@@ -1,6 +1,7 @@
 
 import sys
 import os
+import json
 import pandas as pd
 import numpy as np
 from fastapi.testclient import TestClient
@@ -12,6 +13,9 @@ import shutil
 client = TestClient(app)
 TEST_ID = "test_dataset_integration"
 TEST_DIR = os.path.join(DATA_DIR, TEST_ID)
+
+TEST_ID_PREP = "test_dataset_data_prep"
+TEST_DIR_PREP = os.path.join(DATA_DIR, TEST_ID_PREP)
 
 def setup_test_data():
     if os.path.exists(TEST_DIR):
@@ -156,6 +160,117 @@ def test_full_flow():
     print(f"One Sample Conclusion: {res_3['conclusion']}")
     assert res_3['significant']
     assert "differs significantly" in res_3['conclusion']
+
+
+def setup_prep_data():
+    if os.path.exists(TEST_DIR_PREP):
+        shutil.rmtree(TEST_DIR_PREP)
+    os.makedirs(os.path.join(TEST_DIR_PREP, "processed"), exist_ok=True)
+
+    df = pd.DataFrame(
+        {
+            "Value": [1.0, np.nan, 2.0, np.nan],
+            "Other": [10.0, 11.0, np.nan, 13.0],
+            "Cat": ["x", None, "x", "y"],
+            "ValueStr": ["1", "2", None, "4"],
+        }
+    )
+
+    df.to_csv(os.path.join(TEST_DIR_PREP, "processed", "data.csv"), index=False)
+    with open(os.path.join(TEST_DIR_PREP, "processed", "scan_report.json"), "w") as f:
+        f.write("{}")
+
+
+def test_data_prep_clean_column_fill_median_and_log():
+    setup_prep_data()
+
+    resp = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "Value", "action": "fill_median"},
+    )
+    assert resp.status_code == 200, resp.text
+    profile = resp.json()
+
+    value_col = next(c for c in profile["columns"] if c["name"] == "Value")
+    assert value_col["missing_count"] == 0
+
+    log_path = os.path.join(TEST_DIR_PREP, "processed", "cleaning_log.json")
+    assert os.path.exists(log_path)
+    with open(log_path, "r") as f:
+        log = json.load(f)
+    assert log["action"] == "fill_median"
+    assert log["column"] == "Value"
+
+
+def test_data_prep_clean_column_reject_mean_on_text():
+    setup_prep_data()
+
+    resp = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "Cat", "action": "fill_mean"},
+    )
+    assert resp.status_code == 400
+
+
+def test_data_prep_clean_column_fill_mode_and_drop_na():
+    setup_prep_data()
+
+    resp_mode = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "Cat", "action": "fill_mode"},
+    )
+    assert resp_mode.status_code == 200, resp_mode.text
+    profile_mode = resp_mode.json()
+    cat_col = next(c for c in profile_mode["columns"] if c["name"] == "Cat")
+    assert cat_col["missing_count"] == 0
+
+    resp_drop = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "Other", "action": "drop_na"},
+    )
+    assert resp_drop.status_code == 200, resp_drop.text
+    profile_drop = resp_drop.json()
+    assert profile_drop["row_count"] < 4
+
+
+def test_data_prep_to_numeric_and_scan_report_endpoint():
+    setup_prep_data()
+
+    resp = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "ValueStr", "action": "to_numeric"},
+    )
+    assert resp.status_code == 200, resp.text
+    profile = resp.json()
+    value_str_col = next(c for c in profile["columns"] if c["name"] == "ValueStr")
+    assert value_str_col["type"] in {"numeric", "text"}
+
+    report_resp = client.get(f"/api/v1/datasets/{TEST_ID_PREP}/scan_report")
+    assert report_resp.status_code == 200, report_resp.text
+    report = report_resp.json()
+    assert report.get("status") != "no_report"
+
+
+def test_data_prep_mice_imputation_happy_path_and_validation():
+    setup_prep_data()
+
+    resp = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/impute_mice",
+        json={"columns": ["Value", "Other"], "max_iter": 5, "n_imputations": 2, "random_state": 7},
+    )
+    assert resp.status_code == 200, resp.text
+    profile = resp.json()
+
+    value_col = next(c for c in profile["columns"] if c["name"] == "Value")
+    other_col = next(c for c in profile["columns"] if c["name"] == "Other")
+    assert value_col["missing_count"] == 0
+    assert other_col["missing_count"] == 0
+
+    resp_bad = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/impute_mice",
+        json={"columns": []},
+    )
+    assert resp_bad.status_code == 400
 
 if __name__ == "__main__":
     test_full_flow()

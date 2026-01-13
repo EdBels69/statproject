@@ -113,6 +113,14 @@ METHODS = {
         min_groups=3,
         max_groups=100
     ),
+    "friedman": StatMethod(
+        id="friedman",
+        name="Friedman Test",
+        description="Non-parametric alternative to RM-ANOVA. Compares distributions of the same subjects across multiple conditions.",
+        type="non-parametric",
+        min_groups=3,
+        max_groups=100
+    ),
     "mixed_model": StatMethod(
         id="mixed_model",
         name="Linear Mixed Models (LMM)",

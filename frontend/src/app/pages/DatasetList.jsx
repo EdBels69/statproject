@@ -41,6 +41,46 @@ export default function DatasetList() {
                 </Link>
             </div>
 
+            {datasets.length === 0 && (
+                <div className="mb-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 p-8">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Quick Start Guide</h2>
+                    <p className="text-gray-600 mb-6">Get started with statistical analysis in 3 simple steps:</p>
+                    
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4 text-blue-600 font-bold text-lg">1</div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Upload Your Data</h3>
+                            <p className="text-sm text-gray-600 mb-4">Import CSV or Excel files with your clinical study data</p>
+                            <Link 
+                                to="/upload"
+                                className="text-blue-600 text-sm font-medium hover:underline"
+                            >
+                                Upload file &rarr;
+                            </Link>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-4 text-purple-600 font-bold text-lg">2</div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Select Analysis</h3>
+                            <p className="text-sm text-gray-600 mb-4">Choose from 20+ statistical tests powered by AI recommendations</p>
+                            <Link 
+                                to="/wizard"
+                                className="text-purple-600 text-sm font-medium hover:underline"
+                            >
+                                Start wizard &rarr;
+                            </Link>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-4 text-green-600 font-bold text-lg">3</div>
+                            <h3 className="font-semibold text-gray-900 mb-2">Review Insights</h3>
+                            <p className="text-sm text-gray-600 mb-4">Get AI-generated interpretations and export publication-ready reports</p>
+                            <span className="text-gray-400 text-sm">Available after analysis</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
                     {error}
@@ -82,6 +122,12 @@ export default function DatasetList() {
                                         <span>Today</span> {/* Mock date for now */}
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-4">
+                                        <Link
+                                            to={`/design/${ds.id}`}
+                                            className="text-purple-600 hover:text-purple-800 font-medium"
+                                        >
+                                            Design
+                                        </Link>
                                         <Link
                                             to={`/analyze/${ds.id}`}
                                             className="text-blue-600 hover:text-blue-800 font-medium"

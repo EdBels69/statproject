@@ -7,9 +7,12 @@ from pydantic import BaseModel
 import json
 import uuid
 
-from app.schemas.analysis import AnalysisRequest, AnalysisResult, StatMethod
+from app.schemas.analysis import (
+    AnalysisRequest, AnalysisResult, StatMethod, 
+    ProtocolRequest, DesignRequest, BatchAnalysisRequest
+)
 from app.stats.registry import get_method, METHODS
-from app.stats.engine import select_test, run_analysis, compute_batch_descriptives
+from app.stats.engine import select_test, run_analysis
 from app.modules.text_generator import TextGenerator
 from app.core.pipeline import PipelineManager
 from app.core.protocol_engine import ProtocolEngine
@@ -23,17 +26,6 @@ from app.api.datasets import DATA_DIR, parse_file
 router = APIRouter()
 pipeline = PipelineManager(DATA_DIR)
 protocol_engine = ProtocolEngine(pipeline)
-
-# --- Schemas ---
-
-class ProtocolRequest(BaseModel):
-    dataset_id: str
-    protocol: Dict[str, Any]
-
-class DesignRequest(BaseModel):
-    dataset_id: str
-    goal: str # 'compare_groups', 'relationship', etc.
-    variables: Dict[str, Any] # {'target': 'Hb', 'group': 'Treat'}
 
 # --- Endpoints ---
 
@@ -108,8 +100,8 @@ async def run_protocol_api(request: ProtocolRequest):
         # Load Data using centralized helper (Processed > Raw)
         df = get_dataframe(request.dataset_id, DATA_DIR)
         
-        # Run Engine
-        run_id = protocol_engine.execute_protocol(request.dataset_id, df, request.protocol)
+        # Run Engine with alpha parameter
+        run_id = protocol_engine.execute_protocol(request.dataset_id, df, request.protocol, alpha=request.alpha)
         
         return {"status": "success", "run_id": run_id}
         
@@ -118,24 +110,30 @@ async def run_protocol_api(request: ProtocolRequest):
 
 @router.post("/run", response_model=AnalysisResult)
 async def run_method_api(request: AnalysisRequest):
-    # 1. Load Data
-    file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-            
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            header_row = json.load(f).get("header_row", 0)
-            
-    # Load processed or raw
-    processed_path = os.path.join(upload_dir, "processed.csv")
-    if os.path.exists(processed_path):
-        df = pd.read_csv(processed_path)
-    else:
-        df, _ = parse_file(file_path, header_row=header_row)
+    from fastapi.concurrency import run_in_threadpool
+    
+    # 1. Load Data (async via threadpool)
+    async def load_data():
+        file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+                
+        header_row = 0
+        meta_path = os.path.join(upload_dir, "metadata.json")
+        if os.path.exists(meta_path):
+            import json
+            with open(meta_path, "r") as f:
+                header_row = json.load(f).get("header_row", 0)
+                
+        # Load processed or raw
+        processed_path = os.path.join(upload_dir, "processed.csv")
+        if os.path.exists(processed_path):
+            df = pd.read_csv(processed_path)
+        else:
+            df, _ = parse_file(file_path, header_row=header_row)
+        return df
+    
+    df = await run_in_threadpool(load_data)
     
     col_a = request.target_column
     col_b = request.features[0] # Single feature for now
@@ -155,8 +153,8 @@ async def run_method_api(request: AnalysisRequest):
     if not method_id:
          raise HTTPException(status_code=400, detail="Method determination failed.")
 
-    # 3. Run
-    try:
+    # 3. Run (async via threadpool for CPU-bound operations)
+    async def execute_analysis():
         results = run_analysis(df, method_id, col_a, col_b, is_paired=request.is_paired)
         
         # Build AnalysisResult
@@ -172,12 +170,17 @@ async def run_method_api(request: AnalysisRequest):
             plot_stats=results.get("plot_stats"),
             conclusion=""
         )
+        return res
+    
+    try:
+        res = await run_in_threadpool(execute_analysis)
         
-        # AI Conclusion
+        # AI Conclusion (already async)
         ai_conclusion = await get_ai_conclusion(res)
         res.conclusion = ai_conclusion
         return res
     except Exception as e:
+        logger.error(f"Analysis execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     
     
@@ -218,25 +221,24 @@ async def download_report(
     method_id: str = None
 ):
     from fastapi.responses import HTMLResponse
-    from app.reporting import render_report
+    from app.modules.reporting import render_report
     
-    # Re-run analysis logic to get results (similar to /run)
-    # 1. Load Data
-    # 1. Load Data
-    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
-    if not file_path:
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Dataset not found or file missing")
-    
-    # Load metadata
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+
+    dataset_name = f"Dataset {dataset_id[:8]}"
+    meta_path = os.path.join(DATA_DIR, dataset_id, "source", "meta.json")
     if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
-            
-    df, _ = parse_file(file_path, header_row=header_row)
+        try:
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
+                dataset_name = meta.get("original_filename") or dataset_name
+        except Exception:
+            pass
     
     # 2. Determine Method (if not provided)
     col_a = target_col
@@ -286,7 +288,7 @@ async def download_report(
             logger.warning(f"AI Enhancement failed: {e}", exc_info=True)
             
     # 6. Render HTML
-    html_content = render_report(analysis_result, target_col, group_col, dataset_name=files[0])
+    html_content = render_report(analysis_result, target_col, group_col, dataset_name=dataset_name)
     
     return HTMLResponse(content=html_content)
 
@@ -308,107 +310,129 @@ def _sanitize(obj):
 @router.post("/batch", response_model=BatchAnalysisResponse)
 async def run_batch_analysis(request: BatchAnalysisRequest):
     from app.schemas.analysis import DescriptiveStat, BatchAnalysisResponse, AnalysisResult
+    from fastapi.concurrency import run_in_threadpool
     
-    # 1. Load Data
-    file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Dataset not found or file missing")
+    # 1. Load Data (async via threadpool)
+    async def load_batch_data():
+        file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Dataset not found or file missing")
+        
+        # Load metadata
+        header_row = 0
+        meta_path = os.path.join(upload_dir, "metadata.json")
+        if os.path.exists(meta_path):
+            import json
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
+                header_row = meta.get("header_row", 0)
+                
+        try:
+            df, _ = parse_file(file_path, header_row=header_row)
+        except:
+            df = pd.read_csv(file_path)
+        return df
     
-    # Load metadata
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        import json
-        with open(meta_path, "r") as f:
-            meta = json.load(f)
-            header_row = meta.get("header_row", 0)
-            
-    try:
-        df, _ = parse_file(file_path, header_row=header_row)
-    except:
-        df = pd.read_csv(file_path)
+    df = await run_in_threadpool(load_batch_data)
 
-    # 2. Compute Descriptives (Primary)
-    from app.stats.engine import compute_descriptive_compare
-    
-    descriptives = []
-    
-    for col in request.target_columns:
-        if col not in df.columns: continue
+    # 2. Compute Descriptives (async via threadpool)
+    async def compute_descriptives_async():
+        from app.stats.engine import compute_descriptive_compare
         
-        # Get raw stats (returns dict keyed by group -> {mean, count...})
-        raw_stats = compute_descriptive_compare(df, col, request.group_column)
+        descriptives = []
         
-        # Convert to DescriptiveStat objects
-        for grp, stats in raw_stats.items():
-            if grp == "overall" and len(raw_stats) > 1: continue # Skip overall for now or include? Schema has 'group' field.
+        for col in request.target_columns:
+            if col not in df.columns: continue
             
-            # handle nested structure if needed
-            if not isinstance(stats, dict): continue
+            # Get raw stats (returns dict keyed by group -> {mean, count...})
+            raw_stats = compute_descriptive_compare(df, col, request.group_column)
             
-            ds = DescriptiveStat(
-                variable=col,
-                group=str(grp),
-                count=stats.get("count", 0),
-                mean=stats.get("mean"),
-                median=stats.get("median"),
-                sd=stats.get("std"),
-                is_normal=False # Not computed here for performance
-            )
-            descriptives.append(ds)
-            
+            # Convert to DescriptiveStat objects
+            for grp, stats in raw_stats.items():
+                if grp == "overall" and len(raw_stats) > 1: continue 
+                
+                if not isinstance(stats, dict): continue
+                
+                ds = DescriptiveStat(
+                    variable=col,
+                    group=str(grp),
+                    count=stats.get("count", 0),
+                    missing=stats.get("missing"),
+                    mean=stats.get("mean"),
+                    median=stats.get("median"),
+                    mode=stats.get("mode"),
+                    sd=stats.get("std"),
+                    se=stats.get("se"),
+                    variance=stats.get("variance"),
+                    range=stats.get("range"),
+                    iqr=stats.get("iqr"),
+                    skewness=stats.get("skewness"),
+                    kurtosis=stats.get("kurtosis"),
+                    ci_95_low=stats.get("ci_95_low"),
+                    ci_95_high=stats.get("ci_95_high"),
+                    shapiro_w=stats.get("shapiro_w"),
+                    shapiro_p=stats.get("shapiro_p"),
+                    is_normal=(stats.get("shapiro_p") is not None and stats.get("shapiro_p") >= 0.05)
+                )
+                descriptives.append(ds)
+        return descriptives
+    
+    descriptives = await run_in_threadpool(compute_descriptives_async)
+    
     # Sanitize Descriptives
     descriptives = _sanitize(descriptives)
     
-    # 3. Running Hypothesis Tests
-    results = {}
-    group_col = request.group_column
-    
-    # Pre-calculate types for test selection (assumes Group is categorical, Targets are numeric)
-    # Verification:
-    if not isinstance(df[group_col].dtype, pd.CategoricalDtype) and df[group_col].nunique() < 10:
-         # Treat as categorical for purpose of test
-         pass
-         
-    for col in request.target_columns:
-        if col not in df.columns: 
-            continue
-            
-        # Select Method
-        types = {col: "numeric", group_col: "categorical"}
-        method_id = select_test(df, col, group_col, types)
+    # 3. Running Hypothesis Tests (async via threadpool)
+    async def run_tests_async():
+        results = {}
+        group_col = request.group_column
         
-        if not method_id:
-            continue
+        # Pre-calculate types for test selection
+        if not isinstance(df[group_col].dtype, pd.CategoricalDtype) and df[group_col].nunique() < 10:
+             pass
+             
+        for col in request.target_columns:
+            if col not in df.columns: 
+                continue
+                
+            # Select Method
+            types = {col: "numeric", group_col: "categorical"}
+            method_id = select_test(df, col, group_col, types)
             
-        try:
-            # Run
-            res = run_analysis(df, method_id, col, group_col)
-            
-            # SANITIZE RESULT
-            res = _sanitize(res)
-            
-            # Format
-            method_info = get_method(method_id)
-            conclusion = f"P={res.get('p_value'):.4f}" if res.get('p_value') is not None else "P=N/A"
-            
-            result_obj = AnalysisResult(
-                method=method_info,
-                p_value=res.get("p_value"),
-                stat_value=res.get("stat_value"),
-                significant=res.get("significant", False),
-                groups=res.get("groups"),
-                plot_data=res.get("plot_data"),
-                plot_stats=res.get("plot_stats"),
-                conclusion=conclusion,
-                adjusted_p_value=res.get("p_value_adj"),
-                significant_adj=res.get("significant_adj")
-            )
-            
-            results[col] = result_obj
-            
-        except Exception as e:
-            logger.error(f"Batch analysis failed for {col}: {e}", exc_info=True)
-            pass
+            if not method_id:
+                continue
+                
+            try:
+                # Run with alpha parameter
+                res = run_analysis(df, method_id, col, group_col, alpha=request.alpha)
+                
+                # SANITIZE RESULT
+                res = _sanitize(res)
+                
+                # Format
+                method_info = get_method(method_id)
+                conclusion = f"P={res.get('p_value'):.4f}" if res.get('p_value') is not None else "P=N/A"
+                
+                result_obj = AnalysisResult(
+                    method=method_info,
+                    p_value=res.get("p_value"),
+                    stat_value=res.get("stat_value"),
+                    significant=res.get("significant", False),
+                    groups=res.get("groups"),
+                    plot_data=res.get("plot_data"),
+                    plot_stats=res.get("plot_stats"),
+                    conclusion=conclusion,
+                    adjusted_p_value=res.get("p_value_adj"),
+                    significant_adj=res.get("significant_adj")
+                )
+                
+                results[col] = result_obj
+                
+            except Exception as e:
+                logger.error(f"Batch analysis failed for {col}: {e}", exc_info=True)
+                pass
+        return results
+    
+    results = await run_in_threadpool(run_tests_async)
 
     return BatchAnalysisResponse(descriptives=descriptives, results=results)

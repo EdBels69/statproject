@@ -3,6 +3,8 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { runBatchAnalysis, getPDFExportUrl, getDataset } from '../../lib/api';
 import VariableSelector from '../components/VariableSelector';
 import VisualizePlot from '../components/VisualizePlot';
+import ClusteredHeatmap from '../components/ClusteredHeatmap';
+import InteractionPlot from '../components/InteractionPlot';
 
 export default function Analyze() {
     const { id } = useParams();
@@ -52,6 +54,7 @@ export default function Analyze() {
 
     const renderDescriptives = () => {
         if (!batchResult?.descriptives) return null;
+        const fmt = (v, digits = 2) => (typeof v === 'number' ? v.toFixed(digits) : '-');
         return (
             <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', fontSize: '13px' }}>
@@ -60,9 +63,15 @@ export default function Analyze() {
                             <th>Variable</th>
                             <th>Group</th>
                             <th style={{ textAlign: 'right' }}>N</th>
+                            <th style={{ textAlign: 'right' }}>Missing</th>
                             <th style={{ textAlign: 'right' }}>Mean</th>
                             <th style={{ textAlign: 'right' }}>SD</th>
+                            <th style={{ textAlign: 'right' }}>SE</th>
                             <th style={{ textAlign: 'right' }}>Median</th>
+                            <th style={{ textAlign: 'right' }}>Mode</th>
+                            <th style={{ textAlign: 'right' }}>IQR</th>
+                            <th style={{ textAlign: 'right' }}>Skew</th>
+                            <th style={{ textAlign: 'right' }}>Kurt</th>
                             <th style={{ textAlign: 'right' }}>Norm (P)</th>
                         </tr>
                     </thead>
@@ -72,14 +81,20 @@ export default function Analyze() {
                                 <td style={{ fontWeight: '500' }}>{row.variable}</td>
                                 <td>{row.group}</td>
                                 <td style={{ textAlign: 'right' }}>{row.count}</td>
-                                <td style={{ textAlign: 'right' }}>{row.mean?.toFixed(2)}</td>
-                                <td style={{ textAlign: 'right' }}>{row.sd?.toFixed(2)}</td>
-                                <td style={{ textAlign: 'right' }}>{row.median?.toFixed(2)}</td>
+                                <td style={{ textAlign: 'right' }}>{typeof row.missing === 'number' ? row.missing : '-'}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.mean)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.sd)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.se)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.median)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.mode)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.iqr)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.skewness, 3)}</td>
+                                <td style={{ textAlign: 'right' }}>{fmt(row.kurtosis, 3)}</td>
                                 <td style={{
                                     textAlign: 'right',
                                     color: !row.is_normal ? 'var(--error)' : 'var(--text-muted)'
                                 }}>
-                                    {row.shapiro_p ? row.shapiro_p.toFixed(3) : '-'}
+                                    {typeof row.shapiro_p === 'number' ? row.shapiro_p.toFixed(3) : '-'}
                                 </td>
                             </tr>
                         ))}
@@ -139,6 +154,30 @@ export default function Analyze() {
                 </table>
             </div>
         );
+    };
+
+    const renderDetailPlot = (detail) => {
+        const methodId = detail?.method?.id || detail?.type || detail?.method;
+
+        if (methodId === 'mixed_effects') {
+            return <InteractionPlot data={detail} width={760} height={380} />;
+        }
+
+        if (methodId === 'clustered_correlation') {
+            return <ClusteredHeatmap data={detail} width={760} height={560} />;
+        }
+
+        if (detail?.plot_data) {
+            return (
+                <VisualizePlot
+                    data={detail.plot_data}
+                    stats={detail.plot_stats}
+                    groups={detail.groups}
+                />
+            );
+        }
+
+        return null;
     };
 
     return (
@@ -332,24 +371,23 @@ export default function Analyze() {
                                         }}>
                                             Distribution Plot
                                         </h4>
-                                        {batchResult.results[selectedVarDetail].plot_data ? (
-                                            <VisualizePlot
-                                                data={batchResult.results[selectedVarDetail].plot_data}
-                                                stats={batchResult.results[selectedVarDetail].plot_stats}
-                                                groups={batchResult.results[selectedVarDetail].groups}
-                                            />
-                                        ) : (
-                                            <div style={{
-                                                height: '200px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: 'var(--text-muted)',
-                                                fontSize: '12px'
-                                            }}>
-                                                No plot data
-                                            </div>
-                                        )}
+                                        {(() => {
+                                            const plot = renderDetailPlot(batchResult.results[selectedVarDetail]);
+                                            if (plot) return plot;
+
+                                            return (
+                                                <div style={{
+                                                    height: '200px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: 'var(--text-muted)',
+                                                    fontSize: '12px'
+                                                }}>
+                                                    No plot data
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </section>

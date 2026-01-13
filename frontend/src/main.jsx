@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.jsx'
 
 // Debug Logger
-window.onerror = function (msg, url, line, col, error) {
+window.onerror = function (msg, url, line, col) {
   const div = document.createElement('div');
   div.style.position = 'fixed';
   div.style.top = '0';

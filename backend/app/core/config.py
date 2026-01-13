@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Stat Analyzer"
@@ -18,8 +19,9 @@ class Settings(BaseSettings):
     GLM_API_URL: str = "https://openrouter.ai/api/v1/chat/completions"
     GLM_MODEL: str = "xiaomi/mimo-v2-flash:free"
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = ConfigDict(
+        case_sensitive=True,
+        env_file=".env"
+    )
 
 settings = Settings()

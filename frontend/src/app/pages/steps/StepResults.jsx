@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getAnalysisResults } from '../../../lib/api';
 import VisualizePlot from '../../components/VisualizePlot';
+import ClusteredHeatmap from '../../components/ClusteredHeatmap';
+import InteractionPlot from '../../components/InteractionPlot';
 import {
     TableCellsIcon,
     ChartBarIcon,
@@ -56,6 +58,26 @@ const Table1View = ({ data }) => {
 
 /* --- SUB-COMPONENT: HYPOTHESIS TEST --- */
 const CompareView = ({ result }) => {
+    const methodId = result?.method?.id || result?.type || result?.method;
+
+    const plot = (() => {
+        if (methodId === 'clustered_correlation') {
+            return <ClusteredHeatmap data={result} width={860} height={560} />;
+        }
+
+        if (methodId === 'mixed_effects') {
+            return <InteractionPlot data={result} width={860} height={380} />;
+        }
+
+        return (
+            <VisualizePlot
+                data={result.plot_data || []}
+                stats={result.plot_stats}
+                groups={result.groups}
+            />
+        );
+    })();
+
     return (
         <div className="space-y-6">
             <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
@@ -74,19 +96,15 @@ const CompareView = ({ result }) => {
                 </div>
             </div>
 
-            <div className="h-80 border rounded-lg p-4 bg-white">
-                <VisualizePlot
-                    data={result.plot_data || []}
-                    type={result.method?.type === 'parametric' ? 'bar' : 'box'} // dynamic
-                    stats={result.groups}
-                />
+            <div className="border rounded-lg p-4 bg-white overflow-x-auto">
+                {plot}
             </div>
         </div>
     );
 };
 
 /* --- MAIN DASHBOARD --- */
-const StepResults = ({ runId, datasetId, goal }) => {
+const StepResults = ({ runId, datasetId }) => {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(0);

@@ -1,0 +1,65 @@
+# Multi-stage build for smaller image size
+FROM python:3.9-slim as builder
+
+WORKDIR /build
+
+# Install system dependencies only for build
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install dependencies with cache optimization
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Production Stage ---
+FROM python:3.9-alpine
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
+COPY . .
+
+# Create data directory with proper permissions
+RUN mkdir -p /app/workspace/datasets && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app/workspace
+
+# Switch to non-root user
+USER appuser
+
+# Memory optimization environment variables
+ENV PYTHONUNBUFFERED=1
+ENV MALLOC_ARENA_MAX=2
+ENV PYTHONHASHSEED=0
+ENV PYTHONMALLOC=malloc
+ENV GUNICORN_CMD_ARGS="--max-requests=100 --max-requests-jitter=20"
+
+# Expose port
+EXPOSE 8000
+
+# Health check with faster intervals
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Optimized Gunicorn for M1 8GB
+CMD ["gunicorn", "app.main:app", 
+     "-w", "2",                          # 2 workers (optimized for 8GB)
+     "-k", "uvicorn.workers.UvicornWorker", 
+     "--bind", "0.0.0.0:8000", 
+     "--timeout", "60",                  # Reduced timeout
+     "--max-requests", "100",             # Prevent memory leaks
+     "--max-requests-jitter", "20",
+     "--preload",                        # Preload app for memory sharing
+     "--access-logfile", "-", 
+     "--error-logfile", "-"]

@@ -220,7 +220,90 @@ def modify_dataset(dataset_id: str, modification: DatasetModification):
 
 class CleanCommand(BaseModel):
     column: str
-    action: str  # "to_numeric", "fill_mean", "drop_na"
+    action: str
+
+
+class MiceImputeCommand(BaseModel):
+    columns: List[str]
+    max_iter: int = 10
+    n_imputations: int = 5
+    random_state: int = 42
+
+
+@router.post("/{dataset_id}/impute_mice")
+def impute_mice_api(dataset_id: str, cmd: MiceImputeCommand):
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
+
+        columns = [c for c in (cmd.columns or []) if isinstance(c, str) and c]
+        if not columns:
+            raise ValueError("columns must not be empty")
+
+        missing_cols = [c for c in columns if c not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Columns not found: {missing_cols}")
+
+        if len(columns) > 50:
+            raise ValueError("MICE supports up to 50 columns per run")
+
+        numeric_df = df[columns].apply(pd.to_numeric, errors="coerce")
+
+        has_missing = bool(numeric_df.isna().any().any())
+        if not has_missing:
+            return generate_profile(df)
+
+        try:
+            from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+            from sklearn.impute import IterativeImputer
+        except Exception as e:
+            raise ValueError(f"MICE dependencies not available: {str(e)}")
+
+        max_iter = int(cmd.max_iter)
+        n_imputations = int(cmd.n_imputations)
+        random_state = int(cmd.random_state)
+
+        if max_iter < 1 or max_iter > 50:
+            raise ValueError("max_iter must be between 1 and 50")
+        if n_imputations < 1 or n_imputations > 20:
+            raise ValueError("n_imputations must be between 1 and 20")
+
+        matrices = []
+        for i in range(n_imputations):
+            imputer = IterativeImputer(
+                max_iter=max_iter,
+                random_state=random_state + i,
+                sample_posterior=True,
+                skip_complete=True
+            )
+            imputed = imputer.fit_transform(numeric_df)
+            matrices.append(imputed)
+
+        imputed_mean = sum(matrices) / float(len(matrices))
+        df.loc[:, columns] = imputed_mean
+
+        pipeline.create_processed_snapshot(
+            dataset_id,
+            df,
+            cleaning_log={
+                "action": "mice_imputation",
+                "columns": columns,
+                "max_iter": max_iter,
+                "n_imputations": n_imputations
+            }
+        )
+
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        scan_report = scanner.scan_dataset(df)["scan_report"]
+
+        report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        with open(report_path, "w") as f:
+            json.dump(scan_report, f, indent=2, default=str)
+
+        return generate_profile(df)
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"MICE imputation failed: {str(e)}")
 
 @router.post("/{dataset_id}/clean_column")
 def clean_column_api(dataset_id: str, cmd: CleanCommand):
@@ -237,8 +320,26 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
         elif cmd.action == "fill_mean":
             if pd.api.types.is_numeric_dtype(df[cmd.column]):
                 df[cmd.column] = df[cmd.column].fillna(df[cmd.column].mean())
+            else:
+                raise ValueError("fill_mean is only supported for numeric columns")
+        elif cmd.action == "fill_median":
+            if pd.api.types.is_numeric_dtype(df[cmd.column]):
+                df[cmd.column] = df[cmd.column].fillna(df[cmd.column].median())
+            else:
+                raise ValueError("fill_median is only supported for numeric columns")
+        elif cmd.action == "fill_mode":
+            mode_series = df[cmd.column].mode(dropna=True)
+            if mode_series.empty:
+                raise ValueError("fill_mode requires at least one non-missing value")
+            df[cmd.column] = df[cmd.column].fillna(mode_series.iloc[0])
+        elif cmd.action == "fill_locf":
+            df[cmd.column] = df[cmd.column].ffill()
+        elif cmd.action == "fill_nocb":
+            df[cmd.column] = df[cmd.column].bfill()
         elif cmd.action == "drop_na":
              df = df.dropna(subset=[cmd.column])
+        else:
+            raise ValueError(f"Unknown action: {cmd.action}")
              
         # 3. Save New Snapshot
         pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"action": cmd.action, "column": cmd.column})
@@ -246,7 +347,7 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
         # 4. Re-Scan (Update Report)
         from app.modules.smart_scanner import SmartScanner
         scanner = SmartScanner()
-        scan_report = scanner.scan_dataset(df)
+        scan_report = scanner.scan_dataset(df)["scan_report"]
         
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         with open(report_path, "w") as f:

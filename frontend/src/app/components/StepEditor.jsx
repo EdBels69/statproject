@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-export default function StepEditor({ step, index, allMethods, onUpdate, onDelete }) {
+export default function StepEditor({ step, index, onUpdate, onDelete }) {
     const [showOptions, setShowOptions] = useState(false);
 
     // Filter relevant methods based on context could be complex, 
@@ -8,9 +8,6 @@ export default function StepEditor({ step, index, allMethods, onUpdate, onDelete
     // Ideally, we restrict by 'parametric/non-parametric' or 'comparison/correlation'.
     // Let's filter simply by context keywords in description or type for better UX, or just show all.
     // User wants "Choice". Let's show all compatible ones.
-
-    // Group methods for nicer UI
-    const methodOptions = Object.values(allMethods || {});
 
     const handleChangeMethod = (e) => {
         onUpdate(index, { ...step, method: e.target.value });

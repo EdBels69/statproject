@@ -6,25 +6,33 @@ import {
     ChartBarIcon,
     UserGroupIcon,
     ArrowTrendingUpIcon,
-    ClockIcon
+    ClockIcon,
+    ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
-const GoalCard = ({ title, description, icon: Icon, active, onClick }) => (
-    <div
-        onClick={onClick}
-        className={`p-6 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col items-center text-center group ${active
-            ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
-            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
-            } `}
-    >
-        <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-100'
-            } `}>
-            <Icon className="w-6 h-6" />
-        </div>
-        <h3 className={`font-semibold text-lg mb-2 ${active ? 'text-blue-900' : 'text-gray-900'} `}>{title}</h3>
-        <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
-    </div>
-);
+const GoalCard = ({ title, description, icon: Icon, active, onClick }) => {
+    const iconEl = React.createElement(Icon, { className: 'w-6 h-6', 'aria-hidden': 'true' });
+
+    return (
+        <button
+            onClick={onClick}
+            type="button"
+            aria-pressed={active}
+            aria-label={`Select ${title}: ${description}`}
+            className={`p-6 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col items-center text-center group ${active
+                ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
+                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600`}
+        >
+            <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-100'
+                } `}>
+                {iconEl}
+            </div>
+            <h3 className={`font-semibold text-lg mb-2 ${active ? 'text-blue-900' : 'text-gray-900'} `}>{title}</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+        </button>
+    );
+};
 
 const STEPS = [
     { id: 'goal', title: 'Start' },
@@ -39,6 +47,7 @@ const StepGoal = ({ selectedGoal, onSelect }) => {
         { id: 'relationship', title: 'Find Relationships', desc: 'Analyze correlations or associations between variables.', icon: ChartBarIcon },
         { id: 'prediction', title: 'Make Predictions', desc: 'Predict an outcome based on multiple risk factors.', icon: ArrowTrendingUpIcon },
         { id: 'survival', title: 'Survival Analysis', desc: 'Time-to-event analysis (Kaplan-Meier, Cox Regression).', icon: ClockIcon },
+        { id: 'repeated_measures', title: 'Repeated Measures', desc: 'Same subjects measured multiple times (e.g. Before/During/After treatment).', icon: ArrowPathIcon },
     ];
 
     return (
@@ -132,7 +141,6 @@ export default function NewWizard() {
                     <StepResults
                         runId={wizardData.runId}
                         datasetId={wizardData.datasetId}
-                        goal={wizardData.goal}
                     />
                 )}
             </div>
@@ -145,8 +153,9 @@ export default function NewWizard() {
                         disabled={currStep === 0}
                         className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${currStep === 0
                             ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100'
+                            : 'text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600'
                             } `}
+                        aria-label="Go back to previous step"
                     >
                         Back
                     </button>
@@ -159,8 +168,9 @@ export default function NewWizard() {
                         }
                         className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-sm ${((currStep === 0 && !wizardData.goal) || (currStep === 1 && !canShare))
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600'
                             } `}
+                        aria-label="Continue to next step"
                     >
                         Continue
                     </button>
