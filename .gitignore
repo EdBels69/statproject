@@ -42,5 +42,6 @@ yarn-error.log*
 workspace/data/
 workspace/tasks/
 backend/temp_reports/
+backend/workspace/
 *.log
 backend_new.log
