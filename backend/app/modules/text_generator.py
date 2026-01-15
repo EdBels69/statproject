@@ -62,6 +62,7 @@ class TextGenerator:
         groups = results.get('groups', [])
         plot_stats = results.get('plot_stats', {})
         eff_size = results.get('effect_size')
+        eff_interp = results.get('effect_size_interpretation') if isinstance(results, dict) else None
         
         # Method Name Resolution
         method_obj = results.get("method")
@@ -85,6 +86,34 @@ class TextGenerator:
                  winner, loser = (g1, g2) if m1 > m2 else (g2, g1)
                  return f"A significant difference was found. {winner} showed higher values than {loser}."
             return "A significant difference was found between the groups."
+
+        if style == "ru":
+            eff_text = ""
+            if isinstance(eff_interp, dict):
+                desc = eff_interp.get("description_ru") or eff_interp.get("label_ru")
+                if desc:
+                    eff_text = f"; эффект: {desc}"
+            elif eff_size is not None:
+                try:
+                    eff_text = f"; эффект: {float(eff_size):.2f}"
+                except Exception:
+                    eff_text = ""
+
+            text = f"Проведен {method_name} для оценки различий {target} между группами ({group_col}). "
+
+            if not results['significant']:
+                text += f"Статистически значимых различий не выявлено ({p_text}{eff_text})."
+                return text
+
+            text += f"Обнаружены статистически значимые различия ({p_text}{eff_text}). "
+
+            if len(groups) == 2:
+                g1, g2 = groups[0], groups[1]
+                m1 = plot_stats.get(g1, {}).get('mean', 0)
+                m2 = plot_stats.get(g2, {}).get('mean', 0)
+                direction = "выше" if m1 > m2 else "ниже"
+                text += f"В частности, в группе {g1} среднее значение {target} (M = {m1:.2f}) было {direction}, чем в группе {g2} (M = {m2:.2f})."
+            return text
 
         # Pro Style
         eff_text = ""

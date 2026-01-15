@@ -13,7 +13,150 @@ from jinja2 import Environment, FileSystemLoader
 from app.schemas.analysis import AnalysisResult
 from app.core.logging import logger
 
+from app.modules.plot_with_brackets import add_significance_bracket, normalize_comparisons
+from app.modules.plot_config import apply_publication_config
+
+from fpdf import FPDF
+
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+def _render_plot_png_bytes(res: Dict[str, Any]) -> bytes:
+    try:
+        apply_publication_config()
+        plt.figure(figsize=(8, 5))
+
+        plot_data = []
+        plot_config = {}
+
+        if isinstance(res, dict):
+            roc = res.get("roc")
+            if isinstance(roc, dict) and isinstance(roc.get("plot_data"), list) and roc.get("plot_data"):
+                plot_data = roc.get("plot_data")
+                plot_config = roc.get("plot_config") if isinstance(roc.get("plot_config"), dict) else {}
+            else:
+                plot_data = res.get("plot_data", [])
+                plot_config = res.get("plot_config") if isinstance(res.get("plot_config"), dict) else {}
+
+        if plot_data:
+            df_plot = pd.DataFrame(plot_data)
+
+            if "group" in df_plot.columns and "value" in df_plot.columns:
+                sns.boxplot(x="group", y="value", data=df_plot, showfliers=False, color="lightblue", width=0.5)
+                sns.stripplot(
+                    x="group",
+                    y="value",
+                    data=df_plot,
+                    size=4,
+                    alpha=0.6,
+                    color="#0f172a",
+                )
+                plt.title("Group Comparison")
+
+                comparisons_raw = None
+                if isinstance(res, dict):
+                    comparisons_raw = res.get("comparisons") or res.get("plot_comparisons") or res.get("post_hoc")
+
+                comparisons = normalize_comparisons(comparisons_raw)
+                if comparisons:
+                    group_order = [str(g) for g in (df_plot["group"].dropna().unique().tolist() or [])]
+                    group_index = {g: i for i, g in enumerate(group_order)}
+
+                    values = df_plot["value"].dropna().astype(float)
+                    if len(values) > 0:
+                        min_val = float(values.min())
+                        max_val = float(values.max())
+                        y_range = (max_val - min_val) or 1.0
+                        base_pad = y_range * 0.08
+                        step_pad = y_range * 0.08
+                        y_base = max_val + base_pad
+
+                        ranges = []
+                        placed = []
+                        for c in comparisons:
+                            ia = group_index.get(c.a)
+                            ib = group_index.get(c.b)
+                            if ia is None or ib is None:
+                                continue
+                            start = min(ia, ib)
+                            end = max(ia, ib)
+
+                            level = 0
+                            while True:
+                                taken = ranges[level] if level < len(ranges) else []
+                                overlaps = any(not (end < r[0] or start > r[1]) for r in taken)
+                                if not overlaps:
+                                    break
+                                level += 1
+                            while level >= len(ranges):
+                                ranges.append([])
+                            ranges[level].append((start, end))
+                            placed.append((start, end, level, c.p_value))
+
+                        ax = plt.gca()
+                        max_level = max((lvl for _, _, lvl, _ in placed), default=-1)
+                        try:
+                            y0, y1_lim = ax.get_ylim()
+                            extra = (max_level + 2) * step_pad
+                            ax.set_ylim(y0, max(y1_lim, max_val + base_pad + extra))
+                        except Exception:
+                            pass
+                        for start, end, level, p_value in placed:
+                            add_significance_bracket(
+                                ax,
+                                float(start),
+                                float(end),
+                                y_base + level * step_pad,
+                                p_value,
+                                h=0.02,
+                                lw=1.2,
+                                color="#0f172a",
+                            )
+
+            elif "x" in df_plot.columns and "y" in df_plot.columns:
+                if plot_config.get("type") == "line":
+                    df_sorted = df_plot.sort_values("x")
+                    plt.plot(df_sorted["x"], df_sorted["y"], color="#8b5cf6", linewidth=2)
+                    plt.plot([0, 1], [0, 1], linestyle="--", color="#666", linewidth=1)
+                    plt.xlim(0, 1)
+                    plt.ylim(0, 1)
+                    plt.title("ROC Curve")
+                else:
+                    sns.scatterplot(x="x", y="y", data=df_plot)
+                    sns.regplot(x="x", y="y", data=df_plot, scatter=False, color="red")
+                    plt.title("Correlation Analysis")
+
+            elif "probability" in df_plot.columns and "time" in df_plot.columns and "group" in df_plot.columns:
+                groups = df_plot["group"].unique()
+                for g in groups:
+                    sub = df_plot[df_plot["group"] == g]
+                    plt.step(sub["time"], sub["probability"], where="post", label=f"Group {g}")
+                plt.ylim(0, 1.05)
+                plt.legend()
+                plt.title("Kaplan-Meier Survival Curve")
+
+        else:
+            plot_stats = res.get("plot_stats", {}) if isinstance(res, dict) else {}
+            if plot_stats:
+                groups = list(plot_stats.keys())
+                means = [s["mean"] for s in plot_stats.values()]
+                sems = [s["sem"] for s in plot_stats.values()]
+                plt.bar(groups, means, yerr=sems, capsize=5, color="skyblue", alpha=0.8)
+                plt.title("Mean comparison (±SEM)")
+            else:
+                plt.text(0.5, 0.5, "No Visualization Available", ha="center", va="center", transform=plt.gca().transAxes)
+
+        buf = io.BytesIO()
+        plt.tight_layout()
+        plt.savefig(buf, format="png")
+        plt.close()
+        return bytes(buf.getvalue())
+    except Exception as e:
+        logger.error(f"Plotting failed: {e}", exc_info=True)
+        try:
+            plt.close()
+        except Exception:
+            pass
+        return b""
 
 class ProtocolReport:
     """
@@ -154,7 +297,35 @@ class ProtocolReport:
                         </tr>
                         <tr>
                             <td><strong>Statistic:</strong></td>
-                            <td>{res.get('stats', 0):.3f}</td>
+                            <td>{float(res.get('stat_value', res.get('stats', 0)) or 0):.3f}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Effect size:</strong></td>
+                            <td>
+                                {(
+                                    f"{res.get('effect_size_name') or 'effect'} = {float(res.get('effect_size')):.2f}"
+                                    if res.get('effect_size') is not None
+                                    else "-"
+                                )}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>CI (effect):</strong></td>
+                            <td>
+                                {(
+                                    f"[{float(res.get('effect_size_ci_lower')):.2f}, {float(res.get('effect_size_ci_upper')):.2f}]"
+                                    if (res.get('effect_size_ci_lower') is not None and res.get('effect_size_ci_upper') is not None)
+                                    else "-"
+                                )}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Power:</strong></td>
+                            <td>{(f"{float(res.get('power')):.2f}" if res.get('power') is not None else "-")}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>BF10:</strong></td>
+                            <td>{(str(res.get('bf10')) if res.get('bf10') is not None else "-")}</td>
                         </tr>
                         <tr>
                             <td><strong>Result:</strong></td>
@@ -223,65 +394,155 @@ class ProtocolReport:
         Uses matplotlib/seaborn to render the plot stats into a base64 string.
         """
         try:
-            plt.figure(figsize=(8, 5))
-            sns.set_style("whitegrid")
-            
-            plot_data = res.get("plot_data", [])
-            
-            if plot_data:
-                # Reconstruct DataFrame for plotting
-                df_plot = pd.DataFrame(plot_data)
-                
-                # Determine Plot Type based on method
-                method_type = res.get("method", {}).get("type", "parametric")
-                
-                if "group" in df_plot.columns and "value" in df_plot.columns:
-                    # Boxplot + Strip for group comparison
-                    sns.boxplot(x="group", y="value", data=df_plot, showfliers=False, color="lightblue", width=0.5)
-                    sns.stripplot(x="group", y="value", data=df_plot, color=".3", size=4, alpha=0.6)
-                    plt.title("Group Comparison")
-                    
-                elif "x" in df_plot.columns and "y" in df_plot.columns:
-                    # Scatter plot for correlation/regression
-                    sns.scatterplot(x="x", y="y", data=df_plot)
-                    sns.regplot(x="x", y="y", data=df_plot, scatter=False, color="red")
-                    plt.title("Correlation Analysis")
-                    
-                elif "probability" in df_plot.columns and "time" in df_plot.columns:
-                     # Survival Plot
-                     groups = df_plot["group"].unique()
-                     for g in groups:
-                         sub = df_plot[df_plot["group"] == g]
-                         plt.step(sub["time"], sub["probability"], where="post", label=f"Group {g}")
-                     plt.ylim(0, 1.05)
-                     plt.legend()
-                     plt.title("Kaplan-Meier Survival Curve")
-            
-            else:
-                 # Fallback if no raw data, try plot_stats
-                 plot_stats = res.get("plot_stats", {})
-                 if plot_stats:
-                     # Bar chart
-                     groups = list(plot_stats.keys())
-                     means = [s["mean"] for s in plot_stats.values()]
-                     sems = [s["sem"] for s in plot_stats.values()]
-                     
-                     plt.bar(groups, means, yerr=sems, capsize=5, color="skyblue", alpha=0.8)
-                     plt.title("Mean comparison (±SEM)")
-                 else:
-                     plt.text(0.5, 0.5, 'No Visualization Available', 
-                              ha='center', va='center', transform=plt.gca().transAxes)
-            
-            # Save to buffer
-            buf = io.BytesIO()
-            plt.tight_layout()
-            plt.savefig(buf, format='png', dpi=100)
-            plt.close()
-            return base64.b64encode(buf.getvalue()).decode('utf-8')
-            
+            png_bytes = _render_plot_png_bytes(res)
+            if not png_bytes:
+                return ""
+            return base64.b64encode(png_bytes).decode("utf-8")
         except Exception as e:
             logger.error(f"Plotting failed: {e}", exc_info=True)
             return ""
+
+def generate_protocol_docx_report(run_data: Dict[str, Any], dataset_name: str = "Dataset") -> bytes:
+    from io import BytesIO
+    from docx import Document
+    from docx.shared import Inches
+
+    def _fmt_p(value: Any) -> str:
+        try:
+            if value is None:
+                return "-"
+            p = float(value)
+            if not np.isfinite(p):
+                return "-"
+            return "< 0.001" if p < 0.001 else f"{p:.4f}"
+        except Exception:
+            return "-"
+
+    def _fmt_num(value: Any, digits: int = 3) -> str:
+        try:
+            if value is None:
+                return "-"
+            num = float(value)
+            if not np.isfinite(num):
+                return "-"
+            return f"{num:.{digits}f}"
+        except Exception:
+            return "-"
+
+    def _txt(value: Any) -> str:
+        return "-" if value is None else str(value)
+
+    doc = Document()
+    doc.add_heading("Результаты статистического анализа", level=0)
+    doc.add_paragraph(f"Набор данных: {dataset_name}")
+    protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
+    if protocol_name:
+        doc.add_paragraph(f"Протокол: {protocol_name}")
+    doc.add_paragraph(f"Дата: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}")
+
+    results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
+    for step_id, res in (results or {}).items():
+        doc.add_heading(f"Шаг: {step_id}", level=1)
+
+        if not isinstance(res, dict):
+            doc.add_paragraph("Нет структурированного результата")
+            continue
+
+        if res.get("type") == "table_1":
+            stats_map = res.get("data", {})
+            if isinstance(stats_map, dict) and stats_map:
+                groups = [k for k in stats_map.keys() if k != "overall"]
+                cols = 2 + len(groups)
+                table = doc.add_table(rows=1, cols=cols)
+                hdr = table.rows[0].cells
+                hdr[0].text = "Показатель"
+                for i, g in enumerate(groups):
+                    n = _txt(stats_map.get(g, {}).get("count"))
+                    hdr[i + 1].text = f"{g} (n={n})"
+                overall_n = _txt(stats_map.get("overall", {}).get("count"))
+                hdr[-1].text = f"Итого (n={overall_n})"
+
+                def _cell_for(metric_key: str, s: Dict[str, Any]) -> str:
+                    if metric_key == "mean_sd":
+                        return f"{_fmt_num(s.get('mean'), 2)} ({_fmt_num(s.get('std'), 2)})"
+                    if metric_key == "ci_95":
+                        return f"[{_fmt_num(s.get('ci_95_low'), 2)}, {_fmt_num(s.get('ci_95_high'), 2)}]"
+                    if metric_key == "median_q1_q3":
+                        return f"{_fmt_num(s.get('median'), 2)} [{_fmt_num(s.get('q1'), 2)}, {_fmt_num(s.get('q3'), 2)}]"
+                    if metric_key == "iqr":
+                        return _fmt_num(s.get("iqr"), 2)
+                    if metric_key == "min_max":
+                        return f"{_fmt_num(s.get('min'), 2)} – {_fmt_num(s.get('max'), 2)}"
+                    if metric_key == "shapiro":
+                        return _fmt_p(s.get("shapiro_p"))
+                    return "-"
+
+                metrics = [
+                    ("Mean (SD)", "mean_sd"),
+                    ("95% CI (Mean)", "ci_95"),
+                    ("Median [Q1, Q3]", "median_q1_q3"),
+                    ("IQR", "iqr"),
+                    ("Range (Min-Max)", "min_max"),
+                    ("Normality (Shapiro p)", "shapiro"),
+                ]
+
+                for label, key in metrics:
+                    row = table.add_row().cells
+                    row[0].text = label
+                    for i, g in enumerate(groups):
+                        row[i + 1].text = _cell_for(key, stats_map.get(g, {}) or {})
+                    row[-1].text = _cell_for(key, stats_map.get("overall", {}) or {})
+            continue
+
+        method = res.get("method")
+        method_name = "Statistical Test"
+        if isinstance(method, dict):
+            method_name = method.get("name") or method.get("id") or method_name
+        elif isinstance(method, str):
+            method_name = method
+        doc.add_paragraph(f"Метод: {method_name}")
+
+        summary = doc.add_table(rows=0, cols=2)
+        for k, v in [
+            ("p-value", _fmt_p(res.get("p_value"))),
+            ("stat", _fmt_num(res.get("stat_value", res.get("stats")), 3)),
+            ("effect", f"{_txt(res.get('effect_size_name') or 'effect')} {_fmt_num(res.get('effect_size'), 2)}" if res.get("effect_size") is not None else "-"),
+            ("power", _fmt_num(res.get("power"), 2)),
+            ("BF10", _txt(res.get("bf10"))),
+        ]:
+            r = summary.add_row().cells
+            r[0].text = str(k)
+            r[1].text = str(v)
+
+        warnings = res.get("warnings")
+        if isinstance(warnings, list) and warnings:
+            doc.add_paragraph("Предупреждения:")
+            for w in warnings:
+                doc.add_paragraph(str(w), style="List Bullet")
+
+        roc = res.get("roc")
+        if isinstance(roc, dict) and isinstance(roc.get("plot_data"), list) and roc.get("plot_data"):
+            auc_val = roc.get("auc")
+            if auc_val is not None:
+                doc.add_paragraph(f"AUC: {_fmt_num(auc_val, 3)}")
+            roc_png = _render_plot_png_bytes({"plot_data": roc.get("plot_data"), "plot_config": roc.get("plot_config")})
+            if roc_png:
+                bio = BytesIO(roc_png)
+                doc.add_picture(bio, width=Inches(5.8))
+
+        png_bytes = _render_plot_png_bytes(res)
+        if png_bytes:
+            bio = BytesIO(png_bytes)
+            doc.add_picture(bio, width=Inches(5.8))
+
+        conclusion = res.get("conclusion")
+        if conclusion:
+            doc.add_paragraph("Интерпретация:")
+            doc.add_paragraph(str(conclusion))
+
+    out = BytesIO()
+    doc.save(out)
+    return bytes(out.getvalue())
 
 def generate_legacy_plot_image(plot_data: List[Dict[str, Any]], method_id: str) -> str:
     """
@@ -301,12 +562,10 @@ def generate_legacy_plot_image(plot_data: List[Dict[str, Any]], method_id: str) 
         data=df, 
         x="group", 
         y="value", 
-        hue="group",
         jitter=True, 
         alpha=0.6, 
-        palette="viridis",
         size=8,
-        legend=False
+        color="#0f172a"
     )
     
     sns.boxplot(
@@ -368,4 +627,203 @@ def render_protocol_report(run_data: Dict, dataset_name: str) -> str:
     return report.generate_html()
 
 def generate_pdf_report(results, variables, dataset_id):
-    return ""
+    def _safe_text(value: Any) -> str:
+        if value is None:
+            return ""
+        text = str(value)
+        return text.encode("latin-1", errors="replace").decode("latin-1")
+
+    def _fmt_num(value: Any, digits: int = 3) -> str:
+        try:
+            if value is None:
+                return "-"
+            num = float(value)
+            if not np.isfinite(num):
+                return "-"
+            return f"{num:.{digits}f}"
+        except Exception:
+            return "-"
+
+    def _fmt_p(value: Any) -> str:
+        try:
+            if value is None:
+                return "-"
+            p = float(value)
+            if not np.isfinite(p):
+                return "-"
+            return "< 0.001" if p < 0.001 else f"{p:.4f}"
+        except Exception:
+            return "-"
+
+    def _pdf_bytes(pdf: FPDF) -> bytes:
+        try:
+            out = pdf.output()
+        except TypeError:
+            out = pdf.output(dest="S")
+        if isinstance(out, (bytes, bytearray)):
+            return bytes(out)
+        return str(out).encode("latin-1", errors="replace")
+
+    method = None
+    if isinstance(results, dict):
+        method = results.get("method")
+    method_name = "Statistical Test"
+    if isinstance(method, dict):
+        method_name = method.get("name") or method.get("id") or method_name
+    elif isinstance(method, str):
+        method_name = method
+
+    target = variables.get("target") if isinstance(variables, dict) else None
+    group = variables.get("group") if isinstance(variables, dict) else None
+    feature = variables.get("feature") if isinstance(variables, dict) else None
+
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 9, _safe_text("Statistical Analysis Report"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _safe_text(f"Dataset: {dataset_id}"), new_x="LMARGIN", new_y="NEXT")
+    if target:
+        pdf.cell(0, 6, _safe_text(f"Target: {target}"), new_x="LMARGIN", new_y="NEXT")
+    if group:
+        pdf.cell(0, 6, _safe_text(f"Group: {group}"), new_x="LMARGIN", new_y="NEXT")
+    if feature and not group:
+        pdf.cell(0, 6, _safe_text(f"Feature: {feature}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 7, _safe_text("Results"), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _safe_text(f"Method: {method_name}"), new_x="LMARGIN", new_y="NEXT")
+
+    if isinstance(results, dict):
+        pdf.cell(0, 6, _safe_text(f"P-value: {_fmt_p(results.get('p_value'))}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, _safe_text(f"Statistic: {_fmt_num(results.get('stat_value'))}"), new_x="LMARGIN", new_y="NEXT")
+        sig = results.get("significant")
+        if isinstance(sig, bool):
+            pdf.cell(0, 6, _safe_text(f"Significant: {'YES' if sig else 'NO'}"), new_x="LMARGIN", new_y="NEXT")
+
+        effect_size = results.get("effect_size")
+        effect_name = results.get("effect_size_name")
+        if effect_size is not None:
+            label = effect_name or "effect"
+            pdf.cell(0, 6, _safe_text(f"Effect size: {label} {_fmt_num(effect_size, 2)}"), new_x="LMARGIN", new_y="NEXT")
+        ci_lo = results.get("effect_size_ci_lower")
+        ci_hi = results.get("effect_size_ci_upper")
+        if ci_lo is not None and ci_hi is not None:
+            pdf.cell(0, 6, _safe_text(f"Effect CI: [{_fmt_num(ci_lo, 2)}, {_fmt_num(ci_hi, 2)}]"), new_x="LMARGIN", new_y="NEXT")
+        power = results.get("power")
+        if power is not None:
+            pdf.cell(0, 6, _safe_text(f"Power: {_fmt_num(power, 2)}"), new_x="LMARGIN", new_y="NEXT")
+        bf10 = results.get("bf10")
+        if bf10 is not None:
+            pdf.cell(0, 6, _safe_text(f"BF10: {bf10}"), new_x="LMARGIN", new_y="NEXT")
+
+        conclusion = results.get("conclusion")
+        if conclusion:
+            pdf.ln(2)
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 7, _safe_text("Interpretation"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 5, _safe_text(conclusion))
+
+    return _pdf_bytes(pdf)
+
+
+def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "Dataset") -> bytes:
+    def _safe_text(value: Any) -> str:
+        if value is None:
+            return ""
+        text = str(value)
+        return text.encode("latin-1", errors="replace").decode("latin-1")
+
+    def _fmt_num(value: Any, digits: int = 3) -> str:
+        try:
+            if value is None:
+                return "-"
+            num = float(value)
+            if not np.isfinite(num):
+                return "-"
+            return f"{num:.{digits}f}"
+        except Exception:
+            return "-"
+
+    def _fmt_p(value: Any) -> str:
+        try:
+            if value is None:
+                return "-"
+            p = float(value)
+            if not np.isfinite(p):
+                return "-"
+            return "< 0.001" if p < 0.001 else f"{p:.4f}"
+        except Exception:
+            return "-"
+
+    def _pdf_bytes(pdf: FPDF) -> bytes:
+        try:
+            out = pdf.output()
+        except TypeError:
+            out = pdf.output(dest="S")
+        if isinstance(out, (bytes, bytearray)):
+            return bytes(out)
+        return str(out).encode("latin-1", errors="replace")
+
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 9, _safe_text("Protocol Analysis Report"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _safe_text(f"Dataset: {dataset_name}"), new_x="LMARGIN", new_y="NEXT")
+    protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
+    if protocol_name:
+        pdf.cell(0, 6, _safe_text(f"Protocol: {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
+    for step_id, res in (results or {}).items():
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.multi_cell(0, 6, _safe_text(f"Step: {step_id}"))
+
+        if not isinstance(res, dict):
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 5, _safe_text("No structured result"))
+            pdf.ln(2)
+            continue
+
+        pdf.set_font("Helvetica", "", 10)
+        method = res.get("method")
+        method_name = "Statistical Test"
+        if isinstance(method, dict):
+            method_name = method.get("name") or method.get("id") or method_name
+        pdf.cell(0, 6, _safe_text(f"Method: {method_name}"), new_x="LMARGIN", new_y="NEXT")
+
+        if "p_value" in res:
+            pdf.cell(0, 6, _safe_text(f"P-value: {_fmt_p(res.get('p_value'))}"), new_x="LMARGIN", new_y="NEXT")
+        if "stat_value" in res or "stats" in res:
+            pdf.cell(0, 6, _safe_text(f"Statistic: {_fmt_num(res.get('stat_value', res.get('stats')))}"), new_x="LMARGIN", new_y="NEXT")
+
+        effect_size = res.get("effect_size")
+        if effect_size is not None:
+            label = res.get("effect_size_name") or "effect"
+            pdf.cell(0, 6, _safe_text(f"Effect size: {label} {_fmt_num(effect_size, 2)}"), new_x="LMARGIN", new_y="NEXT")
+        ci_lo = res.get("effect_size_ci_lower")
+        ci_hi = res.get("effect_size_ci_upper")
+        if ci_lo is not None and ci_hi is not None:
+            pdf.cell(0, 6, _safe_text(f"Effect CI: [{_fmt_num(ci_lo, 2)}, {_fmt_num(ci_hi, 2)}]"), new_x="LMARGIN", new_y="NEXT")
+        if res.get("power") is not None:
+            pdf.cell(0, 6, _safe_text(f"Power: {_fmt_num(res.get('power'), 2)}"), new_x="LMARGIN", new_y="NEXT")
+        if res.get("bf10") is not None:
+            pdf.cell(0, 6, _safe_text(f"BF10: {res.get('bf10')}"), new_x="LMARGIN", new_y="NEXT")
+
+        conclusion = res.get("conclusion")
+        if conclusion:
+            pdf.ln(1)
+            pdf.multi_cell(0, 5, _safe_text(f"Conclusion: {conclusion}"))
+        pdf.ln(3)
+
+    return _pdf_bytes(pdf)

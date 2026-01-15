@@ -28,14 +28,14 @@ export default function Settings() {
     return (
         <div className="max-w-3xl mx-auto animate-fadeIn">
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-                <p className="text-gray-500 mt-1">Configure your analysis preferences</p>
+                <h1 className="text-2xl font-bold text-[color:var(--text-primary)]">Settings</h1>
+                <p className="text-[color:var(--text-secondary)] mt-1">Configure your analysis preferences</p>
             </div>
 
             <div className="space-y-6">
-                <section className="bg-white rounded-xl border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Significance Level (α)</h2>
-                    <p className="text-sm text-gray-600 mb-6">
+                <section className="bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] p-6">
+                    <h2 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Significance Level (α)</h2>
+                    <p className="text-sm text-[color:var(--text-secondary)] mb-6">
                         The threshold for determining statistical significance. Results with p-value &lt; α are considered statistically significant.
                     </p>
 
@@ -43,10 +43,10 @@ export default function Settings() {
                         {ALPHA_OPTIONS.map((option) => (
                             <label
                                 key={option.value}
-                                className={`relative flex items-start p-4 rounded-lg border cursor-pointer transition-all ${alpha === option.value
-                                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600`}
+                                className={`relative flex items-start p-4 rounded-[2px] border cursor-pointer transition-colors ${alpha === option.value
+                                    ? 'border-[color:var(--accent)] bg-[color:var(--bg-tertiary)]'
+                                    : 'border-[color:var(--border-color)] hover:border-black hover:bg-[color:var(--bg-tertiary)]'
+                                } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent)]`}
                                 tabIndex={0}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
@@ -63,17 +63,17 @@ export default function Settings() {
                                     onChange={() => handleAlphaChange(option.value)}
                                     className="sr-only"
                                 />
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 mr-4 flex-shrink-0 transition-colors ${alpha === option.value
-                                    ? 'border-blue-600 bg-blue-600'
-                                    : 'border-gray-300'
+                                <div className={`w-5 h-5 rounded-[2px] border-2 flex items-center justify-center mt-0.5 mr-4 flex-shrink-0 transition-colors ${alpha === option.value
+                                    ? 'border-[color:var(--accent)] bg-[color:var(--accent)]'
+                                    : 'border-[color:var(--border-color)]'
                                 }`}>
                                     {alpha === option.value && (
-                                        <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
+                                        <div className="w-2.5 h-2.5 rounded-[2px] bg-[color:var(--white)]"></div>
                                     )}
                                 </div>
                                 <div>
-                                    <div className="font-medium text-gray-900">{option.label}</div>
-                                    <div className="text-sm text-gray-500 mt-0.5">{option.description}</div>
+                                    <div className="font-semibold text-[color:var(--text-primary)]">{option.label}</div>
+                                    <div className="text-sm text-[color:var(--text-secondary)] mt-0.5">{option.description}</div>
                                 </div>
                             </label>
                         ))}
@@ -83,7 +83,7 @@ export default function Settings() {
 
             {showToast && (
                 <div
-                    className="fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg animate-fadeIn"
+                    className="fixed bottom-6 right-6 bg-[color:var(--black)] text-[color:var(--white)] px-4 py-2 rounded-[2px] border border-[color:var(--black)] animate-fadeIn"
                     role="alert"
                     aria-live="polite"
                 >

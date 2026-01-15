@@ -1,0 +1,41 @@
+{
+  "columns": {
+    "column1": {
+      "name": "column1",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 2,
+      "categories": [
+        "val1",
+        "val2"
+      ],
+      "example": "val1"
+    },
+    "column2": {
+      "name": "column2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 2,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0
+      },
+      "mean": 1.5,
+      "min": 1.0,
+      "max": 2.0,
+      "example": 1.0
+    }
+  },
+  "issues": [],
+  "reorder_suggestion": [
+    "column1",
+    "column2"
+  ],
+  "missing_report": {
+    "total_rows": 2,
+    "columns_with_missing": 0,
+    "by_column": []
+  }
+}

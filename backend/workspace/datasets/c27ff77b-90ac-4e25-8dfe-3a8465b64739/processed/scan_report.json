@@ -1,0 +1,41 @@
+{
+  "columns": {
+    "Group": {
+      "name": "Group",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 60,
+      "categories": [
+        "A",
+        "B"
+      ],
+      "example": "A"
+    },
+    "Value": {
+      "name": "Value",
+      "type": "float32",
+      "missing_count": 0,
+      "unique_count": 60,
+      "total": 60,
+      "normality": {
+        "is_normal": "True",
+        "p_value": 0.908512627753659
+      },
+      "mean": 10.791888236999512,
+      "min": 6.482521057128906,
+      "max": 15.257230758666992,
+      "example": 6.811144828796387
+    }
+  },
+  "issues": [],
+  "reorder_suggestion": [
+    "Value",
+    "Group"
+  ],
+  "missing_report": {
+    "total_rows": 60,
+    "columns_with_missing": 0,
+    "by_column": []
+  }
+}

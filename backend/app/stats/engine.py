@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
 from scipy import stats
+import pingouin as pg
 import statsmodels.api as sm
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.oneway import anova_oneway
@@ -15,15 +16,235 @@ from app.core.logging import logger
 # Import new engines
 from app.stats.mixed_effects import MixedEffectsEngine, RepeatedMeasuresEngine
 from app.stats.clustered_correlation import ClusteredCorrelationEngine
+from app.stats.assumptions import recommend_test
 
 GROUP_TESTS = ["t_test_ind", "t_test_welch", "mann_whitney", "t_test_rel", "wilcoxon", "anova", "anova_welch", "kruskal"]
 
-def calc_cohens_d(d1, d2):
-    n1, n2 = len(d1), len(d2)
-    s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
-    # Pooled SD
-    s_pool = np.sqrt(((n1-1)*s1 + (n2-1)*s2) / (n1+n2-2))
-    return (np.mean(d1) - np.mean(d2)) / s_pool if s_pool > 0 else 0
+def _recommend_group_test(group_count: int, is_paired: bool, normality_ok: bool, homogeneity_ok: bool) -> Optional[str]:
+    if group_count < 2:
+        return None
+
+    rec = recommend_test(group_count, bool(is_paired), bool(normality_ok), bool(homogeneity_ok))
+    if rec == "anova" and not homogeneity_ok:
+        return "anova_welch"
+    return rec
+
+def _extract_ci_bounds(ci_value):
+    if ci_value is None:
+        return None, None
+
+    if isinstance(ci_value, (list, tuple, np.ndarray)) and len(ci_value) == 2:
+        try:
+            return float(ci_value[0]), float(ci_value[1])
+        except Exception:
+            return None, None
+
+    if isinstance(ci_value, str):
+        import re
+
+        nums = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", ci_value)
+        if len(nums) >= 2:
+            try:
+                return float(nums[0]), float(nums[1])
+            except Exception:
+                return None, None
+
+    return None, None
+
+
+def interpret_effect_size(effect_size: float, effect_size_name: str) -> dict:
+    """
+    Interpret effect size with Cohen's thresholds.
+    Returns dict with interpretation label and description.
+    
+    Thresholds based on Cohen (1988) and common conventions:
+    - Cohen's d: 0.2 (small), 0.5 (medium), 0.8 (large)
+    - Eta-squared/Partial η²: 0.01 (small), 0.06 (medium), 0.14 (large)
+    - r/RBC: 0.1 (small), 0.3 (medium), 0.5 (large)
+    - Cramér's V (df=1): 0.1 (small), 0.3 (medium), 0.5 (large)
+    - Epsilon-squared: uses eta-squared thresholds
+    """
+    if effect_size is None or effect_size_name is None:
+        return None
+    
+    abs_es = abs(effect_size)
+    name_lower = effect_size_name.lower().replace("-", "_").replace(" ", "_")
+    
+    # Cohen's d and related (Hedges' g, Glass' delta)
+    if name_lower in ["cohen_d", "cohens_d", "hedges_g", "glass_delta", "d"]:
+        if abs_es < 0.2:
+            label = "trivial"
+            label_ru = "пренебрежимо малый"
+        elif abs_es < 0.5:
+            label = "small"
+            label_ru = "малый"
+        elif abs_es < 0.8:
+            label = "medium"
+            label_ru = "средний"
+        else:
+            label = "large"
+            label_ru = "большой"
+        
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "thresholds": {"small": 0.2, "medium": 0.5, "large": 0.8},
+            "description": f"Cohen's d = {effect_size:.2f} indicates a {label} effect",
+            "description_ru": f"Cohen's d = {effect_size:.2f} указывает на {label_ru} эффект"
+        }
+    
+    # Eta-squared, Partial eta-squared, Epsilon-squared
+    elif name_lower in ["eta2", "eta_sq", "eta_squared", "np2", "partial_eta2", "eps_sq", "epsilon_squared"]:
+        if abs_es < 0.01:
+            label = "trivial"
+            label_ru = "пренебрежимо малый"
+        elif abs_es < 0.06:
+            label = "small"
+            label_ru = "малый"
+        elif abs_es < 0.14:
+            label = "medium"
+            label_ru = "средний"
+        else:
+            label = "large"
+            label_ru = "большой"
+        
+        metric_name = "η²" if "eta" in name_lower else "ε²"
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "thresholds": {"small": 0.01, "medium": 0.06, "large": 0.14},
+            "description": f"{metric_name} = {effect_size:.3f} indicates a {label} effect",
+            "description_ru": f"{metric_name} = {effect_size:.3f} указывает на {label_ru} эффект"
+        }
+    
+    # Correlation coefficient (r), Rank-biserial (RBC), Point-biserial
+    elif name_lower in ["r", "rbc", "rank_biserial", "point_biserial", "phi", "spearman", "pearson"]:
+        if abs_es < 0.1:
+            label = "trivial"
+            label_ru = "пренебрежимо малый"
+        elif abs_es < 0.3:
+            label = "small"
+            label_ru = "малый"
+        elif abs_es < 0.5:
+            label = "medium"
+            label_ru = "средний"
+        else:
+            label = "large"
+            label_ru = "большой"
+        
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "thresholds": {"small": 0.1, "medium": 0.3, "large": 0.5},
+            "description": f"r = {effect_size:.2f} indicates a {label} effect",
+            "description_ru": f"r = {effect_size:.2f} указывает на {label_ru} эффект"
+        }
+    
+    # Cramér's V
+    elif name_lower in ["cramers_v", "cramer_v", "v"]:
+        if abs_es < 0.1:
+            label = "trivial"
+            label_ru = "пренебрежимо малый"
+        elif abs_es < 0.3:
+            label = "small"
+            label_ru = "малый"
+        elif abs_es < 0.5:
+            label = "medium"
+            label_ru = "средний"
+        else:
+            label = "large"
+            label_ru = "большой"
+        
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "thresholds": {"small": 0.1, "medium": 0.3, "large": 0.5},
+            "description": f"Cramér's V = {effect_size:.2f} indicates a {label} association",
+            "description_ru": f"Cramér's V = {effect_size:.2f} указывает на {label_ru} связь"
+        }
+    
+    # Odds ratio (log scale interpretation)
+    elif name_lower in ["odds_ratio", "or"]:
+        # Odds ratio: 1.5 small, 2.5 medium, 4.3 large (Chen et al., 2010)
+        if abs_es < 1.5:
+            label = "trivial"
+            label_ru = "пренебрежимо малый"
+        elif abs_es < 2.5:
+            label = "small"
+            label_ru = "малый"
+        elif abs_es < 4.3:
+            label = "medium"
+            label_ru = "средний"
+        else:
+            label = "large"
+            label_ru = "большой"
+        
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "thresholds": {"small": 1.5, "medium": 2.5, "large": 4.3},
+            "description": f"OR = {effect_size:.2f} indicates a {label} effect",
+            "description_ru": f"OR = {effect_size:.2f} указывает на {label_ru} эффект"
+        }
+    
+    # Unknown effect size type - provide generic interpretation
+    else:
+        return {
+            "label": "unknown",
+            "label_ru": "неизвестный",
+            "thresholds": None,
+            "description": f"{effect_size_name} = {effect_size:.3f}",
+            "description_ru": f"{effect_size_name} = {effect_size:.3f}"
+        }
+
+
+
+def _format_posthoc_results(posthoc_df: pd.DataFrame, alpha: float) -> Optional[List[Dict[str, Any]]]:
+    if posthoc_df is None or getattr(posthoc_df, "empty", True):
+        return None
+
+    out: List[Dict[str, Any]] = []
+    for _, row in posthoc_df.iterrows():
+        group1 = row.get("A", None)
+        group2 = row.get("B", None)
+
+        p_value = (
+            row.get("p-tukey", None)
+            if "p-tukey" in row
+            else row.get("pval", None)
+            if "pval" in row
+            else row.get("p-unc", None)
+            if "p-unc" in row
+            else row.get("p-corr", None)
+        )
+
+        ci_lower, ci_upper = _extract_ci_bounds(row.get("CI95%", None))
+
+        diff = row.get("diff", None)
+        if diff is None and ("mean(A)" in row and "mean(B)" in row):
+            try:
+                diff = float(row["mean(A)"]) - float(row["mean(B)"])
+            except Exception:
+                diff = None
+
+        try:
+            p_value_f = float(p_value) if p_value is not None else None
+        except Exception:
+            p_value_f = None
+
+        out.append(
+            {
+                "group1": str(group1) if group1 is not None else None,
+                "group2": str(group2) if group2 is not None else None,
+                "diff": float(diff) if diff is not None else None,
+                "p_value": p_value_f,
+                "ci_lower": ci_lower,
+                "ci_upper": ci_upper,
+                "significant": (p_value_f < alpha) if p_value_f is not None else None,
+            }
+        )
+
+    return out
 
 def check_normality(data: pd.Series) -> tuple[bool, float, float]:
     """
@@ -156,6 +377,42 @@ def run_analysis(
         method_id = select_test(df, col_a, col_b, types, is_paired)
         if method_id is None:
             raise ValueError("Could not auto-detect appropriate statistical test. Please select manually.")
+
+    requested_method_id = method_id
+
+    if method_id in GROUP_TESTS:
+        auto_fallback = bool(kwargs.get("auto_fallback", True))
+
+        groups = sorted(clean_df[col_b].unique()) if col_b in clean_df.columns else []
+        data_groups = [clean_df[clean_df[col_b] == g][col_a] for g in groups] if groups else []
+        assumptions = _check_assumptions(groups, data_groups) if groups else {}
+        warnings = _generate_warnings(str(requested_method_id).strip(), path_type="group", assumptions=assumptions)
+
+        normality_ok = True
+        norm_res = assumptions.get("normality") if isinstance(assumptions, dict) else None
+        if isinstance(norm_res, dict) and norm_res:
+            normality_ok = all(bool(v.get("passed")) for v in norm_res.values())
+
+        homogeneity_ok = True
+        homo_res = assumptions.get("homogeneity") if isinstance(assumptions, dict) else None
+        if isinstance(homo_res, dict) and ("passed" in homo_res):
+            homogeneity_ok = bool(homo_res.get("passed"))
+
+        recommended = _recommend_group_test(len(groups), bool(is_paired), normality_ok, homogeneity_ok)
+        method_used = recommended if (auto_fallback and recommended and recommended != requested_method_id) else requested_method_id
+
+        if method_used != requested_method_id:
+            warnings.append(f"Auto-fallback used: {requested_method_id} → {method_used}.")
+
+        out = _handle_group_comparison(clean_df, method_used, col_a, col_b, kwargs)
+        out["method_requested"] = requested_method_id
+        out["method_used"] = method_used
+        out["recommended_method"] = recommended
+        out["assumptions"] = assumptions
+        out["assumption_checks"] = assumptions
+        out["warnings"] = warnings
+        out["assumption_warning"] = " ".join([str(w) for w in warnings]) if warnings else None
+        return out
     
     # Dispatcher
     if method_id in GROUP_TESTS:
@@ -202,66 +459,115 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
     stat_val, p_val = 0.0, 1.0
     alt = kwargs.get("alternative", "two-sided")
     eff_size = None
+    eff_size_name = None
+    eff_ci_lower = None
+    eff_ci_upper = None
+    power = None
+    bf10 = None
     post_hoc_results = None
     method_str = str(method_id).strip()
 
     if method_str == "t_test_ind" and len(groups) == 2:
-        stat_val, p_val = stats.ttest_ind(data_groups[0], data_groups[1], equal_var=True, alternative=alt)
-        eff_size = calc_cohens_d(data_groups[0], data_groups[1])
+        res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=False)
+        stat_val = float(res["T"].iloc[0])
+        p_val = float(res["p-val"].iloc[0])
+        eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+        eff_size_name = "cohen-d"
+        eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+        power = float(res["power"].iloc[0]) if "power" in res.columns else None
+        try:
+            bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+        except Exception:
+            bf10 = None
         
     elif method_str == "t_test_welch" and len(groups) == 2:
-        stat_val, p_val = stats.ttest_ind(data_groups[0], data_groups[1], equal_var=False, alternative=alt)
-        eff_size = calc_cohens_d(data_groups[0], data_groups[1])
+        res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=True)
+        stat_val = float(res["T"].iloc[0])
+        p_val = float(res["p-val"].iloc[0])
+        eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+        eff_size_name = "cohen-d"
+        eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+        power = float(res["power"].iloc[0]) if "power" in res.columns else None
+        try:
+            bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+        except Exception:
+            bf10 = None
         
     elif method_id == "mann_whitney" and len(groups) == 2:
-        stat_val, p_val = stats.mannwhitneyu(data_groups[0], data_groups[1], alternative=alt)
+        res = pg.mwu(data_groups[0], data_groups[1], alternative=alt)
+        stat_val = float(res["U-val"].iloc[0]) if "U-val" in res.columns else float(res["U"].iloc[0])
+        p_val = float(res["p-val"].iloc[0])
+        eff_size = float(res["RBC"].iloc[0]) if "RBC" in res.columns else eff_size
+        eff_size_name = "rbc" if eff_size is not None else None
         
     elif method_id == "anova":
-        stat_val, p_val = stats.f_oneway(*data_groups) 
-        
+        aov = pg.anova(data=df, dv=col_a, between=col_b, detailed=True)
+        row = aov[aov["Source"] == col_b].iloc[0] if "Source" in aov.columns and (aov["Source"] == col_b).any() else aov.iloc[0]
+        stat_val = float(row.get("F"))
+        p_val = float(row.get("p-unc"))
+        if "np2" in row:
+            eff_size = float(row.get("np2"))
+            eff_size_name = "np2"
+        elif "eta2" in row:
+            eff_size = float(row.get("eta2"))
+            eff_size_name = "eta2"
+
         alpha = kwargs.get("alpha", 0.05)
-        # Post-hoc Tukey HSD if significant
         if p_val < alpha:
-            post_hoc_results = _run_tukey_posthoc(data_groups, groups, alpha)
+            try:
+                post = pg.pairwise_tukey(data=df, dv=col_a, between=col_b)
+                post_hoc_results = _format_posthoc_results(post, alpha)
+            except Exception:
+                post_hoc_results = None
+
+            if post_hoc_results is None:
+                post_hoc_results = _run_tukey_posthoc(data_groups, groups, alpha=alpha)
 
     elif method_id == "anova_welch":
-        # Welch's ANOVA via statsmodels
-        # Flatten data for statsmodels input
-        all_vals = []
-        all_groups = []
-        for i, g in enumerate(groups):
-            vals = data_groups[i]
-            all_vals.extend(vals.tolist())
-            all_groups.extend([g]*len(vals))
-            
-        all_vals_np = np.array(all_vals)
-        all_groups_np = np.array(all_groups)
+        welch = pg.welch_anova(data=df, dv=col_a, between=col_b)
+        row = welch.iloc[0]
+        stat_val = float(row.get("F"))
+        p_val = float(row.get("p-unc"))
+        if "np2" in row:
+            eff_size = float(row.get("np2"))
+            eff_size_name = "np2"
 
-        res = anova_oneway(data=all_vals_np, groups=all_groups_np, use_var='unequal')
-        stat_val = res.statistic
-        p_val = res.pvalue
-        
         alpha = kwargs.get("alpha", 0.05)
-        # Post-hoc Games-Howell (Tukey is for equal var)
-        # Statsmodels doesn't natively have Games-Howell in multicomp easily accessible,
-        # usually people use pingouin or implement it manually.
-        # Fallback: We'll list Tukey but warn user, or simpler: just show Tukey for MVP.
-        # Ideally, we should add Games-Howell. But for now let's reuse Tukey logic with a warning note if we can't easily add Games-Howell.
-        # Actually, let's omit post-hoc for Welch ANOVA in this MVP iteration to avoid misleading results.
         if p_val < alpha:
-             # Just run Tukey for now as a "best effort" with warning in description if possible
-             post_hoc_results = _run_tukey_posthoc(data_groups, groups, alpha)
+            post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
+            post_hoc_results = _format_posthoc_results(post, alpha)
 
     elif method_id == "kruskal":
-        stat_val, p_val = stats.kruskal(*data_groups)
+        kr = pg.kruskal(data=df, dv=col_a, between=col_b)
+        row = kr.iloc[0]
+        stat_val = float(row.get("H"))
+        p_val = float(row.get("p-unc"))
+        if "eps-sq" in row:
+            eff_size = float(row.get("eps-sq"))
+            eff_size_name = "eps-sq"
+        elif "eta2" in row:
+            eff_size = float(row.get("eta2"))
+            eff_size_name = "eta2"
         
     elif method_id == "t_test_rel" and len(groups) == 2:
-         stat_val, p_val = stats.ttest_rel(data_groups[0], data_groups[1], alternative=alt)
-         diff = np.array(data_groups[0]) - np.array(data_groups[1])
-         eff_size = np.mean(diff) / np.std(diff, ddof=1) if len(diff) > 1 else 0
+         res = pg.ttest(data_groups[0], data_groups[1], paired=True, alternative=alt)
+         stat_val = float(res["T"].iloc[0])
+         p_val = float(res["p-val"].iloc[0])
+         eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+         eff_size_name = "cohen-d"
+         eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+         power = float(res["power"].iloc[0]) if "power" in res.columns else None
+         try:
+             bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+         except Exception:
+             bf10 = None
 
     elif method_id == "wilcoxon" and len(groups) == 2:
-         stat_val, p_val = stats.wilcoxon(data_groups[0], data_groups[1], alternative=alt)
+         res = pg.wilcoxon(data_groups[0], data_groups[1], alternative=alt)
+         stat_val = float(res["W-val"].iloc[0]) if "W-val" in res.columns else float(res["W"].iloc[0])
+         p_val = float(res["p-val"].iloc[0])
+         eff_size = float(res["RBC"].iloc[0]) if "RBC" in res.columns else eff_size
+         eff_size_name = "rbc" if eff_size is not None else None
          
     # Prepare Plot Data
     plot_data, plot_stats = _prepare_group_plot_data(groups, data_groups)
@@ -273,18 +579,45 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
     warnings = _generate_warnings(method_str, path_type="group", assumptions=assumptions)
 
     alpha = kwargs.get("alpha", 0.05)
+    
+    # Interpret effect size for user
+    effect_interpretation = interpret_effect_size(eff_size, eff_size_name) if eff_size is not None else None
+
+    comparisons: Optional[List[Dict[str, Any]]] = None
+    try:
+        comparisons = []
+        if isinstance(post_hoc_results, list) and post_hoc_results:
+            for r in post_hoc_results:
+                a = r.get("group1")
+                b = r.get("group2")
+                p = r.get("p_value")
+                if a is None or b is None or p is None:
+                    continue
+                comparisons.append({"a": str(a), "b": str(b), "p_value": float(p)})
+        elif len(groups) == 2 and isinstance(p_val, (int, float)):
+            comparisons.append({"a": str(groups[0]), "b": str(groups[1]), "p_value": float(p_val)})
+    except Exception:
+        comparisons = None
+    
     return {
         "method": method_id,
         "stat_value": float(stat_val),
         "p_value": float(p_val),
         "effect_size": float(eff_size) if eff_size is not None else None,
+        "effect_size_name": eff_size_name,
+        "effect_size_interpretation": effect_interpretation,
+        "effect_size_ci_lower": eff_ci_lower,
+        "effect_size_ci_upper": eff_ci_upper,
+        "power": power,
+        "bf10": bf10,
         "significant": p_val < alpha,
         "groups": [str(g) for g in groups],
         "plot_data": plot_data,
         "plot_stats": plot_stats,
         "assumptions": assumptions,
         "warnings": warnings,
-        "post_hoc": post_hoc_results
+        "post_hoc": post_hoc_results,
+        "comparisons": comparisons
     }
 
 def _run_tukey_posthoc(data_groups, groups, alpha=0.05):
@@ -319,18 +652,35 @@ def _handle_one_sample(df, method_id, col_a, kwargs):
     test_val = float(kwargs.get("test_value", 0))
     alt = kwargs.get("alternative", "two-sided")
     alpha = kwargs.get("alpha", 0.05)
-    
-    stat_val, p_val = stats.ttest_1samp(data, test_val, alternative=alt)
-    eff_size = (data.mean() - test_val) / data.std(ddof=1) if len(data) > 1 else 0
+
+    res = pg.ttest(data, test_val, paired=False, alternative=alt)
+    stat_val = float(res["T"].iloc[0])
+    p_val = float(res["p-val"].iloc[0])
+    eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+    eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+    power = float(res["power"].iloc[0]) if "power" in res.columns else None
+    try:
+        bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+    except Exception:
+        bf10 = None
     
     plot_data = [{"value": float(v)} for v in data]
     mean = float(data.mean())
     std = float(data.std())
     
+    effect_interpretation = interpret_effect_size(eff_size, "cohen-d") if eff_size is not None else None
+    
     return {
         "method": method_id,
         "stat_value": float(stat_val),
         "p_value": float(p_val),
+        "effect_size": float(eff_size) if eff_size is not None else None,
+        "effect_size_name": "cohen-d" if eff_size is not None else None,
+        "effect_size_interpretation": effect_interpretation,
+        "effect_size_ci_lower": eff_ci_lower,
+        "effect_size_ci_upper": eff_ci_upper,
+        "power": power,
+        "bf10": bf10,
         "significant": p_val < alpha,
         "groups": ["Sample"],
         "plot_data": plot_data,
@@ -356,6 +706,9 @@ def _handle_correlation(df, method_id, col_a, col_b, kwargs):
         
     slope, intercept, r_value, _, _ = stats.linregress(x, y)
     
+    # Interpret correlation as effect size
+    effect_interpretation = interpret_effect_size(stat_val, method_id)
+    
     # Plot Data (Sampled)
     plot_data = []
     sample_indices = np.random.choice(df.index, min(len(df), 1000), replace=False)
@@ -366,6 +719,9 @@ def _handle_correlation(df, method_id, col_a, col_b, kwargs):
         "method": method_id,
         "stat_value": float(stat_val),
         "p_value": float(p_val),
+        "effect_size": float(stat_val),  # r is the effect size
+        "effect_size_name": "r",
+        "effect_size_interpretation": effect_interpretation,
         "significant": p_val < alpha,
         "regression": {"slope": float(slope), "intercept": float(intercept), "r_squared": float(r_value**2)},
         "plot_data": plot_data
@@ -438,12 +794,18 @@ def _handle_survival(df, method_id, col_a, col_b, kwargs):
 
 def _handle_regression(df, method_id, col_a, col_b, kwargs):
     predictors = kwargs.get("predictors", [col_b])
+    covariates = kwargs.get("covariates", [])
     alpha = kwargs.get("alpha", 0.05)
-    cols_to_clean = [col_a] + predictors
+    if not isinstance(predictors, list):
+        predictors = [col_b]
+    if not isinstance(covariates, list):
+        covariates = []
+    model_terms = [c for c in [*predictors, *covariates] if c]
+    cols_to_clean = [col_a] + model_terms
     clean_df = df[cols_to_clean].dropna() # Re-clean locally for predictors
     
     outcome = clean_df[col_a]
-    X = pd.get_dummies(clean_df[predictors], drop_first=True).astype(float)
+    X = pd.get_dummies(clean_df[model_terms], drop_first=True).astype(float)
     X = sm.add_constant(X)
     
     if method_id == "linear_regression":
@@ -472,6 +834,30 @@ def _handle_regression(df, method_id, col_a, col_b, kwargs):
              entry["or_ci_lower"] = float(np.exp(model.conf_int().loc[name][0]))
              entry["or_ci_upper"] = float(np.exp(model.conf_int().loc[name][1]))
         coef_data.append(entry)
+
+    roc_out = None
+    if method_id == "logistic_regression" and bool(kwargs.get("show_roc", True)):
+        try:
+            probs = model.predict(X)
+            fpr, tpr, thresholds = roc_curve(outcome, probs)
+            roc_auc = auc(fpr, tpr)
+            roc_data = []
+            step = max(1, len(fpr) // 500)
+            for i in range(0, len(fpr), step):
+                roc_data.append({
+                    "x": float(fpr[i]),
+                    "y": float(tpr[i]),
+                    "threshold": float(thresholds[i])
+                })
+            if roc_data and roc_data[-1]["x"] != float(fpr[-1]):
+                roc_data.append({"x": float(fpr[-1]), "y": float(tpr[-1]), "threshold": float(thresholds[-1])})
+            roc_out = {
+                "auc": float(roc_auc),
+                "plot_data": roc_data,
+                "plot_config": {"x_label": "False Positive Rate", "y_label": "True Positive Rate", "type": "line"},
+            }
+        except Exception:
+            roc_out = None
         
     return {
         "method": method_id,
@@ -479,7 +865,11 @@ def _handle_regression(df, method_id, col_a, col_b, kwargs):
         "p_value": float(model.f_pvalue) if hasattr(model, 'f_pvalue') else float(model.pvalues.min()),
         "significant": any(model.pvalues < alpha),
         "r_squared": float(r_squared),
-        "coefficients": coef_data
+        "coefficients": coef_data,
+        "aic": float(model.aic) if hasattr(model, 'aic') else None,
+        "pseudo_r2": float(model.prsquared) if hasattr(model, 'prsquared') else None,
+        "n_obs": int(model.nobs) if hasattr(model, 'nobs') else None,
+        "roc": roc_out
     }
 
 def _handle_roc_analysis(df, method_id, col_a, col_b):

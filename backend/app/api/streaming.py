@@ -171,7 +171,7 @@ async def streaming_health():
 
 # Utility function for frontend streaming consumption
 
-def create_ndjson_stream(data: list, chunk_size: int = 100) -> AsyncGenerator[str, None]:
+async def create_ndjson_stream(data: list, chunk_size: int = 100) -> AsyncGenerator[str, None]:
     """
     Create NDJSON stream from data list.
     
@@ -184,13 +184,18 @@ def create_ndjson_stream(data: list, chunk_size: int = 100) -> AsyncGenerator[st
     """
     for i in range(0, len(data), chunk_size):
         chunk = data[i:i + chunk_size]
-        yield json.dumps({
-            "chunk": i // chunk_size + 1,
-            "total_chunks": (len(data) + chunk_size - 1) // chunk_size,
-            "data": chunk,
-            "progress": min(100, int((i + chunk_size) / len(data) * 100))
-        }) + "\n"
-        
+        yield (
+            json.dumps(
+                {
+                    "chunk": i // chunk_size + 1,
+                    "total_chunks": (len(data) + chunk_size - 1) // chunk_size,
+                    "data": chunk,
+                    "progress": min(100, int((i + chunk_size) / len(data) * 100)),
+                }
+            )
+            + "\n"
+        )
+
         # Yield control to event loop
         await asyncio.sleep(0.001)
 

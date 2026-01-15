@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadDataset } from '../../lib/api';
+import ResearchFlowNav from '../components/ResearchFlowNav';
 
 export default function Upload() {
     const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function Upload() {
 
     return (
         <div style={{ maxWidth: '600px', margin: '0 auto' }} className="animate-fadeIn">
+            <ResearchFlowNav active="data" className="mb-6" />
             <h1 style={{
                 fontSize: '24px',
                 fontWeight: '600',
@@ -79,7 +81,7 @@ export default function Upload() {
                 onDrop={handleDrop}
                 style={{
                     border: `2px dashed ${dragActive ? 'var(--accent)' : 'var(--border-color)'}`,
-                    borderRadius: '12px',
+                    borderRadius: '2px',
                     padding: '48px',
                     textAlign: 'center',
                     background: dragActive ? 'rgba(249, 115, 22, 0.05)' : 'var(--bg-secondary)',
@@ -119,7 +121,7 @@ export default function Upload() {
                             height: '48px',
                             margin: '0 auto 16px',
                             background: 'var(--bg-tertiary)',
-                            borderRadius: '8px',
+                            borderRadius: '2px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -155,7 +157,7 @@ export default function Upload() {
                     style={{
                         marginTop: '16px',
                         padding: '12px 16px',
-                        borderRadius: '8px',
+                        borderRadius: '2px',
                         fontSize: '14px',
                         color: 'var(--error)'
                     }}

@@ -9,6 +9,7 @@ import Upload from './app/pages/Upload';
 import Analyze from './app/pages/Analyze';
 import AnalysisDesign from './app/pages/AnalysisDesign';
 import Settings from './app/pages/Settings';
+import Profile from './app/pages/Profile';
 
 function App() {
   return (
@@ -21,7 +22,9 @@ function App() {
                 <Route path="/" element={<DatasetList />} />
                 <Route path="/datasets" element={<DatasetList />} />
                 <Route path="/upload" element={<Upload />} />
+                <Route path="/profile/:id" element={<Profile />} />
                 <Route path="/analyze/:id" element={<Analyze />} />
+                <Route path="/report/:id" element={<Analyze />} />
                 <Route path="/wizard" element={<AnalysisDesign />} />
                 <Route path="/design" element={<AnalysisDesign />} />
                 <Route path="/design/:id" element={<AnalysisDesign />} />

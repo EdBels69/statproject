@@ -162,6 +162,175 @@ def test_full_flow():
     assert "differs significantly" in res_3['conclusion']
 
 
+def test_v1_design_templates_and_apply_template_id():
+    setup_test_data()
+
+    list_res = client.get("/api/v1/analysis/templates")
+    assert list_res.status_code == 200, list_res.text
+    templates = list_res.json().get("templates")
+    assert isinstance(templates, list)
+    assert any(t.get("id") == "compare_quick" for t in templates)
+
+    design_payload = {
+        "dataset_id": TEST_ID,
+        "goal": "compare_groups",
+        "template_id": "compare_quick",
+        "variables": {"target": "Value", "group": "Group"},
+    }
+
+    design_res = client.post("/api/v1/analysis/design", json=design_payload)
+    assert design_res.status_code == 200, design_res.text
+    protocol = design_res.json()
+    steps = protocol.get("steps")
+    assert isinstance(steps, list)
+    assert all(isinstance(s, dict) for s in steps)
+    assert all(s.get("id") != "desc_stats" for s in steps)
+
+
+def test_dataset_modify_respects_pagination():
+    setup_test_data()
+
+    initial = client.get(f"/api/v1/datasets/{TEST_ID}?page=2&limit=10")
+    assert initial.status_code == 200, initial.text
+    initial_profile = initial.json()
+    assert initial_profile["page"] == 2
+    assert len(initial_profile["head"]) == 10
+    assert initial_profile["row_count"] == 40
+
+    update_payload = {
+        "actions": [
+            {"type": "update_cell", "row_index": 12, "column": "Value", "value": 999}
+        ]
+    }
+    update_res = client.post(
+        f"/api/v1/datasets/{TEST_ID}/modify?page=2&limit=10",
+        json=update_payload,
+    )
+    assert update_res.status_code == 200, update_res.text
+    updated = update_res.json()
+    assert updated["page"] == 2
+    assert len(updated["head"]) == 10
+    assert float(updated["head"][2]["Value"]) == 999.0
+
+    drop_payload = {
+        "actions": [
+            {"type": "drop_row", "row_index": 0}
+        ]
+    }
+    drop_res = client.post(
+        f"/api/v1/datasets/{TEST_ID}/modify?page=2&limit=10",
+        json=drop_payload,
+    )
+    assert drop_res.status_code == 200, drop_res.text
+    dropped = drop_res.json()
+    assert dropped["row_count"] == 39
+    assert dropped["page"] == 2
+    assert len(dropped["head"]) == 10
+
+
+def test_variable_mapping_roundtrip():
+    setup_test_data()
+
+    put_payload = {
+        "mapping": {
+            "Group": {
+                "role": "Group",
+                "group_var": True,
+                "data_type": "categorical",
+                "include_descriptive": True,
+                "include_comparison": True,
+            },
+            "Value": {
+                "role": "Outcome",
+                "group_var": False,
+                "data_type": "numeric",
+                "include_descriptive": True,
+                "include_comparison": True,
+            },
+        }
+    }
+
+    put_res = client.put(f"/api/v1/datasets/{TEST_ID}/variable_mapping", json=put_payload)
+    assert put_res.status_code == 200, put_res.text
+    put_doc = put_res.json()
+    assert put_doc["dataset_id"] == TEST_ID
+    assert put_doc["mapping"]["Group"]["role"] == "Group"
+    assert put_doc["mapping"]["Group"]["group_var"] is True
+
+    get_res = client.get(f"/api/v1/datasets/{TEST_ID}/variable_mapping")
+    assert get_res.status_code == 200, get_res.text
+    get_doc = get_res.json()
+    assert get_doc["mapping"]["Value"]["role"] == "Outcome"
+
+    mapping_path = os.path.join(TEST_DIR, "processed", "variable_mapping.json")
+    assert os.path.exists(mapping_path)
+
+
+def test_variable_mapping_updates_on_modify():
+    setup_test_data()
+
+    put_payload = {
+        "mapping": {
+            "Group": {
+                "role": "Group",
+                "group_var": True,
+                "data_type": "categorical",
+            },
+            "Value": {
+                "role": "Outcome",
+                "group_var": False,
+                "data_type": "numeric",
+            },
+        }
+    }
+
+    put_res = client.put(f"/api/v1/datasets/{TEST_ID}/variable_mapping", json=put_payload)
+    assert put_res.status_code == 200, put_res.text
+
+    rename_payload = {
+        "actions": [
+            {"type": "rename_col", "column": "Value", "new_name": "Outcome"}
+        ]
+    }
+    rename_res = client.post(
+        f"/api/v1/datasets/{TEST_ID}/modify?page=1&limit=10",
+        json=rename_payload,
+    )
+    assert rename_res.status_code == 200, rename_res.text
+
+    mapping_after_rename = client.get(f"/api/v1/datasets/{TEST_ID}/variable_mapping").json()["mapping"]
+    assert "Value" not in mapping_after_rename
+    assert mapping_after_rename["Outcome"]["role"] == "Outcome"
+
+    drop_payload = {
+        "actions": [
+            {"type": "drop_col", "column": "Group"}
+        ]
+    }
+    drop_res = client.post(
+        f"/api/v1/datasets/{TEST_ID}/modify?page=1&limit=10",
+        json=drop_payload,
+    )
+    assert drop_res.status_code == 200, drop_res.text
+
+    mapping_after_drop = client.get(f"/api/v1/datasets/{TEST_ID}/variable_mapping").json()["mapping"]
+    assert "Group" not in mapping_after_drop
+
+    type_payload = {
+        "actions": [
+            {"type": "change_type", "column": "Outcome", "new_type": "text"}
+        ]
+    }
+    type_res = client.post(
+        f"/api/v1/datasets/{TEST_ID}/modify?page=1&limit=10",
+        json=type_payload,
+    )
+    assert type_res.status_code == 200, type_res.text
+
+    mapping_after_type = client.get(f"/api/v1/datasets/{TEST_ID}/variable_mapping").json()["mapping"]
+    assert mapping_after_type["Outcome"]["data_type"] == "text"
+
+
 def setup_prep_data():
     if os.path.exists(TEST_DIR_PREP):
         shutil.rmtree(TEST_DIR_PREP)
@@ -271,6 +440,87 @@ def test_data_prep_mice_imputation_happy_path_and_validation():
         json={"columns": []},
     )
     assert resp_bad.status_code == 400
+
+
+def test_openapi_contract_frontend_endpoints():
+    resp = client.get("/api/v1/openapi.json")
+    assert resp.status_code == 200, resp.text
+    spec = resp.json()
+
+    paths = spec.get("paths", {})
+    assert isinstance(paths, dict) and paths, "OpenAPI paths missing"
+
+    def resolve_path(*candidates: str) -> str:
+        for p in candidates:
+            if p in paths:
+                return p
+        raise AssertionError(f"OpenAPI path not found: {candidates}")
+
+    def get_op(path_key: str, method: str) -> dict:
+        item = paths.get(path_key, {})
+        op = item.get(method.lower())
+        assert isinstance(op, dict), f"Missing operation {method.upper()} {path_key}"
+        return op
+
+    def require_query_params(op: dict, required: list[str]):
+        params = op.get("parameters", [])
+        assert isinstance(params, list)
+        query = {p.get("name"): p for p in params if p.get("in") == "query"}
+        for name in required:
+            assert name in query, f"Missing query param '{name}'"
+            assert query[name].get("required") is True, f"Query param '{name}' must be required"
+
+    def schema_for_ref(ref: str) -> dict:
+        assert ref.startswith("#/components/schemas/")
+        name = ref.split("/")[-1]
+        schemas = spec.get("components", {}).get("schemas", {})
+        schema = schemas.get(name)
+        assert isinstance(schema, dict), f"Schema not found: {name}"
+        return schema
+
+    get_run_path = resolve_path(
+        "/api/v1/analysis/run/{run_id}",
+        "/analysis/run/{run_id}",
+    )
+    require_query_params(get_op(get_run_path, "get"), ["dataset_id"])
+
+    html_report_path = resolve_path(
+        "/api/v1/analysis/report/{dataset_id}",
+        "/analysis/report/{dataset_id}",
+    )
+    require_query_params(get_op(html_report_path, "get"), ["target_col", "group_col"])
+
+    pdf_report_path = resolve_path(
+        "/api/v1/analysis/report/{dataset_id}/pdf",
+        "/analysis/report/{dataset_id}/pdf",
+    )
+    require_query_params(get_op(pdf_report_path, "get"), ["target_col", "group_col"])
+
+    protocol_pdf_path = resolve_path(
+        "/api/v1/analysis/protocol/report/{run_id}/pdf",
+        "/analysis/protocol/report/{run_id}/pdf",
+    )
+    require_query_params(get_op(protocol_pdf_path, "get"), ["dataset_id"])
+
+    protocol_html_path = resolve_path(
+        "/api/v1/analysis/protocol/report/{run_id}/html",
+        "/analysis/protocol/report/{run_id}/html",
+    )
+    require_query_params(get_op(protocol_html_path, "get"), ["dataset_id"])
+
+    export_pdf_path = resolve_path(
+        "/api/v1/analysis/report/pdf",
+        "/analysis/report/pdf",
+    )
+    export_op = get_op(export_pdf_path, "post")
+    body = export_op.get("requestBody", {})
+    assert body.get("required") is True
+    content = body.get("content", {}).get("application/json", {})
+    schema = content.get("schema", {})
+    if "$ref" in schema:
+        schema = schema_for_ref(schema["$ref"])
+    required = set(schema.get("required", []))
+    assert {"results", "variables", "dataset_id"}.issubset(required)
 
 if __name__ == "__main__":
     test_full_flow()

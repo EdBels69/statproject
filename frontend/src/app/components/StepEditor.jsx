@@ -21,19 +21,20 @@ export default function StepEditor({ step, index, onUpdate, onDelete }) {
     };
 
     return (
-        <div className="bg-white p-4 border rounded-lg shadow-sm relative group hover:border-blue-300 transition-all">
+        <div className="bg-[color:var(--white)] p-4 border border-[color:var(--border-color)] rounded-[2px] relative">
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
+                    <span className="bg-[color:var(--bg-secondary)] text-[color:var(--accent)] text-xs font-bold px-2 py-1 rounded-[2px] border border-[color:var(--border-color)]">
                         Step {index + 1}
                     </span>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-[color:var(--text-secondary)]">
                         {step.type === 'compare' ? 'Comparison' : step.type}
                     </span>
                 </div>
                 <button
                     onClick={() => onDelete(index)}
-                    className="text-gray-400 hover:text-red-500 text-sm"
+                    className="text-[color:var(--text-muted)] hover:text-[color:var(--error)] text-sm"
+                    type="button"
                 >
                     &times; Remove
                 </button>
@@ -43,24 +44,24 @@ export default function StepEditor({ step, index, onUpdate, onDelete }) {
                 {/* Variable Config */}
                 <div className="text-sm">
                     <div className="mb-1">
-                        <span className="text-gray-500">Target:</span>
-                        <span className="font-mono ml-2 bg-gray-50 px-1 rounded">{step.target}</span>
+                        <span className="text-[color:var(--text-muted)]">Target:</span>
+                        <span className="font-mono ml-2 bg-[color:var(--bg-secondary)] px-1 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)]">{step.target}</span>
                     </div>
                     {step.group && (
                         <div className="mb-1">
-                            <span className="text-gray-500">Group:</span>
-                            <span className="font-mono ml-2 bg-gray-50 px-1 rounded">{step.group}</span>
+                            <span className="text-[color:var(--text-muted)]">Group:</span>
+                            <span className="font-mono ml-2 bg-[color:var(--bg-secondary)] px-1 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)]">{step.group}</span>
                         </div>
                     )}
                 </div>
 
                 {/* Method Selection */}
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Statistical Method</label>
+                    <label className="block text-xs font-medium text-[color:var(--text-muted)] mb-1">Statistical Method</label>
                     <select
                         value={step.method || ""}
                         onChange={handleChangeMethod}
-                        className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="w-full text-sm border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] text-[color:var(--text-primary)] focus:outline-none focus:border-[color:var(--accent)]"
                     >
                         <option value="">Auto (AI Recommended)</option>
                         <optgroup label="T-Tests / Means">
@@ -91,33 +92,34 @@ export default function StepEditor({ step, index, onUpdate, onDelete }) {
             <div className="mt-3">
                 <button
                     onClick={() => setShowOptions(!showOptions)}
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                    className="text-xs text-[color:var(--accent)] hover:opacity-80 flex items-center"
+                    type="button"
                 >
                     {showOptions ? '▼ Hide Options' : '▶ Advanced Options'}
                 </button>
 
                 {showOptions && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200 text-sm grid grid-cols-2 gap-3">
+                    <div className="mt-2 p-3 bg-[color:var(--bg-secondary)] rounded-[2px] border border-[color:var(--border-color)] text-sm grid grid-cols-2 gap-3">
                         {/* One Sample Params */}
                         {step.method === 't_test_one' && (
                             <div>
-                                <label className="block text-xs text-gray-500">Test Value (μ)</label>
+                                <label className="block text-xs text-[color:var(--text-muted)]">Test Value (μ)</label>
                                 <input
                                     type="number"
                                     defaultValue={step.test_value || 0}
                                     onBlur={(e) => handleParamChange('test_value', parseFloat(e.target.value))}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+                                    className="mt-1 block w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-primary)] focus:outline-none focus:border-[color:var(--accent)] sm:text-sm"
                                 />
                             </div>
                         )}
 
                         {/* General Params */}
                         <div>
-                            <label className="block text-xs text-gray-500">Confidence Level</label>
+                            <label className="block text-xs text-[color:var(--text-muted)]">Confidence Level</label>
                             <select
                                 defaultValue={step.conf_level || 0.95}
                                 onChange={(e) => handleParamChange('conf_level', parseFloat(e.target.value))}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+                                className="mt-1 block w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-primary)] focus:outline-none focus:border-[color:var(--accent)] sm:text-sm"
                             >
                                 <option value="0.90">90%</option>
                                 <option value="0.95">95%</option>
@@ -126,11 +128,11 @@ export default function StepEditor({ step, index, onUpdate, onDelete }) {
                         </div>
 
                         <div>
-                            <label className="block text-xs text-gray-500">Alternative Hypothesis</label>
+                            <label className="block text-xs text-[color:var(--text-muted)]">Alternative Hypothesis</label>
                             <select
                                 defaultValue={step.alternative || "two-sided"}
                                 onChange={(e) => handleParamChange('alternative', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+                                className="mt-1 block w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-primary)] focus:outline-none focus:border-[color:var(--accent)] sm:text-sm"
                             >
                                 <option value="two-sided">Two-Sided (≠)</option>
                                 <option value="less">Less ({'<'})</option>

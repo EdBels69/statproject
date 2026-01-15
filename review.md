@@ -4,9 +4,9 @@
 
 ## 🎯 Цель: JAMOVI на стероидах — статистический анализатор клинических данных
 
-## 📊 Текущий статус: **98%** готово к production
+## 📊 Текущий статус: **95%** готово к production
 
-> **Последняя верификация:** 25/26 backend tests PASSED (1 skipped)  
+> **Последняя верификация:** 26/27 backend tests PASSED (1 skipped)  
 > **Deprecation warnings исправлены:** Pydantic ✅, Pandas ✅
 
 ---
@@ -16,12 +16,12 @@
 ## 1.1 Результаты тестирования (2026-01-13 16:18)
 
 ```
-============ 25 passed, 1 skipped, 18 warnings in 167.04s ============
+========================= 26 passed, 1 skipped, 16 warnings in 9.43s =========================
 ```
 
 | Категория | Статус |
 |-----------|--------|
-| Backend unit tests | 25/25 PASSED ✅ |
+| Backend unit tests | 26/27 PASSED ✅ |
 | E2E test (skipped) | 1 SKIPPED (requires browser) |
 | Pydantic deprecation | FIXED ✅ |
 | Pandas deprecation | FIXED ✅ |
@@ -74,6 +74,22 @@
 | Listwise deletion | `/clean_column` | ✅ |
 | **MICE Imputation** | `/impute_mice` | ✅ |
 
+### Data Pipeline — Производительность и консистентность
+
+| Компонент | Описание | Статус |
+|----------|----------|--------|
+| Parquet-first snapshots | Хранение и чтение обработанных снапшотов в Parquet с fallback | ✅ |
+| dtype optimization | Автоматическое приведение типов для экономии памяти и скорости | ✅ |
+
+### Статистические результаты — Расширенные метрики
+
+| Метрика | Описание | Статус |
+|--------|----------|--------|
+| Effect size | Cohen’s d / др. (где применимо) | ✅ |
+| 95% CI | Доверительные интервалы к effect size (где применимо) | ✅ |
+| Power | Оценка мощности (где применимо) | ✅ |
+| BF10 | Bayes factor (где применимо) | ✅ |
+
 ### Extended Descriptives — Все метрики
 
 | Метрика | Статус | Метрика | Статус |
@@ -123,8 +139,11 @@
 
 | Задача | Время | Файлы |
 |--------|-------|-------|
-| ag-grid редактируемые таблицы | 3-5 дней | `EditableDataGrid.jsx`, `datasets.py` |
-| Variable Workspace (119+ vars) | 5-7 дней | `VariableWorkspace.jsx` |
+| PDF export протокола (CI/power/BF10) ✅ | DONE | `reporting.py`, UI export flow |
+| Контрактные тесты FE/BE ✅ | DONE | OpenAPI, frontend API client |
+| Полная i18n унификация экранов результатов ✅ | DONE | `frontend/src` |
+| ag-grid редактируемые таблицы ✅ | DONE | `EditableDataGrid.jsx`, `Profile.jsx` |
+| Variable Workspace (119+ vars) ✅ | DONE | `Profile.jsx`, `api.js`, `datasets.py` |
 | Plot Customization | 2-3 дня | `PlotConfigPanel.jsx` |
 | Protocol Templates | 2-3 дня | `analysis.py`, `ProtocolTemplateSelector.jsx` |
 
@@ -132,10 +151,10 @@
 
 | Задача | Время |
 |--------|-------|
-| Seaborn FutureWarning fix | 30 мин |
-| Playwright E2E тесты | 2 дня |
-| Frontend unit тесты | 2 дня |
-| API документация | 1 день |
+| Seaborn FutureWarning fix ✅ | DONE |
+| Playwright E2E тесты ✅ | DONE |
+| Frontend unit тесты ✅ | DONE |
+| API документация ✅ | DONE |
 
 ---
 
@@ -254,9 +273,9 @@ curl -X POST http://localhost:8000/api/v1/datasets \
 
 ## Требует проверки при стабильной сети
 
-- [ ] Docker build успешен
-- [ ] Docker-compose up работает
-- [ ] Health check проходит
+- [x] Docker build успешен
+- [x] Docker-compose up работает
+- [x] Health check проходит
 
 ## P1 (следующий спринт)
 
@@ -277,7 +296,7 @@ curl -X POST http://localhost:8000/api/v1/datasets \
 | Deprecation warnings | 0 critical | 0 | ✅ |
 | ESLint errors | 0 | 0 | ✅ |
 | Production readiness | 98% | 99% | 🟢 |
-| Docker build | NETWORK | ✅ | ⚠️ |
+| Docker build | ✅ | ✅ | ✅ |
 | JAMOVI parity | 85% | 95% | 🟡 |
 
 ---

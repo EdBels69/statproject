@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
+export const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 export function getAlphaSetting() {
   const savedAlpha = localStorage.getItem('statwizard_alpha');
@@ -63,19 +63,33 @@ export async function listDatasets() {
   return response.json();
 }
 
-export async function getDataset(id) {
-  const response = await fetch(`${API_URL}/datasets/${id}`);
+export async function getDataset(id, page = 1, limit = 100) {
+  const params = new URLSearchParams();
+  if (page !== undefined && page !== null) params.set('page', String(page));
+  if (limit !== undefined && limit !== null) params.set('limit', String(limit));
+
+  const response = await fetch(`${API_URL}/datasets/${id}?${params.toString()}`);
   if (!response.ok) throw new Error("Failed to fetch dataset");
   return response.json();
 }
 
 export async function exportReport(payload) {
-  const response = await fetch(`${API_URL}/wizard/export`, {
+  const response = await fetch(`${API_URL}/analysis/report/pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error("Failed to export report");
+  return await response.blob();
+}
+
+export async function exportDocx(payload) {
+  const response = await fetch(`${API_URL}/analysis/export/docx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error("Failed to export DOCX");
   return await response.blob();
 }
 
@@ -142,8 +156,13 @@ export async function getAnalysisResults(datasetId, runId) {
   return response.json();
 }
 
-export async function modifyDataset(id, modifications) {
-  const response = await fetch(`${API_URL}/datasets/${id}/modify`, {
+export async function modifyDataset(id, modifications, options = {}) {
+  const params = new URLSearchParams();
+  if (options?.page !== undefined && options?.page !== null) params.set('page', String(options.page));
+  if (options?.limit !== undefined && options?.limit !== null) params.set('limit', String(options.limit));
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+
+  const response = await fetch(`${API_URL}/datasets/${id}/modify${suffix}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actions: modifications }),
@@ -152,16 +171,23 @@ export async function modifyDataset(id, modifications) {
   return response.json();
 }
 
-export async function reparseDataset(id, something, sheetName) {
-  const response = await fetch(`${API_URL}/datasets/${id}/reparse?sheet=${encodeURIComponent(sheetName)}`, {
-    method: "POST"
+export async function reparseDataset(id, headerRow = 0, sheetName, options = {}) {
+  const params = new URLSearchParams();
+  if (options?.page !== undefined && options?.page !== null) params.set('page', String(options.page));
+  if (options?.limit !== undefined && options?.limit !== null) params.set('limit', String(options.limit));
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+
+  const response = await fetch(`${API_URL}/datasets/${id}/reparse${suffix}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ header_row: headerRow, sheet_name: sheetName ?? null }),
   });
   if (!response.ok) throw new Error("Reparse failed");
   return response.json();
 }
 
 export async function scanDataset(id) {
-  const response = await fetch(`${API_URL}/quality/scan/${id}`);
+  const response = await fetch(`${API_URL}/quality/${id}/scan`);
   if (!response.ok) throw new Error("Scan failed");
   return response.json();
 }
@@ -169,6 +195,22 @@ export async function scanDataset(id) {
 export async function getScanReport(id) {
   const response = await fetch(`${API_URL}/datasets/${id}/scan_report`);
   if (!response.ok) throw new Error("Scan report failed");
+  return response.json();
+}
+
+export async function getVariableMapping(datasetId) {
+  const response = await fetch(`${API_URL}/datasets/${datasetId}/variable_mapping`);
+  if (!response.ok) throw new Error("Variable mapping load failed");
+  return response.json();
+}
+
+export async function putVariableMapping(datasetId, mapping) {
+  const response = await fetch(`${API_URL}/datasets/${datasetId}/variable_mapping`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mapping: mapping || {} })
+  });
+  if (!response.ok) throw new Error("Variable mapping save failed");
   return response.json();
 }
 
@@ -201,7 +243,7 @@ export async function downloadBatchReport(datasetId, batchResult, selectedVar) {
       dataset_id: datasetId
     };
 
-    const response = await fetch(`${API_URL}/wizard/export`, {
+    const response = await fetch(`${API_URL}/analysis/report/pdf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -220,7 +262,7 @@ export async function downloadBatchReport(datasetId, batchResult, selectedVar) {
 }
 
 export function getPDFExportUrl(datasetId, variable, groupColumn = 'Group') {
-  return `${API_URL}/wizard/export/${datasetId}/${encodeURIComponent(variable)}?group_column=${encodeURIComponent(groupColumn)}`;
+  return `${API_URL}/analysis/report/${datasetId}/pdf?target_col=${encodeURIComponent(variable)}&group_col=${encodeURIComponent(groupColumn)}`;
 }
 
 export async function reprocessDataset(id) {
@@ -238,5 +280,147 @@ export async function runBatchAnalysis(datasetId, targets, groupColumn) {
     body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn, alpha: getAlphaSetting() }),
   });
   if (!response.ok) throw new Error("Batch analysis failed");
+  return response.json();
+}
+
+/* ============================================================
+   API v2: Advanced Statistical Methods
+   ============================================================ */
+
+const API_V2_URL = `${API_URL}/v2`;
+
+/**
+ * Run Linear Mixed Model with Time×Group interaction
+ */
+export async function runMixedEffects(datasetId, {
+  outcome,
+  timeCol,
+  groupCol,
+  subjectCol,
+  covariates = [],
+  randomSlope = false,
+  alpha = null
+}) {
+  const response = await fetch(`${API_V2_URL}/mixed-effects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      outcome,
+      time_col: timeCol,
+      group_col: groupCol,
+      subject_col: subjectCol,
+      covariates,
+      random_slope: randomSlope,
+      alpha: alpha ?? getAlphaSetting()
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Mixed effects analysis failed");
+  }
+  return response.json();
+}
+
+/**
+ * Run jYS-style clustered correlation analysis
+ */
+export async function runClusteredCorrelation(datasetId, {
+  variables,
+  method = "pearson",
+  linkageMethod = "ward",
+  nClusters = null,
+  distanceThreshold = null,
+  showPValues = true,
+  alpha = null
+}) {
+  const response = await fetch(`${API_V2_URL}/clustered-correlation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      variables,
+      method,
+      linkage_method: linkageMethod,
+      n_clusters: nClusters,
+      distance_threshold: distanceThreshold,
+      show_p_values: showPValues,
+      alpha: alpha ?? getAlphaSetting()
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Clustered correlation failed");
+  }
+  return response.json();
+}
+
+/**
+ * Execute v2 analysis protocol (supports advanced methods)
+ */
+export async function executeProtocolV2(datasetId, protocol, alpha = null) {
+  const response = await fetch(`${API_V2_URL}/analysis/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      protocol,
+      alpha: alpha ?? getAlphaSetting()
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Protocol execution failed");
+  }
+  return response.json();
+}
+
+/**
+ * Get AI-powered test suggestions
+ */
+export async function getAISuggestions(datasetId, currentProtocol = []) {
+  const response = await fetch(`${API_V2_URL}/ai/suggest-tests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      protocol: currentProtocol
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "AI suggestions failed");
+  }
+  return response.json();
+}
+
+/**
+ * Get available analysis templates
+ */
+export async function getAnalysisTemplates(goal = null) {
+  const params = goal ? `?goal=${encodeURIComponent(goal)}` : '';
+  const response = await fetch(`${API_V2_URL}/analysis/templates${params}`);
+  if (!response.ok) throw new Error("Failed to fetch templates");
+  return response.json();
+}
+
+/**
+ * Design analysis from template
+ */
+export async function designAnalysisFromTemplate(datasetId, goal, variables, templateId = null) {
+  const response = await fetch(`${API_V2_URL}/analysis/design`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      goal,
+      template_id: templateId,
+      variables
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Template design failed");
+  }
   return response.json();
 }

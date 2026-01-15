@@ -1,1 +1,59 @@
-{"columns": {"Group": {"type": "categorical"}, "Value": {"type": "numeric", "normality": {"is_normal": true}}}}
+{
+  "columns": {
+    "Outcome": {
+      "name": "Outcome",
+      "type": "float32",
+      "missing_count": 0,
+      "unique_count": 40,
+      "total": 40,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.9567317921765465
+      },
+      "mean": 10.562726974487305,
+      "min": 6.1734395027160645,
+      "max": 15.704556465148926,
+      "example": 10.993428230285645,
+      "histogram": {
+        "bins": [
+          2,
+          1,
+          3,
+          6,
+          6,
+          5,
+          6,
+          5,
+          3,
+          1,
+          0,
+          2
+        ],
+        "edges": [
+          6.1734395027160645,
+          6.967699249585469,
+          7.761958996454875,
+          8.55621874332428,
+          9.350478490193685,
+          10.144738237063091,
+          10.938997983932495,
+          11.7332577308019,
+          12.527517477671307,
+          13.32177722454071,
+          14.116036971410116,
+          14.910296718279522,
+          15.704556465148926
+        ]
+      }
+    }
+  },
+  "issues": [],
+  "reorder_suggestion": [
+    "Outcome"
+  ],
+  "missing_report": {
+    "total_rows": 40,
+    "columns_with_missing": 0,
+    "by_column": []
+  }
+}

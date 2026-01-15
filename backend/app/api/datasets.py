@@ -4,11 +4,19 @@ import os
 import pandas as pd
 import aiofiles
 import json
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
-from typing import List
+from typing import List, Dict, Any
 
-from app.schemas.dataset import DatasetUpload, DatasetProfile, DatasetReparse, DatasetModification, ColumnInfo
+from app.schemas.dataset import (
+    DatasetUpload,
+    DatasetProfile,
+    DatasetReparse,
+    DatasetModification,
+    ColumnInfo,
+    VariableMappingUpdate,
+    VariableMappingDocument,
+)
 from app.modules.parsers import parse_file, get_dataset_path, get_dataframe
 from app.core.pipeline import PipelineManager
 from pydantic import BaseModel
@@ -19,6 +27,76 @@ router = APIRouter()
 WORKSPACE_DIR = "workspace"
 DATA_DIR = os.path.join(WORKSPACE_DIR, "datasets")
 pipeline = PipelineManager(DATA_DIR)
+
+
+def get_variable_mapping_path(dataset_id: str) -> str:
+    return os.path.join(DATA_DIR, dataset_id, "processed", "variable_mapping.json")
+
+
+def load_variable_mapping(dataset_id: str) -> dict:
+    path = get_variable_mapping_path(dataset_id)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_variable_mapping(dataset_id: str, mapping: Dict[str, Any]) -> None:
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        return
+
+    processed_dir = os.path.join(ds_dir, "processed")
+    os.makedirs(processed_dir, exist_ok=True)
+
+    path = get_variable_mapping_path(dataset_id)
+    serializable_mapping: Dict[str, Any] = {}
+    for k, v in (mapping or {}).items():
+        if isinstance(v, BaseModel):
+            serializable_mapping[k] = v.model_dump()
+        else:
+            serializable_mapping[k] = v
+
+    with open(path, "w") as f:
+        json.dump(serializable_mapping, f, indent=2, ensure_ascii=False)
+
+
+def update_variable_mapping_for_actions(
+    dataset_id: str,
+    mapping: Dict[str, Any],
+    actions: List[Any],
+    existing_columns: List[str],
+) -> Dict[str, Any]:
+    next_mapping: Dict[str, Any] = dict(mapping or {})
+
+    for action in actions:
+        a_type = getattr(action, "type", None)
+        if a_type == "rename_col":
+            col = getattr(action, "column", None)
+            new_name = getattr(action, "new_name", None)
+            if isinstance(col, str) and isinstance(new_name, str) and col and new_name and col in next_mapping:
+                next_mapping[new_name] = next_mapping.pop(col)
+        elif a_type == "drop_col":
+            col = getattr(action, "column", None)
+            if isinstance(col, str) and col:
+                next_mapping.pop(col, None)
+        elif a_type == "change_type":
+            col = getattr(action, "column", None)
+            new_type = getattr(action, "new_type", None)
+            if isinstance(col, str) and col and isinstance(new_type, str) and new_type:
+                current = next_mapping.get(col)
+                if not isinstance(current, dict):
+                    current = {}
+                next_mapping[col] = {**current, "data_type": new_type}
+
+    allowed = {str(c) for c in (existing_columns or [])}
+    next_mapping = {k: v for k, v in next_mapping.items() if k in allowed}
+    save_variable_mapping(dataset_id, next_mapping)
+    return next_mapping
 
 
 def generate_profile(df: pd.DataFrame, page: int = 1, limit: int = 100) -> DatasetProfile:
@@ -146,15 +224,16 @@ async def upload_dataset(file: UploadFile = File(...)):
         # Stage 1: Parse
         def parse_logic(): return parse_file(raw_path, header_row=0, original_filename=file.filename)
         df, used_header = await run_in_threadpool(parse_logic)
+
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        df = await run_in_threadpool(scanner.optimize_dtypes, df)
         
         # Stage 2: Create Processed Snapshot
         pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"header_row": used_header})
 
         # Stage 3: Smart Scan (One-Pass Optimization)
         # Replaces old 'profiler' + 'scanner' dual pass
-        from app.modules.smart_scanner import SmartScanner
-        scanner = SmartScanner()
-        
         # Run scan in threadpool to avoid blocking event loop on large files
         scan_result = await run_in_threadpool(scanner.scan_dataset, df)
         
@@ -173,8 +252,34 @@ async def upload_dataset(file: UploadFile = File(...)):
 
     return DatasetUpload(id=dataset_id, filename=file.filename, profile=profile_data)
 
+
+@router.get("/{dataset_id}/variable_mapping", response_model=VariableMappingDocument)
+def get_variable_mapping(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    mapping = load_variable_mapping(dataset_id)
+    return VariableMappingDocument(dataset_id=dataset_id, mapping=mapping)
+
+
+@router.put("/{dataset_id}/variable_mapping", response_model=VariableMappingDocument)
+def put_variable_mapping(dataset_id: str, payload: VariableMappingUpdate):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    save_variable_mapping(dataset_id, payload.mapping)
+
+    return VariableMappingDocument(dataset_id=dataset_id, mapping=payload.mapping)
+
 @router.post("/{dataset_id}/reparse", response_model=DatasetProfile)
-def reparse_dataset(dataset_id: str, request: DatasetReparse):
+def reparse_dataset(
+    dataset_id: str,
+    request: DatasetReparse,
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=2000),
+):
     # Retrieve raw source path
     # With pipeline, raw is always in source/original.raw
     upload_dir = os.path.join(DATA_DIR, dataset_id)
@@ -188,17 +293,37 @@ def reparse_dataset(dataset_id: str, request: DatasetReparse):
         
     try:
         df, used_header = parse_file(raw_path, header_row=request.header_row, sheet_name=request.sheet_name)
+
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        df = scanner.optimize_dtypes(df)
         
         # Create new processed snapshot (Overwrite stage 1)
         pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"header_row": used_header, "sheet": request.sheet_name})
+
+        mapping = load_variable_mapping(dataset_id)
+        if mapping:
+            update_variable_mapping_for_actions(
+                dataset_id=dataset_id,
+                mapping=mapping,
+                actions=[],
+                existing_columns=[str(c) for c in df.columns],
+            )
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not reparse file: {str(e)}")
         
-    return generate_profile(df)
+    total_pages = max(1, math.ceil(len(df) / limit))
+    safe_page = min(page, total_pages)
+    return generate_profile(df, page=safe_page, limit=limit)
 
 @router.post("/{dataset_id}/modify", response_model=DatasetProfile)
-def modify_dataset(dataset_id: str, modification: DatasetModification):
+def modify_dataset(
+    dataset_id: str,
+    modification: DatasetModification,
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=2000),
+):
     try:
         df = get_dataframe(dataset_id, DATA_DIR)
         actions = list((modification.actions or []))
@@ -242,21 +367,33 @@ def modify_dataset(dataset_id: str, modification: DatasetModification):
 
         df = df.reset_index(drop=True)
 
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        df = scanner.optimize_dtypes(df)
+
         pipeline.create_processed_snapshot(
             dataset_id,
             df,
             cleaning_log={"action": "modify", "count": len(actions)}
         )
 
-        from app.modules.smart_scanner import SmartScanner
-        scanner = SmartScanner()
+        mapping = load_variable_mapping(dataset_id)
+        if mapping:
+            update_variable_mapping_for_actions(
+                dataset_id=dataset_id,
+                mapping=mapping,
+                actions=actions,
+                existing_columns=[str(c) for c in df.columns],
+            )
         scan_report = scanner.scan_dataset(df)["scan_report"]
 
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         with open(report_path, "w") as f:
             json.dump(scan_report, f, indent=2, default=str)
 
-        return generate_profile(df)
+        total_pages = max(1, math.ceil(len(df) / limit))
+        safe_page = min(page, total_pages)
+        return generate_profile(df, page=safe_page, limit=limit)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to modify dataset: {str(e)}")
 
@@ -323,6 +460,10 @@ def impute_mice_api(dataset_id: str, cmd: MiceImputeCommand):
         imputed_mean = sum(matrices) / float(len(matrices))
         df.loc[:, columns] = imputed_mean
 
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        df = scanner.optimize_dtypes(df)
+
         pipeline.create_processed_snapshot(
             dataset_id,
             df,
@@ -334,8 +475,6 @@ def impute_mice_api(dataset_id: str, cmd: MiceImputeCommand):
             }
         )
 
-        from app.modules.smart_scanner import SmartScanner
-        scanner = SmartScanner()
         scan_report = scanner.scan_dataset(df)["scan_report"]
 
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
@@ -383,12 +522,13 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
         else:
             raise ValueError(f"Unknown action: {cmd.action}")
              
-        # 3. Save New Snapshot
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        df = scanner.optimize_dtypes(df)
+
         pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"action": cmd.action, "column": cmd.column})
         
         # 4. Re-Scan (Update Report)
-        from app.modules.smart_scanner import SmartScanner
-        scanner = SmartScanner()
         scan_report = scanner.scan_dataset(df)["scan_report"]
         
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
@@ -414,35 +554,14 @@ def get_scan_report(dataset_id: str):
 
 @router.get("/{dataset_id}", response_model=DatasetProfile)
 def get_dataset(dataset_id: str, page: int = 1, limit: int = 100):
-    upload_dir = os.path.join(DATA_DIR, dataset_id)
-    
-    # Priority 1: Processed Snapshot
-    processed_path = os.path.join(upload_dir, "processed", "data.csv")
-    if os.path.exists(processed_path):
-        df = pd.read_csv(processed_path)
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
         df.columns = df.columns.astype(str)
         return generate_profile(df, page=page, limit=limit)
-        
-    # Priority 2: Old Processed
-    old_proc = os.path.join(upload_dir, "processed.csv")
-    if os.path.exists(old_proc):
-         df = pd.read_csv(old_proc)
-         df.columns = df.columns.astype(str)
-         return generate_profile(df, page=page, limit=limit)
-
-    # Priority 3: Fallback Source (Old structure)
-    file_path, _ = get_dataset_path(dataset_id, DATA_DIR)
-    if not file_path: raise HTTPException(status_code=404, detail="Dataset not found")
-    
-    # Assuming old metadata
-    header_row = 0
-    meta_path = os.path.join(upload_dir, "metadata.json")
-    if os.path.exists(meta_path):
-        with open(meta_path, "r") as f: header_row = json.load(f).get("header_row", 0)
-        
-    df, _ = parse_file(file_path, header_row=header_row)
-    df, _ = parse_file(file_path, header_row=header_row)
-    return generate_profile(df, page=page, limit=limit)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
 
 @router.get("/{dataset_id}/content")
 def get_dataset_content(dataset_id: str, page: int = 1, limit: int = 100, sheet: str = None):

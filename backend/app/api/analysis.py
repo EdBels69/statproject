@@ -18,7 +18,8 @@ from app.core.pipeline import PipelineManager
 from app.core.protocol_engine import ProtocolEngine
 from app.modules.parsers import get_dataframe, get_dataset_path
 from app.core.study_designer import StudyDesignEngine
-from app.modules.reporting import generate_pdf_report
+from app.modules.reporting import generate_pdf_report, generate_protocol_pdf_report, generate_protocol_docx_report
+from app.modules.docx_generator import create_results_document
 from app.core.logging import logger
 
 from app.api.datasets import DATA_DIR, parse_file
@@ -27,7 +28,21 @@ router = APIRouter()
 pipeline = PipelineManager(DATA_DIR)
 protocol_engine = ProtocolEngine(pipeline)
 
+
+class ExportDocxRequest(BaseModel):
+    results: Dict[str, Any]
+    dataset_name: Optional[str] = None
+    filename: Optional[str] = None
+
 # --- Endpoints ---
+
+@router.get("/templates", response_model=Dict[str, Any])
+def list_design_templates(goal: Optional[str] = None):
+    try:
+        designer = StudyDesignEngine()
+        return {"templates": designer.list_templates(goal=goal)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Template listing failed: {str(e)}")
 
 @router.post("/design", response_model=Dict[str, Any])
 def suggest_design(req: DesignRequest):
@@ -35,6 +50,7 @@ def suggest_design(req: DesignRequest):
     Uses StudyDesignEngine to generate an Analysis Protocol based on user inputs.
     """
     try:
+        metadata: Dict[str, Any] = {}
         # 1. Load Dataset Metadata for Context (types, normality)
         # We assume the profile/scan_report exists or we quickly detect basic types
         # For MVP, we pass minimal metadata or load the scan report
@@ -42,13 +58,13 @@ def suggest_design(req: DesignRequest):
         scan_path = os.path.join(pipeline.get_dataset_dir(req.dataset_id), "processed", "scan_report.json")
         
         if os.path.exists(scan_path):
-             with open(scan_path) as f:
-                 full_report = json.load(f)
-                 metadata = full_report.get("columns", {})
+            with open(scan_path) as f:
+                full_report = json.load(f)
+                metadata = full_report.get("columns", {})
 
         # 2. Generate Protocol
         designer = StudyDesignEngine()
-        protocol = designer.suggest_protocol(req.goal, req.variables, metadata)
+        protocol = designer.suggest_protocol(req.goal, req.variables, metadata, template_id=req.template_id)
         return protocol
         
     except Exception as e:
@@ -70,8 +86,8 @@ def get_run_results(run_id: str, dataset_id: str):
     except Exception as e:
          raise HTTPException(status_code=404, detail=f"Run not found: {str(e)}")
 
-@router.get("/report/{run_id}/html")
-def get_run_report_html(run_id: str, dataset_id: str):
+@router.get("/protocol/report/{run_id}/html")
+def get_protocol_report_html(run_id: str, dataset_id: str):
     """
     Generates a printable HTML report for the analysis run.
     """
@@ -89,6 +105,67 @@ def get_run_report_html(run_id: str, dataset_id: str):
         return HTMLResponse(content=html)
     except Exception as e:
          raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+
+
+@router.get("/protocol/report/{run_id}/pdf")
+def get_protocol_report_pdf(run_id: str, dataset_id: str):
+    from fastapi.responses import Response
+
+    pipeline = PipelineManager("workspace/datasets")
+    try:
+        res = pipeline.get_run_results(dataset_id, run_id)
+        if not res:
+            raise HTTPException(status_code=404, detail="Results not found")
+
+        pdf_bytes = generate_protocol_pdf_report(res, dataset_name=f"Dataset {dataset_id[:5]}...")
+        filename = f"protocol_report_{run_id}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF report generation failed: {str(e)}")
+
+@router.get("/protocol/report/{run_id}/docx")
+def get_protocol_report_docx(run_id: str, dataset_id: str):
+    from fastapi.responses import Response
+
+    pipeline = PipelineManager("workspace/datasets")
+    try:
+        res = pipeline.get_run_results(dataset_id, run_id)
+        if not res:
+            raise HTTPException(status_code=404, detail="Results not found")
+
+        docx_bytes = generate_protocol_docx_report(res, dataset_name=f"Dataset {dataset_id[:5]}...")
+        filename = f"protocol_report_{run_id}.docx"
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DOCX report generation failed: {str(e)}")
+
+
+@router.post("/export/docx")
+async def export_docx(request: ExportDocxRequest):
+    from fastapi.responses import StreamingResponse
+
+    try:
+        buffer = create_results_document(request.results, dataset_name=request.dataset_name)
+        filename = request.filename or "results.docx"
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DOCX export failed: {str(e)}")
 
 @router.post("/protocol/run")
 async def run_protocol_api(request: ProtocolRequest):
@@ -114,24 +191,7 @@ async def run_method_api(request: AnalysisRequest):
     
     # 1. Load Data (async via threadpool)
     async def load_data():
-        file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
-        if not file_path:
-            raise HTTPException(status_code=404, detail="Dataset not found")
-                
-        header_row = 0
-        meta_path = os.path.join(upload_dir, "metadata.json")
-        if os.path.exists(meta_path):
-            import json
-            with open(meta_path, "r") as f:
-                header_row = json.load(f).get("header_row", 0)
-                
-        # Load processed or raw
-        processed_path = os.path.join(upload_dir, "processed.csv")
-        if os.path.exists(processed_path):
-            df = pd.read_csv(processed_path)
-        else:
-            df, _ = parse_file(file_path, header_row=header_row)
-        return df
+        return get_dataframe(request.dataset_id, DATA_DIR)
     
     df = await run_in_threadpool(load_data)
     
@@ -163,6 +223,12 @@ async def run_method_api(request: AnalysisRequest):
         res = AnalysisResult(
             method=method_info,
             p_value=results["p_value"],
+            effect_size=results.get("effect_size"),
+            effect_size_name=results.get("effect_size_name"),
+            effect_size_ci_lower=results.get("effect_size_ci_lower"),
+            effect_size_ci_upper=results.get("effect_size_ci_upper"),
+            power=results.get("power"),
+            bf10=results.get("bf10"),
             stat_value=results["stat_value"],
             significant=results["significant"],
             groups=results.get("groups"),
@@ -268,6 +334,12 @@ async def download_report(
     analysis_result = AnalysisResult(
         method=method_info,
         p_value=res["p_value"],
+        effect_size=res.get("effect_size"),
+        effect_size_name=res.get("effect_size_name"),
+        effect_size_ci_lower=res.get("effect_size_ci_lower"),
+        effect_size_ci_upper=res.get("effect_size_ci_upper"),
+        power=res.get("power"),
+        bf10=res.get("bf10"),
         stat_value=res["stat_value"],
         significant=res["significant"],
         groups=res.get("groups"),
@@ -292,6 +364,100 @@ async def download_report(
     
     return HTMLResponse(content=html_content)
 
+
+@router.get("/report/{dataset_id}/pdf")
+async def download_report_pdf(
+    dataset_id: str,
+    target_col: str,
+    group_col: str,
+    method_id: str = None
+):
+    from fastapi.responses import Response
+
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found or file missing")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+
+    col_a = target_col
+    col_b = group_col
+
+    if not method_id:
+        types = {c: ("numeric" if pd.api.types.is_numeric_dtype(df[c]) else "categorical") for c in [col_a, col_b]}
+        method_id = select_test(df, col_a, col_b, types)
+
+    if not method_id:
+        raise HTTPException(status_code=400, detail="Could not determine method for report.")
+
+    try:
+        res = run_analysis(df, method_id, col_a, col_b)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    method_info = get_method(method_id)
+    conclusion = f"Statistically {'significant' if res['significant'] else 'insignificant'} difference found (p={res['p_value']:.4f})."
+
+    analysis_result = AnalysisResult(
+        method=method_info,
+        p_value=res["p_value"],
+        effect_size=res.get("effect_size"),
+        effect_size_name=res.get("effect_size_name"),
+        effect_size_ci_lower=res.get("effect_size_ci_lower"),
+        effect_size_ci_upper=res.get("effect_size_ci_upper"),
+        power=res.get("power"),
+        bf10=res.get("bf10"),
+        stat_value=res["stat_value"],
+        significant=res["significant"],
+        groups=res.get("groups"),
+        plot_data=res.get("plot_data"),
+        plot_stats=res.get("plot_stats"),
+        conclusion=conclusion
+    )
+
+    from app.core.config import settings
+    if settings.GLM_ENABLED and settings.GLM_API_KEY:
+        from app.llm import get_ai_conclusion
+        try:
+            ai_text = await get_ai_conclusion(analysis_result)
+            if ai_text:
+                analysis_result.conclusion = ai_text
+        except Exception as e:
+            logger.warning(f"AI Enhancement failed: {e}", exc_info=True)
+
+    pdf_bytes = generate_pdf_report(
+        analysis_result.model_dump(),
+        {"target": target_col, "group": group_col},
+        dataset_id
+    )
+
+    filename = f"report_{dataset_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+class PdfExportRequest(BaseModel):
+    results: Dict[str, Any]
+    variables: Dict[str, Any]
+    dataset_id: str
+
+
+@router.post("/report/pdf")
+async def export_report_pdf(req: PdfExportRequest):
+    from fastapi.responses import Response
+
+    pdf_bytes = generate_pdf_report(req.results, req.variables, req.dataset_id)
+    filename = f"report_{req.dataset_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
 from app.schemas.analysis import BatchAnalysisResponse, BatchAnalysisRequest
 
 def _sanitize(obj):
@@ -314,24 +480,7 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
     
     # 1. Load Data (async via threadpool)
     async def load_batch_data():
-        file_path, upload_dir = get_dataset_path(request.dataset_id, DATA_DIR)
-        if not file_path:
-            raise HTTPException(status_code=404, detail="Dataset not found or file missing")
-        
-        # Load metadata
-        header_row = 0
-        meta_path = os.path.join(upload_dir, "metadata.json")
-        if os.path.exists(meta_path):
-            import json
-            with open(meta_path, "r") as f:
-                meta = json.load(f)
-                header_row = meta.get("header_row", 0)
-                
-        try:
-            df, _ = parse_file(file_path, header_row=header_row)
-        except:
-            df = pd.read_csv(file_path)
-        return df
+        return get_dataframe(request.dataset_id, DATA_DIR)
     
     df = await run_in_threadpool(load_batch_data)
 
@@ -416,6 +565,12 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                 result_obj = AnalysisResult(
                     method=method_info,
                     p_value=res.get("p_value"),
+                    effect_size=res.get("effect_size"),
+                    effect_size_name=res.get("effect_size_name"),
+                    effect_size_ci_lower=res.get("effect_size_ci_lower"),
+                    effect_size_ci_upper=res.get("effect_size_ci_upper"),
+                    power=res.get("power"),
+                    bf10=res.get("bf10"),
                     stat_value=res.get("stat_value"),
                     significant=res.get("significant", False),
                     groups=res.get("groups"),

@@ -11,6 +11,10 @@ export default defineConfig({
       '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), './src'),
     },
   },
+  test: {
+    environment: 'jsdom',
+    exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],
+  },
   server: {
     proxy: {
       '/api': {

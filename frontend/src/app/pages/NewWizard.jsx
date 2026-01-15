@@ -19,17 +19,17 @@ const GoalCard = ({ title, description, icon: Icon, active, onClick }) => {
             type="button"
             aria-pressed={active}
             aria-label={`Select ${title}: ${description}`}
-            className={`p-6 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col items-center text-center group ${active
-                ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
-                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600`}
+            className={`p-6 rounded-[2px] border cursor-pointer transition-colors duration-200 flex flex-col items-center text-center group ${active
+                ? 'border-[color:var(--accent)] bg-[color:var(--bg-secondary)]'
+                : 'border-[color:var(--border-color)] bg-[color:var(--white)] hover:border-[color:var(--accent)]'
+                }`}
         >
-            <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-100'
+            <div className={`w-12 h-12 rounded-[2px] mb-4 flex items-center justify-center transition-colors border ${active ? 'bg-[color:var(--accent)] border-[color:var(--accent)] text-[color:var(--white)]' : 'bg-[color:var(--bg-secondary)] border-[color:var(--border-color)] text-[color:var(--accent)]'
                 } `}>
                 {iconEl}
             </div>
-            <h3 className={`font-semibold text-lg mb-2 ${active ? 'text-blue-900' : 'text-gray-900'} `}>{title}</h3>
-            <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+            <h3 className="font-semibold text-lg mb-2 text-[color:var(--text-primary)]">{title}</h3>
+            <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed">{description}</p>
         </button>
     );
 };
@@ -53,7 +53,7 @@ const StepGoal = ({ selectedGoal, onSelect }) => {
     return (
         <div className="animate-fadeIn">
             <h2 className="text-xl font-semibold mb-2">What is your research question?</h2>
-            <p className="text-gray-500 mb-8">Select the primary goal of your analysis to get AI-guided recommendations.</p>
+            <p className="text-[color:var(--text-secondary)] mb-8">Select the primary goal of your analysis to get AI-guided recommendations.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {goals.map((goal) => (
@@ -89,17 +89,17 @@ export default function NewWizard() {
             {/* Progress Stepper */}
             <div className="mb-12">
                 <div className="flex items-center justify-between relative">
-                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10 rounded-full"></div>
-                    <div className={`absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 -z-10 rounded-full transition-all duration-300`}
+                    <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-[color:var(--border-color)] -z-10 rounded-[2px]"></div>
+                    <div className={`absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-[color:var(--accent)] -z-10 rounded-[2px] transition-all duration-300`}
                         style={{ width: `${(currStep / (STEPS.length - 1)) * 100}%` }}></div>
 
                     {STEPS.map((step, index) => (
-                        <div key={step.id} className={`flex flex-col items-center bg-[#F9FAFB] px-4`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors ${currStep >= index ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-500'
+                        <div key={step.id} className="flex flex-col items-center bg-[color:var(--bg-secondary)] px-4">
+                            <div className={`w-8 h-8 rounded-[2px] flex items-center justify-center font-bold text-sm mb-2 transition-colors border ${currStep >= index ? 'bg-[color:var(--accent)] border-[color:var(--accent)] text-[color:var(--white)]' : 'bg-[color:var(--bg-secondary)] border-[color:var(--border-color)] text-[color:var(--text-muted)]'
                                 } `}>
                                 {index + 1}
                             </div>
-                            <span className={`text-xs font-semibold uppercase tracking-wider ${currStep >= index ? 'text-blue-600' : 'text-gray-400'
+                            <span className={`text-xs font-semibold uppercase tracking-wider ${currStep >= index ? 'text-[color:var(--accent)]' : 'text-[color:var(--text-muted)]'
                                 } `}>
                                 {step.title}
                             </span>
@@ -109,7 +109,7 @@ export default function NewWizard() {
             </div>
 
             {/* Content Area */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 min-h-[400px]">
+            <div className="bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] p-8 min-h-[400px]">
                 {currStep === 0 && (
                     <StepGoal
                         selectedGoal={wizardData.goal}
@@ -151,9 +151,9 @@ export default function NewWizard() {
                     <button
                         onClick={prevStep}
                         disabled={currStep === 0}
-                        className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${currStep === 0
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600'
+                        className={`px-6 py-2.5 rounded-[2px] font-medium transition-colors ${currStep === 0
+                            ? 'text-[color:var(--text-muted)] cursor-not-allowed'
+                            : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)]'
                             } `}
                         aria-label="Go back to previous step"
                     >
@@ -166,9 +166,9 @@ export default function NewWizard() {
                             (currStep === 0 && !wizardData.goal) ||
                             (currStep === 1 && !canShare)
                         }
-                        className={`px-6 py-2.5 rounded-lg font-medium transition-all shadow-sm ${((currStep === 0 && !wizardData.goal) || (currStep === 1 && !canShare))
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600'
+                        className={`px-6 py-2.5 rounded-[2px] font-medium transition-colors border ${((currStep === 0 && !wizardData.goal) || (currStep === 1 && !canShare))
+                            ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-muted)] cursor-not-allowed border-[color:var(--border-color)]'
+                            : 'bg-[color:var(--accent)] text-[color:var(--white)] border-[color:var(--accent)] hover:bg-[color:var(--accent-hover)] hover:border-[color:var(--accent-hover)]'
                             } `}
                         aria-label="Continue to next step"
                     >

@@ -11,31 +11,20 @@ from app.modules.quality import (
     detect_outliers_iqr,
     perform_auto_cleaning
 )
-from app.modules.parsers import get_dataset_path, parse_file
+from app.modules.parsers import get_dataframe
 from app.api.datasets import DATA_DIR
 from app.llm import scan_data_quality
 from app.schemas.dataset import QualityReport
+from app.core.pipeline import PipelineManager
 
 router = APIRouter(prefix="/quality", tags=["quality"])
 
+pipeline = PipelineManager(DATA_DIR)
+
 @router.get("/{dataset_id}/scan", response_model=QualityReport)
 async def scan_dataset_quality(dataset_id: str):
-    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-        
     try:
-        # Load data
-        processed_path = os.path.join(upload_dir, "processed.csv")
-        if os.path.exists(processed_path):
-            df = pd.read_csv(processed_path)
-        else:
-            header_row = 0
-            meta_path = os.path.join(upload_dir, "metadata.json")
-            if os.path.exists(meta_path):
-                with open(meta_path, "r") as f:
-                    header_row = json.load(f).get("header_row", 0)
-            df, _ = parse_file(file_path, header_row=header_row)
+        df = get_dataframe(dataset_id, DATA_DIR)
             
         # 1. Rule-based checks
         constant_cols = detect_constant_columns(df)
@@ -44,7 +33,7 @@ async def scan_dataset_quality(dataset_id: str):
         skewness = calculate_skewness(df)
         
         # 2. AI-based checks (Semantic)
-        ai_report = await scan_data_quality(df)
+        ai_issues = await scan_data_quality(df)
         
         # Combined issues list
         issues = []
@@ -56,31 +45,49 @@ async def scan_dataset_quality(dataset_id: str):
             if count > 0:
                 issues.append({"column": col, "type": "outliers", "severity": "low", "message": f"Detected {count} potential outliers (IQR method)."})
         
-        # Add AI issues
-        issues.extend(ai_report.get("issues", []))
+        for item in ai_issues:
+            if not isinstance(item, dict):
+                continue
+            issues.append(
+                {
+                    "column": item.get("column"),
+                    "type": item.get("issue_type") or "ai_issue",
+                    "severity": item.get("severity", "low"),
+                    "message": item.get("description") or "AI detected potential issue.",
+                    "suggestion": item.get("suggestion"),
+                }
+            )
         
         return {
             "dataset_id": dataset_id,
             "issues": issues,
-            "summary": ai_report.get("summary", "Scan complete.")
+            "summary": "Scan complete."
         }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quality scan failed: {str(e)}")
 
 @router.post("/{dataset_id}/clean")
 async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
-    file_path, upload_dir = get_dataset_path(dataset_id, DATA_DIR)
-    if not file_path:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-        
+    from fastapi.concurrency import run_in_threadpool
+
     try:
-        df, _ = parse_file(file_path) # Simplified load for cleaning original
-        cleaned_df = perform_auto_cleaning(df, method=strategy)
-        
-        # Save as processed
-        processed_path = os.path.join(upload_dir, "processed.csv")
-        cleaned_df.to_csv(processed_path, index=False)
-        
-        return {"status": "success", "message": f"Dataset cleaned using {strategy} and saved as processed."}
+        df = await run_in_threadpool(get_dataframe, dataset_id, DATA_DIR)
+        cleaned_df = await run_in_threadpool(perform_auto_cleaning, df, strategy)
+
+        from app.modules.smart_scanner import SmartScanner
+        scanner = SmartScanner()
+        cleaned_df = await run_in_threadpool(scanner.optimize_dtypes, cleaned_df)
+
+        pipeline.create_processed_snapshot(
+            dataset_id,
+            cleaned_df,
+            cleaning_log={"action": "quality_auto_clean", "strategy": strategy}
+        )
+
+        return {"status": "success", "message": f"Dataset cleaned using {strategy} and saved."}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")

@@ -3,11 +3,11 @@ import Sidebar from './Sidebar';
 
 export default function MainLayout({ children }) {
     return (
-        <div className="min-h-screen bg-[#F9FAFB] font-sans text-gray-900">
+        <div className="min-h-screen bg-[color:var(--bg-secondary)] font-sans text-[color:var(--text-primary)]">
             {/* Skip to main content link for keyboard navigation */}
             <a
                 href="#main-content"
-                className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-medium"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-[color:var(--accent)] focus:text-[color:var(--white)] focus:px-4 focus:py-2 focus:rounded-[2px] focus:font-semibold"
             >
                 Skip to main content
             </a>

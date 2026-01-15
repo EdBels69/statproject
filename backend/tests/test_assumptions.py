@@ -12,6 +12,7 @@ def test_assumptions_logic():
     res_good = run_analysis(df_good, "t_test_ind", "value", "group")
     print(f"Warnings: {res_good.get('warnings')}")
     assert len(res_good['warnings']) == 0, "Should have no warnings for perfect data"
+    assert res_good.get("method_used") in (None, "t_test_ind")
 
     print("\n--- 2. Testing Non-Normal Data ---")
     df_bad_norm = pd.DataFrame({
@@ -21,6 +22,7 @@ def test_assumptions_logic():
     res_bad_norm = run_analysis(df_bad_norm, "t_test_ind", "value", "group")
     print(f"Warnings: {res_bad_norm.get('warnings')}")
     assert any("Normality" in w for w in res_bad_norm['warnings']), "Should warn about Normality"
+    assert res_bad_norm.get("method_used") in ("mann_whitney", "t_test_ind")
 
     print("\n--- 3. Testing Heterogeneous Variances ---")
     df_bad_var = pd.DataFrame({
@@ -33,6 +35,7 @@ def test_assumptions_logic():
     
     # Check Welch recommendation in ANY warning
     assert any("Welch" in w for w in res_bad_var['warnings']), "Should recommend Welch"
+    assert res_bad_var.get("method_used") in ("t_test_welch", "mann_whitney", "t_test_ind")
     
     print("\n--- 4. Testing Welch (Should ignore Homogeneity warning) ---")
     res_welch = run_analysis(df_bad_var, "t_test_welch", "value", "group")
@@ -44,6 +47,7 @@ def test_assumptions_logic():
     # Homogeneity check is only for standard tests.
     has_homo_warn = any("Homogeneity" in w for w in res_welch.get('warnings', []))
     assert not has_homo_warn, "Welch test should not warn about homogeneity"
+    assert res_welch.get("method_used") in (None, "t_test_welch", "mann_whitney")
 
 if __name__ == "__main__":
     test_assumptions_logic()

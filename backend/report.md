@@ -2013,6 +2013,20 @@ export const translations = {
 };
 ```
 
+##### Results screen: i18n для результатов анализа
+**Файлы:**
+- `/frontend/src/app/pages/steps/StepResults.jsx`
+- `/frontend/src/app/components/VisualizePlot.jsx`
+- `/frontend/src/app/components/ClusteredHeatmap.jsx`
+- `/frontend/src/app/components/InteractionPlot.jsx`
+- `/frontend/src/lib/i18n.js`
+
+**Изменения:**
+- Убраны хардкод-строки в UI результатов; все пользовательские подписи переведены на `t()`.
+- Добавлены ключи для подписей ROC-графика, кластерной теплокарты и графика взаимодействий.
+- Исправлено правило ESLint “Cannot create components during render” в `VisualizePlot` (tooltip-компонент вынесен из рендера).
+- Сборка/линт проверены: `npm run lint`, `npm run build`.
+
 #### 4. Docker Deployment
 
 ##### docker-compose.yml

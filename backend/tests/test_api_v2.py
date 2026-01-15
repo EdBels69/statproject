@@ -391,6 +391,47 @@ def test_protocol_v2_mixed_effects():
     # Note: Currently falls back to standard analysis until v2 protocol is fully implemented
     assert response.status_code in [200, 400], f"Protocol v2 failed: {response.text}"
 
+
+# --- Templates (Design → Execute) Tests ---
+
+def test_templates_list():
+    response = client.get("/api/v1/v2/analysis/templates")
+    assert response.status_code == 200, f"Template list failed: {response.text}"
+    data = response.json()
+    assert "templates" in data
+    assert isinstance(data["templates"], list)
+    assert len(data["templates"]) > 0
+
+
+def test_template_design_and_execute_protocol():
+    design_payload = {
+        "dataset_id": TEST_ID_V2,
+        "goal": "compare_groups",
+        "template_id": "compare_quick",
+        "variables": {"target": "outcome", "group": "group"},
+    }
+
+    design_res = client.post("/api/v1/v2/analysis/design", json=design_payload)
+    assert design_res.status_code == 200, f"Template design failed: {design_res.text}"
+    design_data = design_res.json()
+    assert design_data.get("status") == "completed"
+    protocol = design_data.get("protocol")
+    assert isinstance(protocol, list)
+    assert len(protocol) > 0
+    assert all(isinstance(step, dict) and step.get("method") for step in protocol)
+
+    execute_payload = {
+        "dataset_id": TEST_ID_V2,
+        "alpha": 0.05,
+        "protocol": protocol,
+    }
+    exec_res = client.post("/api/v1/v2/analysis/execute", json=execute_payload)
+    assert exec_res.status_code == 200, f"Protocol execute failed: {exec_res.text}"
+    exec_data = exec_res.json()
+    assert exec_data.get("status") in ["completed", "partial"]
+    assert exec_data.get("total_steps") == len(protocol)
+    assert (exec_data.get("completed_steps") or 0) >= 1
+
 # --- Memory and Performance Tests ---
 
 def test_memory_usage_mixed_effects():

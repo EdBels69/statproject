@@ -24,14 +24,23 @@ FROM python:3.9-slim AS runtime
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
+ENV MPLCONFIGDIR=/tmp/matplotlib
+
+RUN groupadd -r appuser && useradd -m -r -g appuser appuser \
     && mkdir -p /app/workspace/datasets \
+    && mkdir -p /tmp/matplotlib \
     && chown -R appuser:appuser /app
+
+RUN chown -R appuser:appuser /tmp/matplotlib
 
 # Copy application code
 COPY --chown=appuser:appuser . .

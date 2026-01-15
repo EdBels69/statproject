@@ -51,19 +51,19 @@ const StepProtocol = ({ data, onResultsReady }) => {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 animate-pulse">
-                <BeakerIcon className="w-16 h-16 text-blue-200 mb-4" />
-                <h3 className="text-xl font-medium text-gray-700">Designing Study Protocol...</h3>
-                <p className="text-gray-500 mt-2">AI is analyzing variable types and normality</p>
+                <BeakerIcon className="w-16 h-16 text-[color:var(--accent)] mb-4" />
+                <h3 className="text-xl font-medium text-[color:var(--text-primary)]">Designing Study Protocol...</h3>
+                <p className="text-[color:var(--text-secondary)] mt-2">AI is analyzing variable types and normality</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="bg-red-50 p-6 rounded-lg text-center">
-                <div className="text-red-600 font-medium mb-2">Error</div>
+            <div className="bg-[color:var(--bg-secondary)] border border-[color:var(--error)] p-6 rounded-[2px] text-center">
+                <div className="text-[color:var(--error)] font-medium mb-2">Error</div>
                 {error}
-                <button onClick={() => window.location.reload()} className="mt-4 text-sm text-blue-600 underline">Retry</button>
+                <button onClick={() => window.location.reload()} className="mt-4 text-sm text-[color:var(--accent)] underline">Retry</button>
             </div>
         );
     }
@@ -72,38 +72,38 @@ const StepProtocol = ({ data, onResultsReady }) => {
         <div className="max-w-3xl mx-auto animate-fadeIn">
             {/* Header */}
             <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-[2px] bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] text-[color:var(--accent)] mb-4">
                     <ClipboardDocumentCheckIcon className="w-6 h-6" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Proposed Analysis Plan</h2>
-                <p className="text-gray-500 mt-2">
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Proposed Analysis Plan</h2>
+                <p className="text-[color:var(--text-secondary)] mt-2">
                     Based on your goal <strong>{data.goal?.replace('_', ' ')}</strong>, we recommend the following pipeline:
                 </p>
             </div>
 
             {/* Protocol Card */}
-            <div className="bg-white border-2 border-indigo-50 rounded-xl overflow-hidden shadow-sm mb-8">
-                <div className="bg-indigo-50/50 p-4 border-b border-indigo-100 flex justify-between items-center">
-                    <span className="font-semibold text-indigo-900">{protocol.name}</span>
-                    <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full uppercase tracking-wide">
+            <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden mb-8">
+                <div className="bg-[color:var(--bg-secondary)] p-4 border-b border-[color:var(--border-color)] flex justify-between items-center">
+                    <span className="font-semibold text-[color:var(--text-primary)]">{protocol.name}</span>
+                    <span className="text-xs bg-[color:var(--white)] border border-[color:var(--border-color)] text-[color:var(--text-secondary)] px-2 py-1 rounded-[2px] uppercase tracking-wide">
                         {protocol.steps.length} Steps
                     </span>
                 </div>
 
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-[color:var(--border-color)]">
                     {protocol.steps.map((step, idx) => (
-                        <div key={idx} className="p-4 flex items-start hover:bg-gray-50 transition-colors">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-500 mr-4">
+                        <div key={idx} className="p-4 flex items-start hover:bg-[color:var(--bg-secondary)] transition-colors">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-[2px] bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] flex items-center justify-center text-sm font-bold text-[color:var(--text-secondary)] mr-4">
                                 {idx + 1}
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold text-gray-900 uppercase">
+                                <h4 className="text-sm font-bold text-[color:var(--text-primary)] uppercase">
                                     {step.type.replace(/_/g, ' ')}
                                 </h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                    Target: <code className="bg-gray-100 px-1 rounded">{step.target}</code>
-                                    {step.group && <> vs Group: <code className="bg-gray-100 px-1 rounded">{step.group}</code></>}
-                                    {step.split_by && <> (Split by: <code className="bg-blue-50 text-blue-700 px-1 rounded">{step.split_by}</code>)</>}
+                                <p className="text-sm text-[color:var(--text-secondary)] mt-1">
+                                    Target: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.target}</code>
+                                    {step.group && <> vs Group: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.group}</code></>}
+                                    {step.split_by && <> (Split by: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] text-[color:var(--accent)] px-1 rounded-[2px]">{step.split_by}</code>)</>}
                                 </p>
                             </div>
                         </div>
@@ -116,7 +116,7 @@ const StepProtocol = ({ data, onResultsReady }) => {
                 <button
                     onClick={handleExecute}
                     disabled={running}
-                    className="flex items-center px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-70 shadow-lg hover:shadow-xl transition-all"
+                    className="flex items-center px-8 py-3 bg-[color:var(--accent)] border border-[color:var(--accent)] text-[color:var(--white)] rounded-[2px] font-semibold hover:bg-[color:var(--accent-hover)] hover:border-[color:var(--accent-hover)] disabled:opacity-70 transition-colors"
                 >
                     {running ? (
                         <>

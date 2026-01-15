@@ -2,30 +2,30 @@
   "columns": {
     "Value": {
       "name": "Value",
-      "type": "float64",
+      "type": "float32",
       "missing_count": 0,
       "unique_count": 4,
       "total": 4,
       "normality": {
-        "is_normal": "True",
-        "p_value": 0.22087238378893245
+        "is_normal": true,
+        "p_value": 0.22087240003274933
       },
-      "mean": 1.1270926695583947,
-      "min": 0.6347605047159774,
+      "mean": 1.127092719078064,
+      "min": 0.6347604990005493,
       "max": 2.0,
       "example": 1.0
     },
     "Other": {
       "name": "Other",
-      "type": "float64",
+      "type": "float32",
       "missing_count": 0,
       "unique_count": 4,
       "total": 4,
       "normality": {
-        "is_normal": "True",
-        "p_value": 0.6609535554303256
+        "is_normal": true,
+        "p_value": 0.6609536712434507
       },
-      "mean": 11.622032911899232,
+      "mean": 11.62203311920166,
       "min": 10.0,
       "max": 13.0,
       "example": 10.0
@@ -40,19 +40,29 @@
         "x",
         "y"
       ],
+      "top_values": [
+        {
+          "value": "x",
+          "count": 2
+        },
+        {
+          "value": "y",
+          "count": 1
+        }
+      ],
       "example": "x"
     },
     "ValueStr": {
       "name": "ValueStr",
-      "type": "float64",
+      "type": "float32",
       "missing_count": 1,
       "unique_count": 3,
       "total": 4,
       "normality": {
-        "is_normal": "True",
-        "p_value": 0.636886845028969
+        "is_normal": true,
+        "p_value": 0.6368868450289689
       },
-      "mean": 2.3333333333333335,
+      "mean": 2.3333332538604736,
       "min": 1.0,
       "max": 4.0,
       "example": 1.0

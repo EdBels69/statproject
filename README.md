@@ -99,21 +99,45 @@ The frontend application will be available at `http://localhost:5173`
 
 ## API Documentation
 
-Once the backend is running, visit:
+Base URL: `http://localhost:8000/api/v1`
+
+Interactive docs (when backend is running):
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+Core endpoints:
+- `POST /datasets` (multipart) — upload CSV/XLSX
+- `GET /datasets` — list datasets
+- `GET /datasets/{id}` — dataset metadata
+- `DELETE /datasets/{id}` — delete dataset
+- `POST /analysis/design` — get protocol suggestion
+- `POST /analysis/protocol/run` — execute protocol
+- `GET /analysis/run/{run_id}?dataset_id={id}` — fetch results
+- `POST /analysis/report/pdf` — export report (PDF)
+- `GET /quality/{id}/scan` — run quality scan
+
 ## Testing
 
-### Run All Tests
+### Backend
 ```bash
 cd backend
 python -m pytest tests/
 ```
 
-### Run Specific Tests
+### Frontend
+```bash
+cd frontend
+npm run test:run
+
+# E2E (Playwright)
+npx playwright install
+npm run e2e
+```
+
+### Run Specific Backend Tests
 ```bash
 # Full flow integration test
+cd backend
 python tests/test_full_flow.py
 
 # E2E test (Upload → Analyze → Export)
@@ -128,6 +152,27 @@ python tests/test_stress_all_methods.py
 Configure analysis parameters via the Settings page:
 - **Alpha Level**: Set significance threshold (0.01, 0.05, or 0.10)
 - Settings are persisted in localStorage
+
+## LLM (Optional)
+
+The backend can optionally call an LLM for short, human-readable conclusions.
+
+```env
+GLM_ENABLED=true
+
+# Z.AI (GLM)
+GLM_API_KEY=your_glm_api_key_here
+GLM_API_URL=https://api.z.ai/api/coding/paas/v4
+GLM_MODEL=glm-4.7
+
+# OpenRouter (free models)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
+
+# Examples of free OpenRouter models:
+# GLM_MODEL=qwen/qwen3-coder:free
+# GLM_MODEL=deepseek/deepseek-tng-r1t2-chimera:free
+```
 
 ## Error Handling
 

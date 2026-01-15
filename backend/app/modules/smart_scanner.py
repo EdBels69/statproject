@@ -1,7 +1,21 @@
 import pandas as pd
 import numpy as np
+import math
 from typing import Dict, Any, List
 from app.stats.engine import check_normality
+
+
+def _safe_float(value):
+    """Convert to JSON-safe float. Returns None for inf, -inf, nan."""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
 
 class SmartScanner:
     """
@@ -21,11 +35,17 @@ class SmartScanner:
         }
         """
         # --- 1. Basic Metadata ---
+        # Replace inf/-inf and nan with None for JSON serialization
+        safe_head = df.head(10).copy()
+        for col in safe_head.columns:
+            if pd.api.types.is_numeric_dtype(safe_head[col]):
+                safe_head[col] = safe_head[col].replace([np.inf, -np.inf], np.nan)
+        safe_head = safe_head.replace({np.nan: None})
+        
         profile = {
             "row_count": len(df),
             "col_count": len(df.columns),
-            # Generate safe head for JSON
-            "head": df.head(10).replace({np.nan: None}).to_dict(orient="records") 
+            "head": safe_head.to_dict(orient="records") 
         }
 
         # --- 2. Deep Scan ---
@@ -95,6 +115,51 @@ class SmartScanner:
             "scan_report": report
         }
 
+    def optimize_dtypes(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+
+        for col in out.columns:
+            try:
+                s = out[col]
+
+                if pd.api.types.is_integer_dtype(s.dtype):
+                    out[col] = pd.to_numeric(s, downcast="integer")
+                    continue
+
+                if pd.api.types.is_float_dtype(s.dtype):
+                    out[col] = pd.to_numeric(s, downcast="float")
+                    continue
+
+                if pd.api.types.is_bool_dtype(s.dtype) or isinstance(s.dtype, pd.CategoricalDtype):
+                    continue
+
+                if pd.api.types.is_object_dtype(s.dtype) or pd.api.types.is_string_dtype(s.dtype):
+                    # First ensure all values are strings to avoid type errors
+                    s_str = s.astype(str) if s.dtype == object else s
+                    numeric_converted = pd.to_numeric(s_str, errors="coerce")
+                    non_null = s.notna().sum()
+                    numeric_non_null = numeric_converted.notna().sum()
+
+                    if non_null > 0 and (numeric_non_null / non_null) >= 0.9:
+                        out[col] = pd.to_numeric(s_str, errors="coerce")
+                        if pd.api.types.is_integer_dtype(out[col].dropna().dtype):
+                            out[col] = pd.to_numeric(out[col], downcast="integer")
+                        elif pd.api.types.is_float_dtype(out[col].dtype):
+                            out[col] = pd.to_numeric(out[col], downcast="float")
+                        continue
+
+                    unique_count = int(s.nunique(dropna=True))
+                    if unique_count > 0:
+                        unique_ratio = unique_count / max(1, int(non_null))
+                        if unique_count <= 200 and unique_ratio <= 0.2:
+                            out[col] = s.astype("category")
+            except Exception as e:
+                # If optimization fails for a column, leave it unchanged
+                # This handles Excel files with unusual/mixed data types
+                pass
+
+        return out
+
     def _analyze_column(self, series: pd.Series, name: str) -> Dict[str, Any]:
         """
         Deep dive into a single column.
@@ -133,19 +198,38 @@ class SmartScanner:
             # Shapiro limit check inside check_normality, but result implies:
             stats["normality"] = {
                 "is_normal": is_normal,
-                "p_value": float(p_val)
+                "p_value": _safe_float(p_val)
             }
             
-            # Simple Desc
-            stats["mean"] = float(series.mean())
-            stats["min"] = float(series.min())
-            stats["max"] = float(series.max())
-            stats["example"] = float(series.iloc[0]) if len(series) > 0 else None
+            # Simple Desc - use _safe_float to handle inf/nan values
+            stats["mean"] = _safe_float(series.mean())
+            stats["min"] = _safe_float(series.min())
+            stats["max"] = _safe_float(series.max())
+            stats["example"] = _safe_float(series.iloc[0]) if len(series) > 0 else None
+
+            try:
+                clean = series.replace([np.inf, -np.inf], np.nan).dropna()
+                if len(clean) >= 10:
+                    counts, edges = np.histogram(clean.to_numpy(dtype=float), bins=12)
+                    stats["histogram"] = {
+                        "bins": [int(x) for x in counts.tolist()],
+                        "edges": [_safe_float(x) for x in edges.tolist()],
+                    }
+            except Exception:
+                pass
 
         # C. Categorical Intelligence
         if pd.api.types.is_object_dtype(series.dtype) or isinstance(series.dtype, pd.CategoricalDtype):
              if unique_c < 20:
                  stats["categories"] = [str(x) for x in series.dropna().unique()]
+             try:
+                 top = series.dropna().astype(str).value_counts().head(3)
+                 stats["top_values"] = [
+                     {"value": str(idx), "count": int(cnt)}
+                     for idx, cnt in top.items()
+                 ]
+             except Exception:
+                 pass
              stats["example"] = str(series.iloc[0]) if len(series) > 0 else None
         
         return stats

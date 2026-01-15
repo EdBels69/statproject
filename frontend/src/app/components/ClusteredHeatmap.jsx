@@ -1,6 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 
+import { useTranslation } from '../../hooks/useTranslation';
+import ExportSettingsModal from './ExportSettingsModal';
+import { exportPlot } from '../utils/exportPlot';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+
 const ClusteredHeatmap = ({ 
   data, 
   width = 600, 
@@ -10,6 +15,19 @@ const ClusteredHeatmap = ({
   const svgRef = useRef();
   const [selectedCluster, setSelectedCluster] = useState(null);
   const [hoveredCell, setHoveredCell] = useState(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const { t, currentLanguage } = useTranslation();
+
+  const getCorrelationColor = (value) => {
+    if (typeof document === 'undefined') return 'currentColor';
+    const root = getComputedStyle(document.documentElement);
+    const cssAccent = root.getPropertyValue('--accent').trim();
+    const cssError = root.getPropertyValue('--error').trim();
+    const cssBgSecondary = root.getPropertyValue('--bg-secondary').trim();
+    const interpolator = d3.interpolateRgbBasis([cssError, cssBgSecondary, cssAccent]);
+    const clamped = Math.min(1, Math.max(0, (Number(value) + 1) / 2));
+    return interpolator(clamped);
+  };
 
   useEffect(() => {
     if (!data || !data.correlation_matrix || !data.dendrogram) return;
@@ -44,10 +62,18 @@ const ClusteredHeatmap = ({
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Color scale for correlations
+    const root = getComputedStyle(document.documentElement);
+    const cssAccent = root.getPropertyValue('--accent').trim();
+    const cssError = root.getPropertyValue('--error').trim();
+    const cssBgSecondary = root.getPropertyValue('--bg-secondary').trim();
+    const cssBorder = root.getPropertyValue('--border-color').trim();
+    const cssTextPrimary = root.getPropertyValue('--text-primary').trim();
+    const cssTextSecondary = root.getPropertyValue('--text-secondary').trim();
+    const cssWhite = root.getPropertyValue('--white').trim();
+
     const colorScale = d3.scaleDiverging()
       .domain([-1, 0, 1])
-      .interpolator(d3.interpolateRdBu);
+      .interpolator(d3.interpolateRgbBasis([cssError, cssBgSecondary, cssAccent]));
 
     // Create heatmap
     const cellSize = Math.min(innerWidth, innerHeight) / variableOrder.length;
@@ -72,16 +98,16 @@ const ClusteredHeatmap = ({
       .attr("width", cellSize)
       .attr("height", cellSize)
       .attr("fill", d => colorScale(d.value))
-      .attr("stroke", "#fff")
+      .attr("stroke", cssWhite)
       .attr("stroke-width", 0.5)
       .style("cursor", "pointer")
       .on("mouseover", function(_event, d) {
         setHoveredCell(d);
-        d3.select(this).attr("stroke-width", 2).attr("stroke", "#000");
+        d3.select(this).attr("stroke-width", 2).attr("stroke", cssTextPrimary);
       })
       .on("mouseout", function() {
         setHoveredCell(null);
-        d3.select(this).attr("stroke-width", 0.5).attr("stroke", "#fff");
+        d3.select(this).attr("stroke-width", 0.5).attr("stroke", cssWhite);
       })
       .on("click", function(_event, d) {
         // Toggle cluster selection
@@ -111,7 +137,7 @@ const ClusteredHeatmap = ({
         .attr("width", count * cellSize + 4)
         .attr("height", count * cellSize + 4)
         .attr("fill", "none")
-        .attr("stroke", selectedCluster === cluster ? "#ff6b35" : "#666")
+        .attr("stroke", selectedCluster === cluster ? cssAccent : cssTextSecondary)
         .attr("stroke-width", selectedCluster === cluster ? 3 : 1)
         .attr("stroke-dasharray", selectedCluster === cluster ? "" : "4,4")
         .style("pointer-events", "none");
@@ -128,6 +154,7 @@ const ClusteredHeatmap = ({
       .attr("y", (d, i) => i * cellSize + cellSize / 2)
       .text(d => d)
       .style("font-size", "10px")
+      .style("fill", cssTextSecondary)
       .style("cursor", "pointer")
       .on("mouseover", function() {
         d3.select(this).style("font-weight", "bold");
@@ -148,6 +175,7 @@ const ClusteredHeatmap = ({
       .attr("y", -5)
       .text(d => d)
       .style("font-size", "10px")
+      .style("fill", cssTextSecondary)
       .style("cursor", "pointer");
 
     // Add color legend
@@ -167,6 +195,12 @@ const ClusteredHeatmap = ({
     legend.append("g")
       .attr("transform", `translate(0,${legendHeight})`)
       .call(legendAxis);
+
+    legend.selectAll('path,line')
+      .attr('stroke', cssBorder);
+    legend.selectAll('text')
+      .attr('fill', cssTextSecondary)
+      .style('font-size', '10px');
 
     const defs = svg.append("defs");
     const gradient = defs.append("linearGradient")
@@ -189,7 +223,7 @@ const ClusteredHeatmap = ({
       .attr("width", legendWidth)
       .attr("height", legendHeight)
       .style("fill", "url(#correlation-gradient)")
-      .attr("stroke", "#ccc");
+      .attr("stroke", cssBorder);
 
     // Add title
     svg.append("text")
@@ -198,7 +232,8 @@ const ClusteredHeatmap = ({
       .attr("text-anchor", "middle")
       .style("font-size", "16px")
       .style("font-weight", "bold")
-      .text("Кластерный анализ корреляций");
+      .style('fill', cssTextPrimary)
+      .text(t('clustered_correlation_title'));
 
     // Add cluster info
     if (data.cluster_info) {
@@ -217,82 +252,109 @@ const ClusteredHeatmap = ({
           .attr("x", 20)
           .attr("y", i * 25 + 12)
           .style("font-size", "12px")
-          .text(`Кластер ${cluster}: ${info.variables.length} переменных`);
+          .style('fill', cssTextSecondary)
+          .text(t('cluster_label_variables', { cluster, count: info.variables.length }));
       });
     }
 
-  }, [data, width, height, margin, selectedCluster]);
+  }, [data, width, height, margin, selectedCluster, currentLanguage, t]);
 
   const getClusterColor = (cluster) => {
-    const colors = [
-      '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-      '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
-    ];
-    return colors[cluster % colors.length];
+    if (typeof document === 'undefined') return 'currentColor';
+    const root = getComputedStyle(document.documentElement);
+    const cssAccent = root.getPropertyValue('--accent').trim();
+    const c = d3.color(cssAccent);
+    if (!c) return cssAccent || 'currentColor';
+    const alphas = [1, 0.85, 0.7, 0.55, 0.4, 0.25];
+    c.opacity = alphas[Number(cluster) % alphas.length] ?? 1;
+    return c.formatRgb();
   };
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-        <div className="text-gray-500 text-center">
+      <div className="flex items-center justify-center h-64 bg-[color:var(--bg-secondary)] rounded-[2px] border border-[color:var(--border-color)]">
+        <div className="text-[color:var(--text-secondary)] text-center">
           <div className="text-2xl mb-2">📊</div>
-          <p>Загрузите данные для отображения тепловой карты</p>
+          <p>{t('upload_data_for_heatmap')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="clustered-heatmap">
+    <div className="clustered-heatmap relative">
       {/* Tooltip */}
       {hoveredCell && (
-        <div className="absolute bg-white border border-gray-300 p-3 rounded shadow-lg"
+        <div className="absolute bg-[color:var(--white)] border border-[color:var(--border-color)] p-3 rounded-[2px]"
              style={{ 
                left: hoveredCell.x + margin.left + 20, 
                top: hoveredCell.y + margin.top + 20 
              }}>
-          <div className="text-sm font-semibold">
+          <div className="text-sm font-semibold text-[color:var(--text-primary)]">
             {hoveredCell.rowVar} × {hoveredCell.colVar}
           </div>
-          <div className="text-lg font-bold"
-               style={{ color: d3.interpolateRdBu((hoveredCell.value + 1) / 2) }}>
-            r = {hoveredCell.value.toFixed(3)}
+          <div className="text-lg font-bold" style={{ color: getCorrelationColor(hoveredCell.value) }}>
+            {t('corr_r_short', { value: hoveredCell.value.toFixed(3) })}
           </div>
-          <div className="text-xs text-gray-600">
-            Кластер строк: {hoveredCell.rowCluster || 'Н/Д'}<br/>
-            Кластер столбцов: {hoveredCell.colCluster || 'Н/Д'}
+          <div className="text-xs text-[color:var(--text-secondary)]">
+            {t('row_cluster')}: {hoveredCell.rowCluster || t('not_available_short')}<br/>
+            {t('col_cluster')}: {hoveredCell.colCluster || t('not_available_short')}
           </div>
         </div>
       )}
 
       {/* Main visualization */}
-      <svg
-        ref={svgRef}
-        width={width}
-        height={height}
-        className="border border-gray-200 rounded-lg"
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsExportOpen(true)}
+          className="absolute right-2 top-2 z-10 inline-flex items-center gap-2 px-3 py-2 rounded-[2px] text-xs font-semibold bg-[color:var(--white)] border border-[color:var(--border-color)] text-[color:var(--text-primary)] hover:border-[color:var(--text-primary)]"
+        >
+          <ArrowDownTrayIcon className="w-4 h-4" />
+          Экспорт
+        </button>
+        <svg
+          ref={svgRef}
+          width={width}
+          height={height}
+          className="border border-[color:var(--border-color)] rounded-[2px]"
+        />
+      </div>
+
+      <ExportSettingsModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        defaultTitle={t('clustered_correlation_title')}
+        onConfirm={async (settings) => {
+          setIsExportOpen(false);
+          try {
+            await exportPlot(svgRef.current, settings, { fileBaseName: 'clustered_heatmap', defaultTitle: settings?.title || t('clustered_correlation_title') });
+          } catch (e) {
+            window.alert(e?.message || 'Не удалось экспортировать график');
+          }
+        }}
       />
 
       {/* Statistics */}
       {data.statistics && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-semibold mb-2">Статистика кластеризации:</h4>
+        <div className="mt-4 p-4 bg-[color:var(--bg-secondary)] rounded-[2px] border border-[color:var(--border-color)]">
+          <h4 className="font-semibold mb-2 text-[color:var(--text-primary)]">{t('clustering_statistics')}</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Количество кластеров: </span>
-              <span className="font-medium">{data.statistics.n_clusters}</span>
+              <span className="text-[color:var(--text-secondary)]">{t('n_clusters')}: </span>
+              <span className="font-medium text-[color:var(--text-primary)]">{data.statistics.n_clusters}</span>
             </div>
             <div>
-              <span className="text-gray-600">Средний размер кластера: </span>
-              <span className="font-medium">{data.statistics.avg_cluster_size?.toFixed(1)}</span>
+              <span className="text-[color:var(--text-secondary)]">{t('avg_cluster_size')}: </span>
+              <span className="font-medium text-[color:var(--text-primary)]">{data.statistics.avg_cluster_size?.toFixed(1)}</span>
             </div>
             <div>
-              <span className="text-gray-600">Внутрикластерная корреляция: </span>
-              <span className="font-medium">{data.statistics.within_cluster_corr?.toFixed(3)}</span>
+              <span className="text-[color:var(--text-secondary)]">{t('within_cluster_corr')}: </span>
+              <span className="font-medium text-[color:var(--text-primary)]">{data.statistics.within_cluster_corr?.toFixed(3)}</span>
             </div>
             <div>
-              <span className="text-gray-600">Межкластерная корреляция: </span>
-              <span className="font-medium">{data.statistics.between_cluster_corr?.toFixed(3)}</span>
+              <span className="text-[color:var(--text-secondary)]">{t('between_cluster_corr')}: </span>
+              <span className="font-medium text-[color:var(--text-primary)]">{data.statistics.between_cluster_corr?.toFixed(3)}</span>
             </div>
           </div>
         </div>

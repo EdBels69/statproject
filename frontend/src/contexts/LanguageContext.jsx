@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
 const LanguageContext = createContext();
@@ -14,22 +14,26 @@ export const useLanguage = () => {
 export const LanguageProvider = ({ children }) => {
   const translation = useTranslation();
   const [isChanging, setIsChanging] = useState(false);
+  const isInitialized = useRef(false);
 
-  // Initialize language from localStorage or browser preference
+  // Initialize language from localStorage or browser preference (only once)
   useEffect(() => {
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
     const savedLanguage = localStorage.getItem('preferredLanguage');
     const browserLanguage = navigator.language.startsWith('ru') ? 'ru' : 'en';
-    
+
     if (savedLanguage && ['ru', 'en'].includes(savedLanguage)) {
-      translation.changeLanguage(savedLanguage);
+      translation.i18n.changeLanguage(savedLanguage);
     } else if (browserLanguage === 'ru') {
-      translation.changeLanguage('ru');
+      translation.i18n.changeLanguage('ru');
     }
-  }, [translation]);
+  }, [translation.i18n]);
 
   const changeLanguage = async (lng) => {
     if (!['ru', 'en'].includes(lng)) return;
-    
+
     setIsChanging(true);
     try {
       await translation.changeLanguage(lng);

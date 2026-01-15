@@ -294,6 +294,11 @@ class ProtocolEngine:
             # Check for AI Style per step (default Pro)
             ai_style = step.get("ai_style", "pro")
             result_dict["conclusion"] = self.ai.interpret_result(result_dict, {"target": target, "group": group}, style=ai_style)
+            result_dict["ai_interpretation"] = self.ai.interpret_result(
+                result_dict,
+                {"target": target, "group": group},
+                style="ru",
+            )
             
             return result_dict
             
@@ -302,13 +307,13 @@ class ProtocolEngine:
 
     def _run_compare(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         target = step.get("target")
-        group = step.get("group")
+        group = step.get("group") or step.get("predictor")
         
         # Auto-detect method if not provided
         if not step.get("method"):
             types = {
                 target: "numeric" if pd.api.types.is_numeric_dtype(df[target]) else "categorical",
-                group: "categorical" # Assumed for compare
+                group: "numeric" if group and pd.api.types.is_numeric_dtype(df[group]) else "categorical"
             }
             method_id = select_test(df, target, group, types)
         else:
@@ -331,13 +336,28 @@ class ProtocolEngine:
             "significant": raw_res.get("significant"),
             "stats": raw_res.get("stat_value"),
             "effect_size": raw_res.get("effect_size"),
+            "effect_size_name": raw_res.get("effect_size_name"),
+            "effect_size_ci_lower": raw_res.get("effect_size_ci_lower"),
+            "effect_size_ci_upper": raw_res.get("effect_size_ci_upper"),
+            "effect_size_interpretation": raw_res.get("effect_size_interpretation"),
+            "power": raw_res.get("power"),
+            "bf10": raw_res.get("bf10"),
             "groups": raw_res.get("groups"),
-            "plot_stats": raw_res.get("plot_stats"), 
-            "plot_data": raw_res.get("plot_data")
+            "plot_stats": raw_res.get("plot_stats"),
+            "plot_data": raw_res.get("plot_data"),
+            "assumptions": raw_res.get("assumptions"),
+            "warnings": raw_res.get("warnings"),
+            "post_hoc": raw_res.get("post_hoc"),
+            "comparisons": raw_res.get("comparisons"),
         }
         
         # AI Interpretation
         result_dict["conclusion"] = self.ai.interpret_result(result_dict, {"target": target, "group": group})
+        result_dict["ai_interpretation"] = self.ai.interpret_result(
+            result_dict,
+            {"target": target, "group": group},
+            style="ru",
+        )
         
         return result_dict
 

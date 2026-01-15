@@ -48,3 +48,23 @@ class QualityReport(BaseModel):
     dataset_id: str
     issues: List[QualityIssue]
     summary: Optional[str] = None
+
+
+class VariableMappingEntry(BaseModel):
+    role: Optional[str] = None
+    group_var: bool = False
+    subgroup: Optional[str] = None
+    timepoint: Optional[str] = None
+    display_name: Optional[str] = None
+    data_type: Optional[str] = None
+    include_descriptive: bool = True
+    include_comparison: bool = True
+
+
+class VariableMappingUpdate(BaseModel):
+    mapping: Dict[str, VariableMappingEntry] = Field(default_factory=dict)
+
+
+class VariableMappingDocument(BaseModel):
+    dataset_id: str
+    mapping: Dict[str, VariableMappingEntry] = Field(default_factory=dict)

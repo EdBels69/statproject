@@ -7,7 +7,7 @@ class StudyDesignEngine:
     Acts as the 'Methodologist' role.
     """
 
-    def suggest_protocol(self, goal: str, variables: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def suggest_protocol(self, goal: str, variables: Dict[str, Any], metadata: Dict[str, Any], template_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Main entry point.
         goal: 'compare_groups', 'relationship', 'survival', 'prediction'
@@ -32,6 +32,9 @@ class StudyDesignEngine:
                 # STATIC (Cross-sectional)
                 name = f"Comparison of {target} by {group}"
                 steps = self._design_static_comparison(target, group, metadata)
+
+            if template_id == "compare_quick":
+                steps = [s for s in steps if s.get("id") != "desc_stats"]
 
         elif goal == "relationship":
             target = variables.get("target")
@@ -119,5 +122,31 @@ class StudyDesignEngine:
             "id": "corr_analysis",
             "type": "correlation",
             "target": target,
-            "predictor": predictor
+            "group": predictor
         }]
+
+    def list_templates(self, goal: Optional[str] = None) -> List[Dict[str, str]]:
+        templates = [
+            {
+                "id": "compare_full",
+                "goal": "compare_groups",
+                "name": "Full comparison",
+                "description": "Descriptives + hypothesis test (auto)",
+            },
+            {
+                "id": "compare_quick",
+                "goal": "compare_groups",
+                "name": "Quick comparison",
+                "description": "Only hypothesis test (auto)",
+            },
+            {
+                "id": "correlation_auto",
+                "goal": "relationship",
+                "name": "Correlation (auto)",
+                "description": "Auto-select Pearson/Spearman",
+            },
+        ]
+
+        if goal:
+            return [t for t in templates if t.get("goal") == goal]
+        return templates

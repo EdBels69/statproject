@@ -1,0 +1,12 @@
+{
+  "Outcome": {
+    "role": "Outcome",
+    "group_var": false,
+    "subgroup": null,
+    "timepoint": null,
+    "display_name": null,
+    "data_type": "text",
+    "include_descriptive": true,
+    "include_comparison": true
+  }
+}

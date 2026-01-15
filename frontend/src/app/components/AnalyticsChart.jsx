@@ -4,10 +4,37 @@ import {
     ScatterChart, Scatter, Line, ZAxis, ErrorBar, Cell
 } from 'recharts';
 
-const COLORS = ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'];
+function getTheme() {
+    if (typeof document === 'undefined') {
+        return {
+            accent: 'currentColor',
+            accentHover: 'currentColor',
+            bgSecondary: 'transparent',
+            border: 'currentColor',
+            textPrimary: 'currentColor',
+            textSecondary: 'currentColor',
+            textMuted: 'currentColor',
+            white: 'transparent'
+        };
+    }
+
+    const root = getComputedStyle(document.documentElement);
+    return {
+        accent: root.getPropertyValue('--accent').trim(),
+        accentHover: root.getPropertyValue('--accent-hover').trim(),
+        bgSecondary: root.getPropertyValue('--bg-secondary').trim(),
+        border: root.getPropertyValue('--border-color').trim(),
+        textPrimary: root.getPropertyValue('--text-primary').trim(),
+        textSecondary: root.getPropertyValue('--text-secondary').trim(),
+        textMuted: root.getPropertyValue('--text-muted').trim(),
+        white: root.getPropertyValue('--white').trim()
+    };
+}
 
 export default function AnalyticsChart({ result }) {
     if (!result) return null;
+
+    const theme = getTheme();
 
     const { method, plot_stats, plot_data, regression, groups } = result;
 
@@ -18,26 +45,26 @@ export default function AnalyticsChart({ result }) {
             mean: plot_stats[g].mean,
             median: plot_stats[g].median,
             error: [plot_stats[g].ci_lower, plot_stats[g].ci_upper],
-            fill: COLORS[i % COLORS.length]
+            opacity: [0.95, 0.8, 0.65, 0.5, 0.35][i % 5]
         }));
 
         return (
             <div className="h-[400px] w-full mt-6">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Group Comparison (Mean & 95% CI)</h4>
+                <h4 className="text-sm font-bold text-[color:var(--text-muted)] uppercase tracking-widest mb-4 text-center">Group Comparison (Mean & 95% CI)</h4>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.border} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: theme.textSecondary, fontSize: 12 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.textSecondary, fontSize: 12 }} />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            cursor={{ fill: '#f8fafc' }}
+                            contentStyle={{ borderRadius: 2, border: `1px solid ${theme.border}`, backgroundColor: theme.white, color: theme.textPrimary }}
+                            cursor={{ fill: theme.bgSecondary }}
                         />
-                        <Bar dataKey="mean" radius={[6, 6, 0, 0]} barSize={60}>
+                        <Bar dataKey="mean" radius={[2, 2, 0, 0]} barSize={60}>
                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} fillOpacity={0.8} />
+                                <Cell key={`cell-${index}`} fill={theme.accent} fillOpacity={entry.opacity} />
                             ))}
-                            <ErrorBar dataKey="error" width={4} strokeWidth={2} stroke="#334155" />
+                            <ErrorBar dataKey="error" width={4} strokeWidth={2} stroke={theme.textPrimary} />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -61,20 +88,20 @@ export default function AnalyticsChart({ result }) {
 
         return (
             <div className="h-[400px] w-full mt-6">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Relationship Analysis (Scatter + Trend)</h4>
+                <h4 className="text-sm font-bold text-[color:var(--text-muted)] uppercase tracking-widest mb-4 text-center">Relationship Analysis (Scatter + Trend)</h4>
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis type="number" dataKey="x" name="Target" axisLine={false} tickLine={false} />
-                        <YAxis type="number" dataKey="y" name="Feature" axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
+                        <XAxis type="number" dataKey="x" name="Target" axisLine={false} tickLine={false} tick={{ fill: theme.textSecondary, fontSize: 12 }} />
+                        <YAxis type="number" dataKey="y" name="Feature" axisLine={false} tickLine={false} tick={{ fill: theme.textSecondary, fontSize: 12 }} />
                         <ZAxis type="number" range={[64]} />
-                        <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                        <Scatter name="Data Points" data={scatterData} fill="#4f46e5" fillOpacity={0.5} />
+                        <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ borderRadius: 2, border: `1px solid ${theme.border}`, backgroundColor: theme.white, color: theme.textPrimary }} />
+                        <Scatter name="Data Points" data={scatterData} fill={theme.accent} fillOpacity={0.35} />
                         <Line
                             type="monotone"
                             dataKey="y"
                             data={lineData}
-                            stroke="#ec4899"
+                            stroke={theme.accent}
                             strokeWidth={3}
                             dot={false}
                             activeDot={false}
@@ -82,7 +109,7 @@ export default function AnalyticsChart({ result }) {
                         />
                     </ScatterChart>
                 </ResponsiveContainer>
-                <div className="text-center mt-2 text-xs text-slate-400 italic">
+                <div className="text-center mt-2 text-xs text-[color:var(--text-muted)] italic">
                     R-Squared: {regression.r_squared.toFixed(4)} | Slope: {regression.slope.toFixed(2)}
                 </div>
             </div>
@@ -95,27 +122,29 @@ export default function AnalyticsChart({ result }) {
 
         return (
             <div className="h-[400px] w-full mt-6">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Survival Analysis (Kaplan-Meier)</h4>
+                <h4 className="text-sm font-bold text-[color:var(--text-muted)] uppercase tracking-widest mb-4 text-center">Survival Analysis (Kaplan-Meier)</h4>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
                         <XAxis
                             type="number"
                             dataKey="time"
                             name="Time"
                             axisLine={false}
                             tickLine={false}
-                            label={{ value: 'Time (Units)', position: 'insideBottom', offset: -10 }}
+                            tick={{ fill: theme.textSecondary, fontSize: 12 }}
+                            label={{ value: 'Time (Units)', position: 'insideBottom', offset: -10, fill: theme.textMuted }}
                         />
                         <YAxis
                             type="number"
                             domain={[0, 1]}
                             axisLine={false}
                             tickLine={false}
-                            label={{ value: 'Survival Probability', angle: -90, position: 'insideLeft', offset: 10 }}
+                            tick={{ fill: theme.textSecondary, fontSize: 12 }}
+                            label={{ value: 'Survival Probability', angle: -90, position: 'insideLeft', offset: 10, fill: theme.textMuted }}
                         />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            contentStyle={{ borderRadius: 2, border: `1px solid ${theme.border}`, backgroundColor: theme.white, color: theme.textPrimary }}
                         />
                         <Legend verticalAlign="top" height={36} />
                         {uniqueGroups.map((g, i) => (
@@ -125,10 +154,11 @@ export default function AnalyticsChart({ result }) {
                                 data={plot_data.filter(p => p.group === g)}
                                 dataKey="probability"
                                 name={g}
-                                stroke={COLORS[i % COLORS.length]}
+                                stroke={theme.accent}
+                                strokeOpacity={[1, 0.8, 0.65, 0.5, 0.35][i % 5]}
                                 strokeWidth={3}
                                 dot={false}
-                                activeDot={{ r: 6 }}
+                                activeDot={{ r: 2 }}
                                 connectNulls
                             />
                         ))}
@@ -145,18 +175,18 @@ export default function AnalyticsChart({ result }) {
 
         return (
             <div className="h-[450px] w-full mt-6">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">
+                <h4 className="text-sm font-bold text-[color:var(--text-muted)] uppercase tracking-widest mb-4 text-center">
                     {isLogistic ? 'Odds Ratios (Logistic Regression)' : 'Model Coefficients (Linear Regression)'}
                 </h4>
                 <div className="flex flex-col gap-6">
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={theme.border} />
                             <XAxis type="number" hide={!isLogistic} domain={isLogistic ? [0, 'auto'] : ['auto', 'auto']} />
-                            <YAxis type="category" dataKey="variable" axisLine={false} tickLine={false} width={100} />
+                            <YAxis type="category" dataKey="variable" axisLine={false} tickLine={false} width={100} tick={{ fill: theme.textSecondary, fontSize: 12 }} />
                             <Tooltip
                                 cursor={{ fill: 'transparent' }}
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                contentStyle={{ borderRadius: 2, border: `1px solid ${theme.border}`, backgroundColor: theme.white, color: theme.textPrimary }}
                                 formatter={(val, name) => {
                                     if (isLogistic && name === "OR") return [val.toFixed(2), "Odds Ratio"];
                                     return [val.toFixed(3), name];
@@ -165,23 +195,23 @@ export default function AnalyticsChart({ result }) {
                             <Bar
                                 dataKey={isLogistic ? "odds_ratio" : "coefficient"}
                                 name={isLogistic ? "OR" : "Coef"}
-                                radius={[0, 4, 4, 0]}
+                                radius={[0, 2, 2, 0]}
                             >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.p_value < 0.05 ? '#4f46e5' : '#cbd5e1'} />
+                                    <Cell key={`cell-${index}`} fill={entry.p_value < 0.05 ? theme.accent : theme.border} />
                                 ))}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-slate-50 rounded-2xl text-center">
-                            <span className="block text-slate-400 text-xs font-black uppercase tracking-tighter">Model Fit (R²)</span>
-                            <span className="text-2xl font-mono font-black text-slate-900">{result.r_squared.toFixed(3)}</span>
+                        <div className="p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] rounded-[2px] text-center">
+                            <span className="block text-[color:var(--text-muted)] text-xs font-black uppercase tracking-tighter">Model Fit (R²)</span>
+                            <span className="text-2xl font-mono font-black text-[color:var(--text-primary)]">{result.r_squared.toFixed(3)}</span>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-2xl text-center">
-                            <span className="block text-slate-400 text-xs font-black uppercase tracking-tighter">Predictors</span>
-                            <span className="text-2xl font-mono font-black text-slate-900">{data.length}</span>
+                        <div className="p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] rounded-[2px] text-center">
+                            <span className="block text-[color:var(--text-muted)] text-xs font-black uppercase tracking-tighter">Predictors</span>
+                            <span className="text-2xl font-mono font-black text-[color:var(--text-primary)]">{data.length}</span>
                         </div>
                     </div>
                 </div>
@@ -190,7 +220,7 @@ export default function AnalyticsChart({ result }) {
     }
 
     return (
-        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 italic">
+        <div className="p-8 text-center text-[color:var(--text-muted)] bg-[color:var(--bg-secondary)] rounded-[2px] border border-dashed border-[color:var(--border-color)] italic">
             No visualization data available for this method.
         </div>
     );

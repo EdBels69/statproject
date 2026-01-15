@@ -1057,11 +1057,21 @@ class GLMProvider:
 ### Конфигурация (.env)
 
 ```env
-# GLM API
+# LLM (опционально)
 GLM_ENABLED=true
+
+# Z.AI (GLM)
 GLM_API_KEY=your_glm_api_key_here
-GLM_API_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions
-GLM_MODEL=glm-4
+GLM_API_URL=https://api.z.ai/api/coding/paas/v4
+GLM_MODEL=glm-4.7
+
+# OpenRouter (бесплатные модели)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
+
+# Примеры бесплатных моделей OpenRouter:
+# GLM_MODEL=qwen/qwen3-coder:free
+# GLM_MODEL=deepseek/deepseek-tng-r1t2-chimera:free
 ```
 
 ### Использование в Report Engine

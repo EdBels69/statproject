@@ -65,11 +65,20 @@ class PipelineManager:
         """
         import pandas as pd
         paths = self.initialize_dataset(dataset_id)
-        
-        # optimized format (parquet would be better, but sticking to CSV for MVP transparency)
-        # keeping it simple: 'data.csv' is the HEAD of the processed branch
+
+        # Fix mixed-type object columns before Parquet save
+        # PyArrow can't handle object columns with mixed types (e.g., str + int)
+        df_copy = df.copy()
+        for col in df_copy.columns:
+            if df_copy[col].dtype == object:
+                # Convert to string to avoid PyArrow errors
+                df_copy[col] = df_copy[col].astype(str).replace('nan', pd.NA).replace('None', pd.NA)
+
+        parquet_path = os.path.join(paths["processed"], f"{dataset_id}.parquet")
+        df_copy.to_parquet(parquet_path, engine="pyarrow", index=False)
+
         csv_path = os.path.join(paths["processed"], "data.csv")
-        df.to_csv(csv_path, index=False)
+        df_copy.to_csv(csv_path, index=False)
         
         # Save schema/dtypes
         dtypes = df.dtypes.astype(str).to_dict()
@@ -81,7 +90,7 @@ class PipelineManager:
              with open(os.path.join(paths["processed"], "cleaning_log.json"), "w") as f:
                 json.dump(cleaning_log, f, indent=2)
                 
-        return csv_path
+        return parquet_path
     
     def create_analysis_run(self, dataset_id: str, protocol: Dict[str, Any]) -> str:
         """

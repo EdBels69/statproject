@@ -1,0 +1,1831 @@
+{
+  "columns": {
+    "\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f": {
+      "name": "\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 2.2728978636537125e-09
+      },
+      "mean": 1.5909090909090908,
+      "min": 1.0,
+      "max": 2.0,
+      "example": 1.0
+    },
+    "\u0413\u0440\u0443\u043f\u043f\u0430": {
+      "name": "\u0413\u0440\u0443\u043f\u043f\u0430",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 4,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 4.5166243649835816e-05
+      },
+      "mean": 2.477272727272727,
+      "min": 1.0,
+      "max": 4.0,
+      "example": 1.0
+    },
+    "\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116": {
+      "name": "\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 16,
+      "total": 44,
+      "categories": [
+        "CI5",
+        "8",
+        "9",
+        "7",
+        "12",
+        "11",
+        "10",
+        "CI1",
+        "CI2",
+        "CI3",
+        "\u0421I1",
+        "\u0421I3",
+        "CI 2",
+        "CI6",
+        "CI4",
+        "\u0421I5"
+      ],
+      "example": "CI5"
+    },
+    "ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f": {
+      "name": "ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.10616232224402994
+      },
+      "mean": 22.704545454545453,
+      "min": 1.0,
+      "max": 44.0,
+      "example": 13.0
+    },
+    "\u0412\u043e\u0437\u0440\u0430\u0441\u0442": {
+      "name": "\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 17,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.019521217699701193
+      },
+      "mean": 66.1590909090909,
+      "min": 55.0,
+      "max": 75.0,
+      "example": 59.0
+    },
+    "\u041f\u043e\u043b": {
+      "name": "\u041f\u043e\u043b",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 4,
+      "total": 44,
+      "categories": [
+        "\u0436\u0435\u043d\u0441\u043a\u0438\u0439",
+        "\u043c\u0443\u0436\u0441\u043a\u043e\u0439",
+        "\u043c\u0443\u0436\u0441\u043a\u043e\u0439 ",
+        "\u0436\u0435\u043d\u0441\u043a\u0438\u0439 "
+      ],
+      "example": "\u0436\u0435\u043d\u0441\u043a\u0438\u0439"
+    },
+    "V1": {
+      "name": "V1",
+      "type": "float32",
+      "missing_count": 44,
+      "unique_count": 0,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0
+      },
+      "mean": null,
+      "min": null,
+      "max": null,
+      "example": null
+    },
+    "\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430": {
+      "name": "\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 30,
+      "total": 44
+    },
+    "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f": {
+      "name": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 2,
+      "total": 44,
+      "categories": [
+        "\u0434\u0430",
+        "\u0434\u0430 "
+      ],
+      "example": "\u0434\u0430"
+    },
+    "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f": {
+      "name": "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 1,
+      "total": 44,
+      "categories": [
+        "\u043d\u0435\u0442"
+      ],
+      "example": "\u043d\u0435\u0442"
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "example": "138/81"
+    },
+    "\u0421\u0410\u0414 V1": {
+      "name": "\u0421\u0410\u0414 V1",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 33,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.6772563399675086
+      },
+      "mean": 136.8181818181818,
+      "min": 105.0,
+      "max": 175.0,
+      "example": 138.0
+    },
+    "\u0414\u0410\u0414 V1": {
+      "name": "\u0414\u0410\u0414 V1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 23,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.43240692406133785
+      },
+      "mean": 84.97727272727273,
+      "min": 68.0,
+      "max": 107.0,
+      "example": 81.0
+    },
+    "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430": {
+      "name": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "example": "124/75"
+    },
+    "\u041e\u041f \u0421\u0410\u0414 V1": {
+      "name": "\u041e\u041f \u0421\u0410\u0414 V1",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 32,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.12151422922439581
+      },
+      "mean": 132.3409090909091,
+      "min": 101.0,
+      "max": 174.0,
+      "example": 124.0
+    },
+    "\u041e\u041f \u0414\u0410\u0414 V1": {
+      "name": "\u041e\u041f \u0414\u0410\u0414 V1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 26,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.7930155298251487
+      },
+      "mean": 83.93181818181819,
+      "min": 62.0,
+      "max": 111.0,
+      "example": 75.0
+    },
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435, \u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)": {
+      "name": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435, \u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 38,
+      "total": 44,
+      "example": "138/81"
+    },
+    "\u0421\u0410\u0414 V2": {
+      "name": "\u0421\u0410\u0414 V2",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 29,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.06414639310985781
+      },
+      "mean": 133.3409090909091,
+      "min": 110.0,
+      "max": 166.0,
+      "example": 138.0
+    },
+    "\u0414\u0410\u0414 V2": {
+      "name": "\u0414\u0410\u0414 V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 22,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.07933766329995265
+      },
+      "mean": 84.18181818181819,
+      "min": 68.0,
+      "max": 107.0,
+      "example": 81.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.24082808157932806
+      },
+      "mean": 6.431818181818182,
+      "min": 1.0,
+      "max": 15.0,
+      "example": 7.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 18,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.29464368351345793
+      },
+      "mean": 11.863636363636363,
+      "min": 2.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 22,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.23748325478611315
+      },
+      "mean": 33.22727272727273,
+      "min": 21.0,
+      "max": 44.0,
+      "example": 29.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 29,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.03327816105893922
+      },
+      "mean": 35.11363636363637,
+      "min": 16.0,
+      "max": 62.0,
+      "example": 30.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00030653536573668945
+      },
+      "mean": 6.636363636363637,
+      "min": 1.0,
+      "max": 23.0,
+      "example": 5.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 18,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.5209528467756067
+      },
+      "mean": 8.772727272727273,
+      "min": 0.0,
+      "max": 19.0,
+      "example": 5.0
+    },
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2": {
+      "name": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "type": "object",
+      "missing_count": 1,
+      "unique_count": 43,
+      "total": 44,
+      "example": "1- 10 \u0441\u0435\u043a, 2-11 \u0441\u0435\u043a, 3- 11 \u0441\u0435\u043a"
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "type": "float32",
+      "missing_count": 3,
+      "unique_count": 17,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.003561266406544951
+      },
+      "mean": 18.80487823486328,
+      "min": 10.0,
+      "max": 35.0,
+      "example": 10.0
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "type": "float32",
+      "missing_count": 3,
+      "unique_count": 24,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00040836272764640017
+      },
+      "mean": 32.780487060546875,
+      "min": 11.0,
+      "max": 83.0,
+      "example": 11.0
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "type": "float32",
+      "missing_count": 3,
+      "unique_count": 20,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.0812199849481961
+      },
+      "mean": 21.170732498168945,
+      "min": 11.0,
+      "max": 36.0,
+      "example": 11.0
+    },
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2": {
+      "name": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "type": "float32",
+      "missing_count": 3,
+      "unique_count": 35,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0004283421598030564
+      },
+      "mean": 0.7225254774093628,
+      "min": 0.3855421543121338,
+      "max": 1.5,
+      "example": 1.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "\u0447\u0430\u0441\u0442\u044c \u0410-54 \u0441\u0435\u043a, \u0447\u0430\u0441\u0442\u044c \u0411- 160 \u0441\u0435\u043a"
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 33,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 5.580610344305335e-11
+      },
+      "mean": 63.06818181818182,
+      "min": 25.0,
+      "max": 360.0,
+      "example": 54.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 38,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.007156318083172677
+      },
+      "mean": 148.4090909090909,
+      "min": 50.0,
+      "max": 372.0,
+      "example": 160.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.2019778199971115
+      },
+      "mean": 62.56818181818182,
+      "min": 41.0,
+      "max": 103.0,
+      "example": 56.0
+    },
+    "\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2": {
+      "name": "\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44
+    },
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)": {
+      "name": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 30,
+      "total": 44
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 41,
+      "total": 44,
+      "example": "129/76"
+    },
+    "\u0421\u0410\u0414 V2.1": {
+      "name": "\u0421\u0410\u0414 V2.1",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 28,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.6757057074586307
+      },
+      "mean": 131.6818181818182,
+      "min": 110.0,
+      "max": 157.0,
+      "example": 129.0
+    },
+    "\u0414\u0410\u0414 V2.1": {
+      "name": "\u0414\u0410\u0414 V2.1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 19,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.08698550510283283
+      },
+      "mean": 83.63636363636364,
+      "min": 70.0,
+      "max": 109.0,
+      "example": 76.0
+    },
+    "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1": {
+      "name": "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "example": "111/69"
+    },
+    "\u041e\u041f \u0421\u0410\u0414 V1.1": {
+      "name": "\u041e\u041f \u0421\u0410\u0414 V1.1",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 28,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.05186979623815853
+      },
+      "mean": 125.72727272727273,
+      "min": 102.0,
+      "max": 152.0,
+      "example": 111.0
+    },
+    "\u041e\u041f \u0414\u0410\u0414 V1.1": {
+      "name": "\u041e\u041f \u0414\u0410\u0414 V1.1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 24,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.030443279167213014
+      },
+      "mean": 80.52272727272727,
+      "min": 65.0,
+      "max": 107.0,
+      "example": 69.0
+    },
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f": {
+      "name": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 1,
+      "total": 44,
+      "categories": [
+        "\u043d\u0435\u0442"
+      ],
+      "example": "\u043d\u0435\u0442"
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 13,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.07466890191284058
+      },
+      "mean": 5.886363636363637,
+      "min": 1.0,
+      "max": 13.0,
+      "example": 7.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 18,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.07488808061165532
+      },
+      "mean": 11.113636363636363,
+      "min": 2.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 23,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.727664131274721
+      },
+      "mean": 31.25,
+      "min": 12.0,
+      "max": 49.0,
+      "example": 22.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 29,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0046125468733347035
+      },
+      "mean": 32.90909090909091,
+      "min": 16.0,
+      "max": 70.0,
+      "example": 24.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00029317936988283
+      },
+      "mean": 5.045454545454546,
+      "min": 0.0,
+      "max": 18.0,
+      "example": 3.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.0986616345843107
+      },
+      "mean": 7.7727272727272725,
+      "min": 1.0,
+      "max": 16.0,
+      "example": 13.0
+    },
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3": {
+      "name": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "1-15 \u0441\u0435\u043a, 2- 24 \u0441\u0435\u043a, 3-16 \u0441\u0435\u043a"
+    },
+    "\u0421\u0442\u0440\u0443\u043f V3 1": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V3 1",
+      "type": "float32",
+      "missing_count": 1,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.1874933489835332
+      },
+      "mean": 16.0930233001709,
+      "min": 11.0,
+      "max": 23.0,
+      "example": 15.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V3 2": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V3 2",
+      "type": "float32",
+      "missing_count": 1,
+      "unique_count": 22,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0002764336953681308
+      },
+      "mean": 27.488372802734375,
+      "min": 17.0,
+      "max": 57.0,
+      "example": 24.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V3 3": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V3 3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 15,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0005970377481033003
+      },
+      "mean": 19.181818181818183,
+      "min": 13.0,
+      "max": 30.0,
+      "example": 16.0
+    },
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4": {
+      "name": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "type": "float32",
+      "missing_count": 1,
+      "unique_count": 35,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.7999455537504803
+      },
+      "mean": 0.7233760356903076,
+      "min": 0.3333333432674408,
+      "max": 1.0,
+      "example": 0.6666666865348816
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "example": "\u0447\u0430\u0441\u0442\u044c \u0410-43 \u0441\u0435\u043a, \u0447\u0430\u0441\u0442\u044c \u0411- 99 \u0441\u0435\u043a"
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 26,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0001271501809969365
+      },
+      "mean": 46.56818181818182,
+      "min": 18.0,
+      "max": 98.0,
+      "example": 43.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 36,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 5.290925731538497e-05
+      },
+      "mean": 119.75,
+      "min": 52.0,
+      "max": 301.0,
+      "example": 99.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 28,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.009997029238046476
+      },
+      "mean": 59.61363636363637,
+      "min": 42.0,
+      "max": 93.0,
+      "example": 49.0
+    },
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)": {
+      "name": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 39,
+      "total": 44,
+      "example": "134/79"
+    },
+    "\u0421\u0410\u0414 V4": {
+      "name": "\u0421\u0410\u0414 V4",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 19,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.29517920348942744
+      },
+      "mean": 131.61363636363637,
+      "min": 105.0,
+      "max": 153.0,
+      "example": 134.0
+    },
+    "\u0414\u0410\u0414 V4": {
+      "name": "\u0414\u0410\u0414 V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 19,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.03624709871947116
+      },
+      "mean": 82.4090909090909,
+      "min": 60.0,
+      "max": 100.0,
+      "example": 79.0
+    },
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1": {
+      "name": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 1,
+      "total": 44,
+      "categories": [
+        "\u043d\u0435\u0442"
+      ],
+      "example": "\u043d\u0435\u0442"
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.03095184056210149
+      },
+      "mean": 5.5,
+      "min": 1.0,
+      "max": 13.0,
+      "example": 7.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 16,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.012146016967597468
+      },
+      "mean": 10.590909090909092,
+      "min": 2.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 23,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.036120594260284085
+      },
+      "mean": 29.90909090909091,
+      "min": 12.0,
+      "max": 51.0,
+      "example": 23.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 29,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.04175674748933236
+      },
+      "mean": 29.90909090909091,
+      "min": 10.0,
+      "max": 60.0,
+      "example": 10.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00037710790133825285
+      },
+      "mean": 4.863636363636363,
+      "min": 0.0,
+      "max": 16.0,
+      "example": 3.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.012547554649870063
+      },
+      "mean": 6.9772727272727275,
+      "min": 1.0,
+      "max": 16.0,
+      "example": 11.0
+    },
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4": {
+      "name": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "1 - 17 \u0441\u0435\u043a, 2- 18 \u0441\u0435\u043a, 3- 16 \u0441\u0435\u043a"
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 10,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.2567072309406502
+      },
+      "mean": 15.477272727272727,
+      "min": 11.0,
+      "max": 22.0,
+      "example": 17.0
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 18,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.13088080855349637
+      },
+      "mean": 24.0,
+      "min": 16.0,
+      "max": 36.0,
+      "example": 18.0
+    },
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3": {
+      "name": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 10,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.02888912974408143
+      },
+      "mean": 18.136363636363637,
+      "min": 12.0,
+      "max": 25.0,
+      "example": 16.0
+    },
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1": {
+      "name": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+      "type": "float32",
+      "missing_count": 0,
+      "unique_count": 34,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.826919482563222
+      },
+      "mean": 0.7695445418357849,
+      "min": 0.5142857432365417,
+      "max": 1.0,
+      "example": 0.8888888955116272
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "\u0447\u0430\u0441\u0442\u044c \u0410 54 \u0441\u0435\u043a, \u0447\u0430\u0441\u0442\u044c \u0411- 122"
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 24,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0001204958953200053
+      },
+      "mean": 43.68181818181818,
+      "min": 21.0,
+      "max": 95.0,
+      "example": 54.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 35,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0004053955389462079
+      },
+      "mean": 108.93181818181819,
+      "min": 35.0,
+      "max": 240.0,
+      "example": 122.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 28,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.06112749300383333
+      },
+      "mean": 57.18181818181818,
+      "min": 32.0,
+      "max": 85.0,
+      "example": 52.0
+    },
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)": {
+      "name": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 30,
+      "total": 44
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 41,
+      "total": 44,
+      "example": "141/85"
+    },
+    "\u0421\u0410\u0414 V2.2": {
+      "name": "\u0421\u0410\u0414 V2.2",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 25,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.049812913243991244
+      },
+      "mean": 131.77272727272728,
+      "min": 111.0,
+      "max": 148.0,
+      "example": 141.0
+    },
+    "\u0414\u0410\u0414 V2.2": {
+      "name": "\u0414\u0410\u0414 V2.2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 24,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.04155164248794317
+      },
+      "mean": 83.56818181818181,
+      "min": 64.0,
+      "max": 100.0,
+      "example": 85.0
+    },
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2": {
+      "name": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 1,
+      "total": 44,
+      "categories": [
+        "\u043d\u0435\u0442"
+      ],
+      "example": "\u043d\u0435\u0442"
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 13,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0074020531861622866
+      },
+      "mean": 5.295454545454546,
+      "min": 1.0,
+      "max": 13.0,
+      "example": 7.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 17,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0007225011406099803
+      },
+      "mean": 10.068181818181818,
+      "min": 2.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 21,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.029366839506135767
+      },
+      "mean": 28.90909090909091,
+      "min": 12.0,
+      "max": 45.0,
+      "example": 21.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 28,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00424927876775937
+      },
+      "mean": 28.931818181818183,
+      "min": 11.0,
+      "max": 60.0,
+      "example": 11.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 11,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.000770253887833791
+      },
+      "mean": 4.4772727272727275,
+      "min": 0.0,
+      "max": 11.0,
+      "example": 3.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 15,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0004994457356567177
+      },
+      "mean": 6.545454545454546,
+      "min": 1.0,
+      "max": 15.0,
+      "example": 12.0
+    },
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5": {
+      "name": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "1- 17 \u0441\u0435\u043a, 2- 26 \u0441\u0435\u043a, 3- 18 \u0441\u0435\u043a"
+    },
+    "\u0421\u0442\u0440\u0443\u043f V5 1": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V5 1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 10,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.15272323046638997
+      },
+      "mean": 15.022727272727273,
+      "min": 10.0,
+      "max": 19.0,
+      "example": 17.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V5 2": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V5 2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.19582802783694359
+      },
+      "mean": 22.795454545454547,
+      "min": 17.0,
+      "max": 31.0,
+      "example": 26.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V5 3": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V5 3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 10,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0371694337254179
+      },
+      "mean": 17.477272727272727,
+      "min": 12.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5": {
+      "name": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+      "type": "float32",
+      "missing_count": 0,
+      "unique_count": 35,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.8332371014057929
+      },
+      "mean": 0.7801740765571594,
+      "min": 0.5,
+      "max": 1.1111111640930176,
+      "example": 0.692307710647583
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 43,
+      "total": 44,
+      "example": "\u0447\u0430\u0441\u0442\u044c \u0410- 57 \u0441\u0435\u043a, \u0447\u0430\u0441\u0442\u044c \u0411- 101 \u0441\u0435\u043a"
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0005904125443841531
+      },
+      "mean": 42.84090909090909,
+      "min": 22.0,
+      "max": 98.0,
+      "example": 57.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 36,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0031049978228566513
+      },
+      "mean": 98.77272727272727,
+      "min": 43.0,
+      "max": 179.0,
+      "example": 101.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 25,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.024684087942993194
+      },
+      "mean": 56.5,
+      "min": 34.0,
+      "max": 85.0,
+      "example": 55.0
+    },
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)": {
+      "name": "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+      "type": "datetime64[ns]",
+      "missing_count": 0,
+      "unique_count": 27,
+      "total": 44
+    },
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5": {
+      "name": "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 40,
+      "total": 44,
+      "example": "129/76"
+    },
+    "\u0421\u0410\u0414 V6": {
+      "name": "\u0421\u0410\u0414 V6",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 21,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.010011538685265251
+      },
+      "mean": 130.25,
+      "min": 108.0,
+      "max": 145.0,
+      "example": 129.0
+    },
+    "\u0414\u0410\u0414 V6": {
+      "name": "\u0414\u0410\u0414 V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 24,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.1974097280186473
+      },
+      "mean": 81.0,
+      "min": 65.0,
+      "max": 95.0,
+      "example": 76.0
+    },
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3": {
+      "name": "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+      "type": "category",
+      "missing_count": 0,
+      "unique_count": 1,
+      "total": 44,
+      "categories": [
+        "\u043d\u0435\u0442"
+      ],
+      "example": "\u043d\u0435\u0442"
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.004822620642975247
+      },
+      "mean": 5.159090909090909,
+      "min": 1.0,
+      "max": 13.0,
+      "example": 7.0
+    },
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 17,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.0004929295659569898
+      },
+      "mean": 9.818181818181818,
+      "min": 2.0,
+      "max": 25.0,
+      "example": 18.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438, \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438, \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 17,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 4.585383492486382e-05
+      },
+      "mean": 28.363636363636363,
+      "min": 21.0,
+      "max": 44.0,
+      "example": 21.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 26,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.00202794759352742
+      },
+      "mean": 28.295454545454547,
+      "min": 10.0,
+      "max": 61.0,
+      "example": 10.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 11,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.006822234145087051
+      },
+      "mean": 4.318181818181818,
+      "min": 0.0,
+      "max": 11.0,
+      "example": 3.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 12,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 6.221664346089137e-05
+      },
+      "mean": 6.2272727272727275,
+      "min": 1.0,
+      "max": 15.0,
+      "example": 11.0
+    },
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6": {
+      "name": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 44,
+      "total": 44,
+      "example": "1- 17 \u0441\u0435\u043a, 2- 28 \u0441\u0435\u043a, 3- 18 \u0441\u0435\u043a"
+    },
+    "\u0421\u0442\u0440\u0443\u043f V6 1": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V6 1",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 8,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.027466315530072817
+      },
+      "mean": 15.022727272727273,
+      "min": 10.0,
+      "max": 18.0,
+      "example": 17.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V6 2": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V6 2",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 14,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.12468651910819623
+      },
+      "mean": 22.022727272727273,
+      "min": 15.0,
+      "max": 31.0,
+      "example": 28.0
+    },
+    "\u0421\u0442\u0440\u0443\u043f V6 3": {
+      "name": "\u0421\u0442\u0440\u0443\u043f V6 3",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 9,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.056794857173927384
+      },
+      "mean": 17.136363636363637,
+      "min": 11.0,
+      "max": 22.0,
+      "example": 18.0
+    },
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6": {
+      "name": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+      "type": "float32",
+      "missing_count": 0,
+      "unique_count": 34,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.9299743464145989
+      },
+      "mean": 0.7915496826171875,
+      "min": 0.523809552192688,
+      "max": 1.1333333253860474,
+      "example": 0.6428571343421936
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+      "type": "object",
+      "missing_count": 0,
+      "unique_count": 42,
+      "total": 44,
+      "example": "\u0447\u0430\u0441\u0442\u044c \u0410- 58 \u0441\u0435\u043a, \u0447\u0430\u0441\u0442\u044c \u0411-109 \u0441\u0435\u043a"
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 31,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.028625731047895852
+      },
+      "mean": 42.63636363636363,
+      "min": 21.0,
+      "max": 84.0,
+      "example": 58.0
+    },
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411": {
+      "name": "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+      "type": "int16",
+      "missing_count": 0,
+      "unique_count": 36,
+      "total": 44,
+      "normality": {
+        "is_normal": true,
+        "p_value": 0.14613666906061845
+      },
+      "mean": 93.88636363636364,
+      "min": 47.0,
+      "max": 163.0,
+      "example": 109.0
+    },
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6": {
+      "name": "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+      "type": "int8",
+      "missing_count": 0,
+      "unique_count": 26,
+      "total": 44,
+      "normality": {
+        "is_normal": false,
+        "p_value": 0.002253411512170115
+      },
+      "mean": 55.88636363636363,
+      "min": 40.0,
+      "max": 85.0,
+      "example": 55.0
+    }
+  },
+  "issues": [
+    {
+      "column": "V1",
+      "type": "missing",
+      "severity": "medium",
+      "details": "44 missing (100.0%)."
+    },
+    {
+      "column": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+      "type": "missing",
+      "severity": "medium",
+      "details": "1 missing (2.27%)."
+    },
+    {
+      "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+      "type": "missing",
+      "severity": "medium",
+      "details": "3 missing (6.82%)."
+    },
+    {
+      "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+      "type": "missing",
+      "severity": "medium",
+      "details": "3 missing (6.82%)."
+    },
+    {
+      "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+      "type": "missing",
+      "severity": "medium",
+      "details": "3 missing (6.82%)."
+    },
+    {
+      "column": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+      "type": "missing",
+      "severity": "medium",
+      "details": "3 missing (6.82%)."
+    },
+    {
+      "column": "\u0421\u0442\u0440\u0443\u043f V3 1",
+      "type": "missing",
+      "severity": "medium",
+      "details": "1 missing (2.27%)."
+    },
+    {
+      "column": "\u0421\u0442\u0440\u0443\u043f V3 2",
+      "type": "missing",
+      "severity": "medium",
+      "details": "1 missing (2.27%)."
+    },
+    {
+      "column": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+      "type": "missing",
+      "severity": "medium",
+      "details": "1 missing (2.27%)."
+    }
+  ],
+  "reorder_suggestion": [
+    "ID \u2116 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2",
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V3",
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V4",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4",
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V5",
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V6",
+    "\u0411\u0430\u0437\u0430 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u044f",
+    "\u0413\u0440\u0443\u043f\u043f\u0430",
+    "\u041d\u043e\u043c\u0435\u0440 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u043e\u0433\u043e \u0430\u043f\u043f\u0430\u0440\u0430\u0442\u0430 Cl \u2116",
+    "\u0412\u043e\u0437\u0440\u0430\u0441\u0442",
+    "\u041f\u043e\u043b",
+    "V1",
+    "\u0414\u0430\u0442\u0430 \u0441\u043a\u0440\u0438\u043d\u0438\u043d\u0433\u0430",
+    "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+    "\u041a\u0440\u0438\u0442\u0435\u0440\u0438\u0438 \u043d\u0435\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442",
+    "\u0421\u0410\u0414 V1",
+    "\u0414\u0410\u0414 V1",
+    "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430",
+    "\u041e\u041f \u0421\u0410\u0414 V1",
+    "\u041e\u041f \u0414\u0410\u0414 V1",
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 2 (\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0432 \u0438\u0441\u0441\u043b\u0435\u0434\u043e\u0432\u0430\u043d\u0438\u0435, \u0440\u0430\u043d\u0434\u043e\u043c\u0438\u0437\u0430\u0446\u0438\u044f)",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.1",
+    "\u0421\u0410\u0414 V2",
+    "\u0414\u0410\u0414 V2",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0410",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V2 \u0411",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V2",
+    "\u0414\u0430\u0442\u0430 \u043d\u0430\u0447\u0430\u043b\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0432 \u0430\u043c\u0431\u0443\u043b\u0430\u0442\u043e\u0440\u043d\u044b\u0445 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u0445 V2",
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 3 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0438 \u043f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u0441\u0440\u0430\u0437\u0443 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043b\u0435\u0447\u0435\u043d\u0438\u044f)",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.2",
+    "\u0421\u0410\u0414 V2.1",
+    "\u0414\u0410\u0414 V2.1",
+    "\u041e\u0440\u0442\u043e\u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u043f\u0440\u043e\u0431\u0430.1",
+    "\u041e\u041f \u0421\u0410\u0414 V1.1",
+    "\u041e\u041f \u0414\u0410\u0414 V1.1",
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0421\u0442\u0440\u0443\u043f V3 1",
+    "\u0421\u0442\u0440\u0443\u043f V3 2",
+    "\u0421\u0442\u0440\u0443\u043f V3 3",
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0410",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V3 \u0411",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V3",
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 4\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 10 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.3",
+    "\u0421\u0410\u0414 V4",
+    "\u0414\u0410\u0414 V4",
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.1",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V4",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 1",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 2",
+    "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V4 3",
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4.1",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0410",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V4 \u0411",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b",
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 5\n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 20 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.4",
+    "\u0421\u0410\u0414 V2.2",
+    "\u0414\u0410\u0414 V2.2",
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.2",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438 \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21 \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0421\u0442\u0440\u0443\u043f V5 1",
+    "\u0421\u0442\u0440\u0443\u043f V5 2",
+    "\u0421\u0442\u0440\u0443\u043f V5 3",
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V5",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0410",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V5 \u0411",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V5",
+    "\u0414\u0430\u0442\u0430 \u0412\u0438\u0437\u0438\u0442\u0430 6 \n (\u041e\u0446\u0435\u043d\u043a\u0430 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u0438 \u044d\u0444\u0444\u0435\u043a\u0442\u0430 \u0442\u0435\u0440\u0430\u043f\u0438\u0438 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439 \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f \u043a\u0443\u0440\u0441\u0430 \u043c\u0430\u0433\u043d\u0438\u0442\u043e\u0442\u0435\u0440\u0430\u043f\u0438\u0438)",
+    "\u0410\u0414 \u043c\u043c \u0440\u0442 \u0441\u0442.5",
+    "\u0421\u0410\u0414 V6",
+    "\u0414\u0410\u0414 V6",
+    "\u041d\u0435\u0436\u0435\u043b\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u044f/\u044f\u0432\u043b\u0435\u043d\u0438\u044f.3",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 2 \u00ab\u041f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+    "\u0423\u0428\u041e\u0411\u041f \u0447\u0430\u0441\u0442\u044c 3 \u00ab\u0414\u0432\u0438\u0433\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0444\u0443\u043d\u043a\u0446\u0438\u0438\u00bb \u0431\u0430\u043b\u043b\u044b V6",
+    "\u0428\u043a\u0430\u043b\u0430 \u0434\u0435\u043f\u0440\u0435\u0441\u0441\u0438\u0438, \u0442\u0440\u0435\u0432\u043e\u0433\u0438 \u0438 \u0441\u0442\u0440\u0435\u0441\u0441\u0430 DASS-21\u0431\u0430\u043b\u043b\u044b V6",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0443\u0442\u043e\u043c\u043b\u044f\u0435\u043c\u043e\u0441\u0442\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u0441\u043e\u043d\u043b\u0438\u0432\u043e\u0441\u0442\u0438 \u042d\u043f\u0443\u043e\u0440\u0442\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+    "\u0428\u043a\u0430\u043b\u0430 \u0430\u043f\u0430\u0442\u0438\u0438 \u0421\u0442\u0430\u0440\u043a\u0441\u0442\u0435\u0439\u043d\u0430 \u0431\u0430\u043b\u043b\u044b V6",
+    "\u0421\u0442\u0440\u0443\u043f V6 1",
+    "\u0421\u0442\u0440\u0443\u043f V6 2",
+    "\u0421\u0442\u0440\u0443\u043f V6 3",
+    "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V6",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0410",
+    "\u00ab\u0422\u0435\u0441\u0442 \u043f\u0440\u043e\u043a\u043b\u0430\u0434\u044b\u0432\u0430\u043d\u0438\u044f \u043f\u0443\u0442\u0438\u00bb  Trail Making Test \u043c\u0438\u043d V6 \u0411",
+    "\u0428\u043a\u0430\u043b\u0430 \u043e\u0446\u0435\u043d\u043a\u0438 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u0436\u0438\u0437\u043d\u0438 \u043f\u0440\u0438 \u0411\u041f \u0431\u0430\u043b\u043b\u044b V6"
+  ],
+  "missing_report": {
+    "total_rows": 44,
+    "columns_with_missing": 9,
+    "by_column": [
+      {
+        "column": "V1",
+        "missing_count": 44,
+        "missing_percent": 100.0,
+        "total": 44
+      },
+      {
+        "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 1",
+        "missing_count": 3,
+        "missing_percent": 6.82,
+        "total": 44
+      },
+      {
+        "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 2",
+        "missing_count": 3,
+        "missing_percent": 6.82,
+        "total": 44
+      },
+      {
+        "column": "\u0422\u0435\u0441\u0442 \u0421\u0442\u0440\u0443\u043f\u0430 V2 3",
+        "missing_count": 3,
+        "missing_percent": 6.82,
+        "total": 44
+      },
+      {
+        "column": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V2",
+        "missing_count": 3,
+        "missing_percent": 6.82,
+        "total": 44
+      },
+      {
+        "column": "\u0422\u0435\u0441\u0442 \u043d\u0430 \u043e\u0446\u0435\u043d\u043a\u0443 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f \u0421\u0442\u0440\u0443\u043f\u0430 \u043c\u0438\u043d V2",
+        "missing_count": 1,
+        "missing_percent": 2.27,
+        "total": 44
+      },
+      {
+        "column": "\u0421\u0442\u0440\u0443\u043f V3 1",
+        "missing_count": 1,
+        "missing_percent": 2.27,
+        "total": 44
+      },
+      {
+        "column": "\u0421\u0442\u0440\u0443\u043f V3 2",
+        "missing_count": 1,
+        "missing_percent": 2.27,
+        "total": 44
+      },
+      {
+        "column": "\u0418\u043d\u0434\u0435\u043a\u0441 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0440\u0435\u043d\u0446\u0438\u0438 V4",
+        "missing_count": 1,
+        "missing_percent": 2.27,
+        "total": 44
+      }
+    ]
+  }
+}

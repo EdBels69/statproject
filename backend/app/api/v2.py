@@ -13,13 +13,17 @@ import numpy as np
 import gc
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
+import os
+import json
+import math
 
 from app.core.logging import logger
 from app.modules.parsers import get_dataframe
 from app.core.pipeline import PipelineManager
 from app.stats.mixed_effects import MixedEffectsEngine
 from app.stats.clustered_correlation import ClusteredCorrelationEngine
-from app.stats.engine import run_analysis
+from app.stats.engine import run_analysis, select_test, compute_descriptive_compare
+from app.core.study_designer import StudyDesignEngine
 from app.api.datasets import DATA_DIR
 
 router = APIRouter()
@@ -29,25 +33,43 @@ analysis_executor = ProcessPoolExecutor(max_workers=2)  # Reduced for 8GB
 
 # Standard statistical methods for protocol fallback
 STANDARD_METHODS = [
-    "t_test_independent",
-    "t_test_paired",
-    "anova_one_way",
-    "anova_repeated",
-    "correlation_pearson",
-    "correlation_spearman",
+    "t_test_ind",
+    "t_test_welch",
+    "mann_whitney",
+    "t_test_rel",
+    "wilcoxon",
+    "anova",
+    "anova_welch",
+    "kruskal",
     "chi_square",
-    "regression_linear",
-    "regression_logistic"
+    "pearson",
+    "spearman",
+    "linear_regression",
+    "logistic_regression",
+    "roc_analysis",
 ]
+
+TEMPLATE_TO_V2_SUPPORTED_STEP_TYPES = {
+    "descriptive_compare",
+    "compare",
+    "correlation",
+}
 
 def convert_numpy_to_native(obj: Any) -> Any:
     """Convert numpy types to Python native types for JSON serialization."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
     if isinstance(obj, np.bool_):
         return bool(obj)
     elif isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
-        return float(obj)
+        v = float(obj)
+        if math.isnan(v) or math.isinf(v):
+            return None
+        return v
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
     elif isinstance(obj, dict):
@@ -86,6 +108,96 @@ class ProtocolV2Request(BaseModel):
     dataset_id: str = Field(..., description="Dataset identifier")
     protocol: Dict[str, Any] = Field(..., description="Analysis protocol configuration")
     alpha: float = Field(0.05, ge=0.01, le=0.10, description="Significance level")
+
+
+class AnalysisTemplateListResponse(BaseModel):
+    templates: List[Dict[str, str]]
+
+
+@router.get("/analysis/templates", response_model=AnalysisTemplateListResponse)
+async def list_analysis_templates(goal: Optional[str] = None):
+    try:
+        designer = StudyDesignEngine()
+        return {"templates": designer.list_templates(goal=goal)}
+    except Exception as e:
+        logger.error(f"Template listing failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Template listing failed: {str(e)}")
+
+
+class AnalysisTemplateDesignRequest(BaseModel):
+    dataset_id: str = Field(..., description="Dataset identifier")
+    goal: str = Field(..., description="Study goal")
+    template_id: Optional[str] = Field(None, description="Template identifier")
+    variables: Dict[str, Any] = Field(default_factory=dict, description="Variable mapping")
+
+
+@router.post("/analysis/design", response_model=Dict[str, Any])
+async def design_analysis_from_template(request: AnalysisTemplateDesignRequest):
+    try:
+        metadata: Dict[str, Any] = {}
+        scan_path = os.path.join(DATA_DIR, request.dataset_id, "processed", "scan_report.json")
+        if os.path.exists(scan_path):
+            with open(scan_path, "r") as f:
+                report = json.load(f)
+                metadata = report.get("columns", {}) or {}
+
+        designer = StudyDesignEngine()
+        protocol_v1 = designer.suggest_protocol(
+            request.goal,
+            request.variables,
+            metadata,
+            template_id=request.template_id,
+        )
+
+        protocol_v2: List[Dict[str, Any]] = []
+        skipped_steps: List[Dict[str, Any]] = []
+
+        for step in protocol_v1.get("steps", []) or []:
+            step_type = step.get("type")
+            if step_type not in TEMPLATE_TO_V2_SUPPORTED_STEP_TYPES:
+                skipped_steps.append(step)
+                continue
+
+            if step_type == "descriptive_compare":
+                protocol_v2.append(
+                    {
+                        "id": step.get("id") or f"step_{len(protocol_v2) + 1}",
+                        "method": "descriptive_compare",
+                        "config": {"target": step.get("target"), "group": step.get("group")},
+                    }
+                )
+                continue
+
+            target = step.get("target")
+            group = step.get("group") or step.get("predictor")
+            method_val = step.get("method")
+            if isinstance(method_val, dict):
+                method_id = method_val.get("id")
+            else:
+                method_id = method_val
+            if not method_id:
+                method_id = "auto"
+
+            protocol_v2.append(
+                {
+                    "id": step.get("id") or f"step_{len(protocol_v2) + 1}",
+                    "method": method_id,
+                    "config": {"outcome": target, "group": group},
+                }
+            )
+
+        return {
+            "status": "completed",
+            "name": protocol_v1.get("name"),
+            "goal": protocol_v1.get("goal") or request.goal,
+            "protocol": protocol_v2,
+            "skipped_steps": skipped_steps,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Template design failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Template design failed: {str(e)}")
 
 # --- Endpoints ---
 
@@ -242,12 +354,29 @@ async def load_dataset_async(dataset_id: str) -> pd.DataFrame:
         get_dataframe, dataset_id, DATA_DIR
     )
 
-async def run_analysis_async(df: pd.DataFrame, method_id: str, col_a: str, col_b: str, alpha: float) -> Dict[str, Any]:
+def _run_analysis_sync(df: pd.DataFrame, method_id: str, col_a: str, col_b: str, alpha: float, extra_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    return run_analysis(df, method_id, col_a, col_b, alpha=alpha, **(extra_kwargs or {}))
+
+
+async def run_analysis_async(
+    df: pd.DataFrame,
+    method_id: str,
+    col_a: str,
+    col_b: str,
+    alpha: float,
+    **kwargs,
+) -> Dict[str, Any]:
     """Run analysis asynchronously with memory management."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
         analysis_executor,
-        run_analysis, df, method_id, col_a, col_b, alpha
+        _run_analysis_sync,
+        df,
+        method_id,
+        col_a,
+        col_b,
+        alpha,
+        kwargs,
     )
 
 def _run_mixed_effects_sync(
@@ -302,58 +431,64 @@ async def ai_suggest_tests(request: AISuggestTestsRequest):
         
         # Suggest mixed effects if longitudinal structure detected
         if len(potential_time_cols) > 0 and len(potential_group_cols) > 0 and len(potential_subject_cols) > 0:
-            recommendations.append({
-                test: {
-                    id: "mixed_effects",
-                    name: "Mixed Effects (LMM)",
-                    config: {
-                        outcome: numeric_cols[0] if numeric_cols else "Select outcome",
-                        time: potential_time_cols[0],
-                        group: potential_group_cols[0],
-                        subject: potential_subject_cols[0],
-                        random_slope: False
-                    }
-                },
-                reason: "Обнаружена структура продольных данных. Mixed Effects Model позволит учесть повторные измерения и индивидуальную вариабельность.",
-                confidence: 0.85
-            })
+            recommendations.append(
+                {
+                    "test": {
+                        "id": "mixed_effects",
+                        "name": "Mixed Effects (LMM)",
+                        "config": {
+                            "outcome": numeric_cols[0] if numeric_cols else "Select outcome",
+                            "time": potential_time_cols[0],
+                            "group": potential_group_cols[0],
+                            "subject": potential_subject_cols[0],
+                            "random_slope": False,
+                        },
+                    },
+                    "reason": "Обнаружена структура продольных данных. Mixed Effects Model позволит учесть повторные измерения и индивидуальную вариабельность.",
+                    "confidence": 0.85,
+                }
+            )
         
         # Suggest clustered correlation if multiple numeric variables
         if len(numeric_cols) >= 3:
-            recommendations.append({
-                test: {
-                    id: "clustered_correlation",
-                    name: "Clustered Correlation",
-                    config: {
-                        variables: numeric_cols[:8],  # Top 8 variables
-                        method: "pearson",
-                        linkage_method: "ward"
-                    }
-                },
-                reason: f"Обнаружено {len(numeric_cols)} числовых переменных. Кластерная корреляция выявит группы связанных переменных.",
-                confidence: 0.90
-            })
+            recommendations.append(
+                {
+                    "test": {
+                        "id": "clustered_correlation",
+                        "name": "Clustered Correlation",
+                        "config": {
+                            "variables": numeric_cols[:8],
+                            "method": "pearson",
+                            "linkage_method": "ward",
+                        },
+                    },
+                    "reason": f"Обнаружено {len(numeric_cols)} числовых переменных. Кластерная корреляция выявит группы связанных переменных.",
+                    "confidence": 0.90,
+                }
+            )
         
         # Suggest group comparison tests
         if len(potential_group_cols) > 0 and len(numeric_cols) > 0:
-            recommendations.append({
-                test: {
-                    id: "mann_whitney",
-                    name: "Mann-Whitney U",
-                    config: {
-                        outcome: numeric_cols[0],
-                        group: potential_group_cols[0]
-                    }
-                },
-                reason: "Сравнение групп с непараметрическим тестом подходит для данных с возможными выбросами.",
-                confidence: 0.75
-            })
+            recommendations.append(
+                {
+                    "test": {
+                        "id": "mann_whitney",
+                        "name": "Mann-Whitney U",
+                        "config": {
+                            "outcome": numeric_cols[0],
+                            "group": potential_group_cols[0],
+                        },
+                    },
+                    "reason": "Сравнение групп с непараметрическим тестом подходит для данных с возможными выбросами.",
+                    "confidence": 0.75,
+                }
+            )
         
         # Avoid duplicates with current protocol
         current_methods = {test.get("method") for test in request.protocol}
         recommendations = [
-            rec for rec in recommendations 
-            if rec.test.id not in current_methods
+            rec for rec in recommendations
+            if rec.get("test", {}).get("id") not in current_methods
         ]
         
         return {
@@ -439,21 +574,113 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                         "status": "completed",
                         "results": convert_numpy_to_native(result)
                     })
-                
-                # Standard methods fallback
-                elif method_id in STANDARD_METHODS:
-                    outcome = config.get("outcome")
+
+                elif method_id == "descriptive_compare":
+                    target = config.get("target") or config.get("outcome")
                     group = config.get("group")
-                    
-                    if outcome and group:
-                        result = await run_analysis_async(df, method_id, outcome, group, request.alpha)
-                        
-                        results.append({
+                    if not target or not group:
+                        raise ValueError("Missing required config for descriptive_compare")
+                    table = compute_descriptive_compare(df, target, group)
+                    results.append(
+                        {
                             "step_id": step_id,
                             "method": method_id,
                             "status": "completed",
-                            "results": convert_numpy_to_native(result)
-                        })
+                            "results": {"type": "table_1", "data": convert_numpy_to_native(table)},
+                        }
+                    )
+
+                elif method_id == "auto":
+                    outcome = config.get("outcome")
+                    group = config.get("group")
+                    is_paired = bool(config.get("is_paired", False))
+                    if not outcome or not group:
+                        raise ValueError("Missing required config for auto")
+
+                    types = {
+                        outcome: "numeric" if pd.api.types.is_numeric_dtype(df[outcome]) else "categorical",
+                        group: "numeric" if pd.api.types.is_numeric_dtype(df[group]) else "categorical",
+                    }
+                    selected = select_test(df, outcome, group, types, is_paired=is_paired)
+                    if not selected:
+                        raise ValueError("Could not auto-select method")
+
+                    result = await run_analysis_async(
+                        df,
+                        selected,
+                        outcome,
+                        group,
+                        request.alpha,
+                        is_paired=is_paired,
+                    )
+
+                    results.append(
+                        {
+                            "step_id": step_id,
+                            "method": selected,
+                            "status": "completed",
+                            "results": convert_numpy_to_native({**result, "auto_selected": selected}),
+                        }
+                    )
+                
+                # Standard methods fallback
+                elif method_id in STANDARD_METHODS:
+                    outcome = config.get("outcome") or config.get("target")
+                    group = config.get("group")
+                    predictors = config.get("predictors")
+                    covariates = config.get("covariates")
+
+                    if method_id in ["linear_regression", "logistic_regression"]:
+                        if not outcome:
+                            raise ValueError(f"Missing required config for {method_id}")
+                        if not isinstance(predictors, list):
+                            predictors = []
+                        if not isinstance(covariates, list):
+                            covariates = []
+                        col_b = group or (predictors[0] if predictors else None)
+                        if not col_b:
+                            raise ValueError(f"Missing predictors for {method_id}")
+
+                        result = await run_analysis_async(
+                            df,
+                            method_id,
+                            outcome,
+                            col_b,
+                            request.alpha,
+                            predictors=predictors,
+                            covariates=covariates,
+                            show_or=bool(config.get("show_or", True)),
+                            show_roc=bool(config.get("show_roc", True)),
+                        )
+                        results.append(
+                            {
+                                "step_id": step_id,
+                                "method": method_id,
+                                "status": "completed",
+                                "results": convert_numpy_to_native(result),
+                            }
+                        )
+                        continue
+
+                    if outcome and group:
+                        result = await run_analysis_async(
+                            df,
+                            method_id,
+                            outcome,
+                            group,
+                            request.alpha,
+                            is_paired=bool(config.get("is_paired", False)),
+                            predictors=predictors,
+                        )
+
+                        results.append(
+                            {
+                                "step_id": step_id,
+                                "method": method_id,
+                                "status": "completed",
+                                "results": convert_numpy_to_native(result),
+                            }
+                        )
                     else:
                         raise ValueError(f"Missing required config for {method_id}")
                 

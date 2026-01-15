@@ -1,18 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import { 
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import {
   ArrowLeftIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useParams } from 'react-router-dom';
+import Button from '../components/ui/Button';
 import TestSelectionPanel from '../components/analysis/TestSelectionPanel';
 import ProtocolBuilder from '../components/analysis/ProtocolBuilder';
 import TestConfigModal from '../components/TestConfigModal';
 import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
-import ClusteredHeatmap from '../components/ClusteredHeatmap';
-import InteractionPlot from '../components/InteractionPlot';
-import VisualizePlot from '../components/VisualizePlot';
+import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
+import VariableWorkspace from '../components/VariableWorkspace';
+import ResearchFlowNav from '../components/ResearchFlowNav';
+import SaveProtocolModal, { ProtocolLibraryModal, exportProtocolAsJsonFile } from '../components/SaveProtocolModal';
+import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useUndoRedo } from '../hooks/useUndoRedo';
 import { useTranslation } from '../../hooks/useTranslation';
-import { getAlphaSetting, getDataset, getDatasets } from '../../lib/api';
+import { API_URL, getAlphaSetting, getDataset, getDatasets, getScanReport } from '../../lib/api';
+
+const ClusteredHeatmap = lazy(() => import('../components/ClusteredHeatmap'));
+const InteractionPlot = lazy(() => import('../components/InteractionPlot'));
+const VisualizePlot = lazy(() => import('../components/VisualizePlot'));
+
+const PROTOCOL_STORAGE_KEY = 'statwizard_protocols_v1';
+
+function safeString(value) {
+  return String(value ?? '').trim();
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function makeId() {
+  const fn = globalThis?.crypto?.randomUUID;
+  if (typeof fn === 'function') return fn.call(globalThis.crypto);
+  return `p_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeSavedProtocol(raw) {
+  const name = safeString(raw?.name);
+  const steps = Array.isArray(raw?.steps) ? raw.steps : [];
+  if (!name || steps.length === 0) return null;
+
+  return {
+    id: safeString(raw?.id) || makeId(),
+    name,
+    description: safeString(raw?.description),
+    tags: Array.isArray(raw?.tags) ? raw.tags.map(safeString).filter(Boolean) : [],
+    created_at: safeString(raw?.created_at) || new Date().toISOString(),
+    steps: steps
+      .map((s) => ({ method: safeString(s?.method), config: (s?.config && typeof s.config === 'object') ? s.config : {} }))
+      .filter((s) => s.method)
+  };
+}
+
+function loadSavedProtocols() {
+  const text = localStorage.getItem(PROTOCOL_STORAGE_KEY);
+  const parsed = safeJsonParse(text, []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map(normalizeSavedProtocol).filter(Boolean);
+}
+
+function saveSavedProtocols(protocols) {
+  localStorage.setItem(PROTOCOL_STORAGE_KEY, JSON.stringify(protocols));
+}
 
 const AnalysisDesign = () => {
   const { t } = useTranslation();
@@ -26,21 +83,68 @@ const AnalysisDesign = () => {
   const [datasetId, setDatasetId] = useState(null);
   const [datasetName, setDatasetName] = useState(null);
   const [columns, setColumns] = useState([]);
+  const [scanReport, setScanReport] = useState(null);
   const [datasetLoading, setDatasetLoading] = useState(false);
   const [datasetError, setDatasetError] = useState(null);
 
-  const [protocol, setProtocol] = useState([]);
+  const {
+    present: protocol,
+    set: setProtocol,
+    undo: undoProtocol,
+    redo: redoProtocol,
+    reset: resetProtocolHistory,
+    canUndo,
+    canRedo
+  } = useUndoRedo([], { limit: 20 });
+  const [savedProtocols, setSavedProtocols] = useState(() => loadSavedProtocols());
+  const [isSaveProtocolOpen, setIsSaveProtocolOpen] = useState(false);
+  const [isProtocolLibraryOpen, setIsProtocolLibraryOpen] = useState(false);
+  const [saveProtocolSeed, setSaveProtocolSeed] = useState(0);
+  const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
   const [showAI, setShowAI] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
+  const [selectedVars, setSelectedVars] = useState([]);
+  const [workspaceRoles, setWorkspaceRoles] = useState({ target: '', group: '', covariates: [] });
   const [aiRecommendations, setAIRecommendations] = useState([]);
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState(null);
+
+  const chartFallback = useMemo(() => (
+    <div className="animate-pulse" style={{
+      height: 360,
+      borderRadius: '2px',
+      border: '1px solid var(--border-color)',
+      background: 'var(--bg-tertiary)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'var(--text-muted)',
+      fontSize: '12px'
+    }}>
+      {t('loading')}
+    </div>
+  ), [t]);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
 
+  const [templates, setTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateVars, setTemplateVars] = useState({
+    target: '',
+    group: '',
+    predictor: ''
+  });
+
   const datasetIdResolved = datasetIdFromRoute || datasetId;
+
+  useEffect(() => {
+    saveSavedProtocols(savedProtocols);
+  }, [savedProtocols]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,8 +164,34 @@ const AnalysisDesign = () => {
         const profile = await getDataset(datasetIdFromRoute);
         if (cancelled) return;
         setDatasetId(profile?.id || datasetIdFromRoute);
-        setDatasetName(profile?.filename || profile?.name || datasetIdFromRoute);
+        const fallbackName = profile?.filename || profile?.name;
+        setDatasetName(fallbackName || datasetIdFromRoute);
         setColumns(Array.isArray(profile?.columns) ? profile.columns : []);
+
+        try {
+          const report = await getScanReport(datasetIdFromRoute);
+          if (!cancelled) setScanReport(report);
+        } catch {
+          if (!cancelled) setScanReport(null);
+        }
+
+        setSelectedTemplateId('');
+        setTemplateVars({ target: '', group: '', predictor: '' });
+        setWorkspaceRoles({ target: '', group: '', covariates: [] });
+        resetProtocolHistory([]);
+        setResults(null);
+        setIsResultsOpen(false);
+
+        if (!fallbackName) {
+          try {
+            const list = await getDatasets();
+            if (cancelled) return;
+            const hit = Array.isArray(list) ? list.find((d) => d?.id === datasetIdFromRoute) : null;
+            if (hit?.filename) setDatasetName(hit.filename);
+          } catch {
+            if (cancelled) return;
+          }
+        }
       } catch (e) {
         if (cancelled) return;
         setDatasetError(e?.message || String(e));
@@ -75,7 +205,38 @@ const AnalysisDesign = () => {
     return () => {
       cancelled = true;
     };
-  }, [datasetIdFromRoute]);
+  }, [datasetIdFromRoute, resetProtocolHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTemplates = async () => {
+      setTemplatesError(null);
+      setTemplatesLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/v2/analysis/templates`);
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          throw new Error(text || 'Failed to load templates');
+        }
+        const data = await response.json();
+        if (cancelled) return;
+        setTemplates(Array.isArray(data?.templates) ? data.templates : []);
+      } catch (e) {
+        if (cancelled) return;
+        setTemplates([]);
+        setTemplatesError(e?.message || String(e));
+      } finally {
+        if (!cancelled) setTemplatesLoading(false);
+      }
+    };
+
+    loadTemplates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,9 +272,9 @@ const AnalysisDesign = () => {
 
   const handleConfigSave = (config) => {
     if (editingTest) {
-      setProtocol(prev => 
-        prev.map(test => 
-          test.id === editingTest.id 
+      setProtocol(prev =>
+        prev.map(test =>
+          test.id === editingTest.id
             ? { ...test, config: { ...test.config, ...config } }
             : test
         )
@@ -143,25 +304,29 @@ const AnalysisDesign = () => {
   };
 
   const handleMoveTest = (fromIndex, toIndex) => {
-    const newProtocol = [...protocol];
-    const [movedTest] = newProtocol.splice(fromIndex, 1);
-    newProtocol.splice(toIndex, 0, movedTest);
-    setProtocol(newProtocol);
+    setProtocol((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
   };
 
   const handleAISuggest = async () => {
     if (protocol.length === 0) return;
-    
+
     setIsAIAnalyzing(true);
     setShowAI(true);
-    
+
     try {
-      const response = await fetch('/api/v2/ai/suggest-tests', {
+      const response = await fetch(`${API_URL}/v2/ai/suggest-tests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dataset_id: datasetIdResolved,
           protocol: protocol.map((test) => ({
+            id: test.id,
             method: test.method,
             config: test.config
           }))
@@ -193,26 +358,78 @@ const AnalysisDesign = () => {
     setProtocol(prev => [...prev, newTest]);
   };
 
-  const handleExecuteProtocol = async (protocolToExecute) => {
+  const handleExecuteProtocol = useCallback(async (protocolToExecute) => {
+    const normalizeStepForBackend = (step) => {
+      const rawMethod = step?.method;
+      const method = rawMethod === 'mixed_model' ? 'mixed_effects' : rawMethod;
+      const c = step?.config && typeof step.config === 'object' ? step.config : {};
+
+      if (method === 'clustered_correlation') {
+        const variables = Array.isArray(c.variables) ? c.variables : Array.isArray(c.targets) ? c.targets : [];
+        return { ...step, method, config: { ...c, variables } };
+      }
+
+      if (method === 'mixed_effects') {
+        const outcome = c.outcome || c.target || '';
+        return { ...step, method, config: { ...c, outcome } };
+      }
+
+      if (method === 'linear_regression' || method === 'logistic_regression') {
+        const outcome = c.outcome || c.target || '';
+        const predictors = Array.isArray(c.predictors)
+          ? c.predictors
+          : Array.isArray(c.targets)
+          ? c.targets
+          : [];
+        const covariates = Array.isArray(c.covariates) ? c.covariates : [];
+        const group = c.group || predictors?.[0] || '';
+        return { ...step, method, config: { ...c, outcome, group, predictors, covariates } };
+      }
+
+      if (method === 'pearson' || method === 'spearman') {
+        const targets = Array.isArray(c.targets) ? c.targets : [];
+        const outcome = c.outcome || c.target || targets?.[0] || '';
+        const group = c.group || targets?.[1] || '';
+        return { ...step, method, config: { ...c, outcome, group } };
+      }
+
+      const outcome = c.outcome || c.target || '';
+      const group = c.group || '';
+      return { ...step, method, config: { ...c, outcome, group } };
+    };
+
     setIsExecuting(true);
-    
+
     try {
-      const response = await fetch('/api/v2/analysis/execute', {
+      const response = await fetch(`${API_URL}/v2/analysis/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dataset_id: datasetIdResolved,
           alpha: getAlphaSetting(),
-          protocol: protocolToExecute.map((test) => ({
-            method: test.method,
-            config: test.config
-          }))
+          protocol: protocolToExecute.map((test) => {
+            const normalized = normalizeStepForBackend(test);
+            return {
+              id: normalized.id,
+              method: normalized.method,
+              config: normalized.config
+            };
+          })
         })
       });
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(text || 'Protocol execution failed');
+        const err = text || 'Protocol execution failed';
+        setResults({
+          status: 'error',
+          completed_steps: 0,
+          total_steps: protocolToExecute.length,
+          errors: [{ method: 'protocol', error: err }],
+          results: []
+        });
+        setIsResultsOpen(true);
+        return;
       }
 
       const data = await response.json();
@@ -223,13 +440,203 @@ const AnalysisDesign = () => {
     } finally {
       setIsExecuting(false);
     }
-  };
+  }, [datasetIdResolved]);
+
+  const columnNames = Array.isArray(columns)
+    ? columns
+      .map((c) => {
+        if (!c) return null;
+        if (typeof c === 'string') return c;
+        return c.name || c.column || c.id || null;
+      })
+      .filter(Boolean)
+    : [];
+
+  const selectedTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
 
   const formatMethodName = (methodId) => {
     if (!methodId) return '';
-    if (methodId === 'mixed_effects') return 'Mixed Effects (LMM)';
-    if (methodId === 'clustered_correlation') return 'Clustered Correlation';
+    if (methodId === 'mixed_effects') return t('mixed_effects');
+    if (methodId === 'clustered_correlation') return t('clustered_correlation');
     return String(methodId).replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const humanizeError = (raw) => {
+    const text = String(raw || '').trim();
+    if (!text) {
+      return {
+        title: 'Неизвестная ошибка',
+        details: '',
+        actions: ['Попробуйте запустить анализ ещё раз.', 'Если ошибка повторяется — проверьте выбранные переменные.']
+      };
+    }
+
+    const patterns = [
+      {
+        re: /could not convert string to float|cannot convert|invalid literal for int/i,
+        title: 'В данных есть текст там, где ожидаются числа',
+        actions: ['Выберите числовую переменную для Target.', 'Преобразуйте колонку в числовую на шаге подготовки данных.']
+      },
+      {
+        re: /KeyError|column.*not found|not in index/i,
+        title: 'Колонка не найдена в данных',
+        actions: ['Проверьте, что колонка существует и не была переименована.', 'Откройте «Variables» и выберите переменные заново.']
+      },
+      {
+        re: /singular matrix|LinAlgError|nan.*infs?|perfect separation/i,
+        title: 'Модель не может быть оценена на этих данных',
+        actions: ['Проверьте, что в данных есть вариативность (нет константных колонок).', 'Уберите лишние ковариаты или коллинеарные признаки.']
+      },
+      {
+        re: /not enough data|at least|insufficient|too few/i,
+        title: 'Недостаточно данных для выбранного метода',
+        actions: ['Проверьте размер выборки в группах.', 'Упростите модель или выберите другой тест.']
+      },
+      {
+        re: /shapiro|normality|levene|homogeneity|assumption/i,
+        title: 'Нарушены статистические предпосылки',
+        actions: ['Используйте непараметрический тест или трансформации.', 'Проверьте выбросы и пропуски.']
+      }
+    ];
+
+    const hit = patterns.find((p) => p.re.test(text));
+    if (!hit) {
+      return {
+        title: 'Ошибка выполнения анализа',
+        details: text,
+        actions: ['Проверьте настройки теста и выбранные переменные.', 'Если не помогает — попробуйте другой тест или шаблон.']
+      };
+    }
+
+    return {
+      title: hit.title,
+      details: text,
+      actions: hit.actions
+    };
+  };
+
+  const templateGoal = selectedTemplate?.goal;
+  const templateSecondaryKey = templateGoal === 'relationship' ? 'predictor' : 'group';
+
+  const applySavedProtocol = (p) => {
+    const normalized = normalizeSavedProtocol(p);
+    if (!normalized) return;
+
+    const steps = Array.isArray(normalized.steps) ? normalized.steps : [];
+    setProtocol(
+      steps.map((step, idx) => ({
+        id: step?.id || `saved_${Date.now()}_${idx}`,
+        method: step?.method,
+        name: formatMethodName(step?.method),
+        config: step?.config || {}
+      }))
+    );
+    setResults(null);
+    setIsResultsOpen(false);
+    setIsProtocolLibraryOpen(false);
+  };
+
+  const handleSaveProtocol = ({ name, description, tags }) => {
+    const normalized = normalizeSavedProtocol({
+      id: makeId(),
+      name,
+      description,
+      tags,
+      created_at: new Date().toISOString(),
+      steps: protocol.map((s) => ({ method: s?.method, config: s?.config || {} }))
+    });
+    if (!normalized) return;
+    setSavedProtocols((prev) => [normalized, ...(Array.isArray(prev) ? prev : [])]);
+    setIsSaveProtocolOpen(false);
+  };
+
+  const handleImportProtocol = (raw) => {
+    const normalized = normalizeSavedProtocol(raw);
+    if (!normalized) {
+      window.alert('Импорт не удался: проверьте формат протокола');
+      return;
+    }
+
+    setSavedProtocols((prev) => {
+      const next = Array.isArray(prev) ? prev : [];
+      const deduped = next.filter((p) => p.id !== normalized.id);
+      return [normalized, ...deduped];
+    });
+  };
+
+  useEffect(() => {
+    const target = templateVars?.target || '';
+    const group = templateSecondaryKey === 'predictor' ? (templateVars?.predictor || '') : (templateVars?.group || '');
+    setWorkspaceRoles((prev) => {
+      const next = { ...prev, target, group };
+      if (next.target === prev.target && next.group === prev.group) return prev;
+      return next;
+    });
+  }, [templateSecondaryKey, templateVars?.target, templateVars?.group, templateVars?.predictor]);
+
+  const columnStatsByName = useMemo(() => {
+    const cols = scanReport?.columns;
+    if (!cols || typeof cols !== 'object') return {};
+    return cols;
+  }, [scanReport]);
+
+  const roleByName = useMemo(() => {
+    const map = {};
+    if (workspaceRoles?.target) map[workspaceRoles.target] = 'target';
+    if (workspaceRoles?.group) map[workspaceRoles.group] = 'group';
+    if (Array.isArray(workspaceRoles?.covariates)) {
+      workspaceRoles.covariates.forEach((n) => {
+        if (n) map[n] = 'covariate';
+      });
+    }
+    return map;
+  }, [workspaceRoles]);
+
+  const canApplyTemplate = Boolean(selectedTemplate)
+    && Boolean(datasetIdResolved)
+    && Boolean(templateVars.target)
+    && Boolean(templateVars[templateSecondaryKey]);
+
+  const handleApplyTemplate = async () => {
+    if (!canApplyTemplate) return;
+
+    const goal = selectedTemplate.goal;
+    const variables = goal === 'relationship'
+      ? { target: templateVars.target, predictor: templateVars.predictor }
+      : { target: templateVars.target, group: templateVars.group };
+
+    try {
+      const response = await fetch(`${API_URL}/v2/analysis/design`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dataset_id: datasetIdResolved,
+          goal,
+          template_id: selectedTemplate.id,
+          variables
+        })
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Template design failed');
+      }
+
+      const data = await response.json();
+      const steps = Array.isArray(data?.protocol) ? data.protocol : [];
+      setProtocol(
+        steps.map((step, idx) => ({
+          id: step?.id || `tpl_${Date.now()}_${idx}`,
+          method: step?.method,
+          name: formatMethodName(step?.method),
+          config: step?.config || {}
+        }))
+      );
+      setResults(null);
+      setIsResultsOpen(false);
+    } catch (e) {
+      setTemplatesError(e?.message || String(e));
+    }
   };
 
   const renderStepResult = (step) => {
@@ -239,24 +646,26 @@ const AnalysisDesign = () => {
     if (method === 'mixed_effects') {
       return (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-            <div className="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">Interaction</div>
+          <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-4 overflow-hidden">
+            <div className="text-xs font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('interaction')}</div>
             <div className="mt-2 flex items-baseline gap-3">
-              <div className="text-2xl font-black text-gray-900 font-mono">
+              <div className="text-2xl font-black text-[color:var(--text-primary)] font-mono">
                 {typeof payload?.interaction_p_value === 'number'
                   ? payload.interaction_p_value < 0.001
                     ? '< 0.001'
                     : payload.interaction_p_value.toFixed(4)
-                  : '—'}
+                  : t('not_available_short')}
               </div>
-              <div className="text-xs text-gray-500">Time × Group p-value</div>
+              <div className="text-xs text-[color:var(--text-secondary)]">{t('time_group_p_value')}</div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-            <div className="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">Interaction Plot</div>
+          <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-4 overflow-hidden">
+            <div className="text-xs font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('interaction_plot')}</div>
             <div className="mt-3 overflow-x-auto">
-              <InteractionPlot data={payload} width={640} height={380} />
+              <Suspense fallback={chartFallback}>
+                <InteractionPlot data={payload} width={640} height={380} />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -265,54 +674,59 @@ const AnalysisDesign = () => {
 
     if (method === 'clustered_correlation') {
       return (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <div className="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">Clustered Heatmap</div>
+        <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-4 overflow-hidden">
+          <div className="text-xs font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('clustered_heatmap')}</div>
           <div className="mt-3 overflow-x-auto">
-            <ClusteredHeatmap data={payload} width={760} height={560} />
+            <Suspense fallback={chartFallback}>
+              <ClusteredHeatmap data={payload} width={760} height={560} />
+            </Suspense>
           </div>
         </div>
       );
     }
 
     if (Array.isArray(payload?.plot_data) && payload.plot_data.length > 0) {
+      const comparisons = payload?.comparisons || payload?.pairwise_comparisons || payload?.plot_comparisons;
       return (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <div className="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">Plot</div>
+        <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-4 overflow-hidden">
+          <div className="text-xs font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('plot')}</div>
           <div className="mt-3">
-            <VisualizePlot data={payload.plot_data} stats={payload.plot_stats} groups={payload.groups} />
+            <Suspense fallback={chartFallback}>
+              <VisualizePlot data={payload.plot_data} stats={payload.plot_stats} groups={payload.groups} comparisons={comparisons} />
+            </Suspense>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <div className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase">p-value</div>
-            <div className="mt-1 font-mono text-sm text-gray-900">
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('p_value')}</div>
+            <div className="mt-1 font-mono text-sm text-[color:var(--text-primary)]">
               {typeof payload?.p_value === 'number'
                 ? payload.p_value < 0.001
                   ? '< 0.001'
                   : payload.p_value.toFixed(4)
-                : '—'}
+                : t('not_available_short')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase">stat</div>
-            <div className="mt-1 font-mono text-sm text-gray-900">
-              {typeof payload?.stat_value === 'number' ? payload.stat_value.toFixed(3) : '—'}
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('statistic')}</div>
+            <div className="mt-1 font-mono text-sm text-[color:var(--text-primary)]">
+              {typeof payload?.stat_value === 'number' ? payload.stat_value.toFixed(3) : t('not_available_short')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase">significant</div>
-            <div className={`mt-1 text-sm font-semibold ${payload?.significant ? 'text-green-700' : 'text-gray-500'}`}>
-              {payload?.significant ? 'Yes' : 'No'}
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('statistical_significance')}</div>
+            <div className={`mt-1 text-sm font-semibold ${payload?.significant ? 'text-[color:var(--accent)]' : 'text-[color:var(--text-secondary)]'}`}>
+              {payload?.significant ? t('yes') : t('no')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase">method</div>
-            <div className="mt-1 text-sm text-gray-700 truncate">
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{t('method')}</div>
+            <div className="mt-1 text-sm text-[color:var(--text-secondary)] truncate">
               {formatMethodName(method)}
             </div>
           </div>
@@ -321,11 +735,50 @@ const AnalysisDesign = () => {
     );
   };
 
-  const handleCloseConfigModal = () => {
+  const handleCloseConfigModal = useCallback(() => {
     setIsConfigModalOpen(false);
     setSelectedTest(null);
     setEditingTest(null);
-  };
+  }, []);
+
+  const closeAllModals = useCallback(() => {
+    if (isConfigModalOpen) handleCloseConfigModal();
+    if (isSaveProtocolOpen) setIsSaveProtocolOpen(false);
+    if (isProtocolLibraryOpen) setIsProtocolLibraryOpen(false);
+    if (isShortcutsHelpOpen) setIsShortcutsHelpOpen(false);
+  }, [handleCloseConfigModal, isConfigModalOpen, isProtocolLibraryOpen, isSaveProtocolOpen, isShortcutsHelpOpen]);
+
+  const shortcuts = useMemo(() => ({
+    'mod+enter': () => {
+      if (isExecuting) return;
+      if (protocol.length === 0) return;
+      handleExecuteProtocol(protocol);
+    },
+    'mod+s': () => {
+      if (isExecuting) return;
+      if (protocol.length === 0) return;
+      setSaveProtocolSeed(Date.now());
+      setIsSaveProtocolOpen(true);
+    },
+    'mod+o': () => {
+      if (isExecuting) return;
+      setIsProtocolLibraryOpen(true);
+    },
+    'mod+z': () => {
+      if (canUndo) undoProtocol();
+    },
+    'mod+shift+z': () => {
+      if (canRedo) redoProtocol();
+    },
+    escape: () => {
+      closeAllModals();
+    },
+    '?': () => {
+      setIsShortcutsHelpOpen(true);
+    }
+  }), [canRedo, canUndo, closeAllModals, handleExecuteProtocol, isExecuting, protocol, redoProtocol, undoProtocol]);
+
+  useKeyboardShortcuts(shortcuts);
 
   const canRun = Boolean(datasetIdResolved) && !datasetLoading && !datasetError;
 
@@ -337,32 +790,31 @@ const AnalysisDesign = () => {
     <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-3xl">
         <div className="mb-8">
-          <div className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase">{t('analysis_protocol')}</div>
-          <h1 className="mt-3 text-3xl font-black text-gray-900 leading-tight">{t('test_selection')}</h1>
-          <p className="mt-2 text-sm text-gray-600 max-w-2xl">{t('select_tests_tooltip')}</p>
+          <ResearchFlowNav active="data" />
+        </div>
+        <div className="mb-8">
+          <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('analysis_protocol')}</div>
+          <h1 className="mt-3 text-3xl font-black text-[color:var(--text-primary)] leading-tight">{t('test_selection')}</h1>
+          <p className="mt-2 text-sm text-[color:var(--text-secondary)] max-w-2xl">{t('select_tests_tooltip')}</p>
         </div>
 
         {datasetsError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{datasetsError}</div>
+          <div className="mb-6 p-4 bg-[color:var(--white)] border border-[color:var(--black)] text-[color:var(--text-primary)] rounded-[2px] text-sm">{datasetsError}</div>
         )}
 
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-900">{t('datasets')}</div>
-            <button
-              onClick={() => navigate('/upload')}
-              className="text-sm font-medium text-blue-700 hover:text-blue-800"
-              type="button"
-            >
+        <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[color:var(--border-color)] flex items-center justify-between">
+            <div className="text-sm font-semibold text-[color:var(--text-primary)]">{t('datasets')}</div>
+            <Button onClick={() => navigate('/upload')} variant="primary" size="sm" type="button">
               {t('upload_dataset')}
-            </button>
+            </Button>
           </div>
 
           <div className="p-3">
             {datasetsLoading ? (
-              <div className="p-8 text-center text-gray-500 text-sm">Loading…</div>
+              <div className="p-8 text-center text-[color:var(--text-secondary)] text-sm">{t('loading')}</div>
             ) : datasets.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-sm">No datasets found</div>
+              <div className="p-8 text-center text-[color:var(--text-secondary)] text-sm">{t('no_datasets_found')}</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {datasets.map((ds) => (
@@ -370,10 +822,10 @@ const AnalysisDesign = () => {
                     key={ds.id}
                     type="button"
                     onClick={() => navigate(`/design/${ds.id}`)}
-                    className="text-left p-4 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition"
+                    className="text-left p-4 rounded-[2px] border border-[color:var(--border-color)] hover:border-black hover:bg-[color:var(--bg-tertiary)] transition"
                   >
-                    <div className="text-sm font-semibold text-gray-900 truncate">{ds.filename || ds.name || ds.id}</div>
-                    <div className="mt-1 text-xs text-gray-500 font-mono truncate">{ds.id}</div>
+                    <div className="text-sm font-semibold text-[color:var(--text-primary)] truncate">{ds.filename || ds.name || ds.id}</div>
+                    <div className="mt-1 text-xs text-[color:var(--text-secondary)] font-mono truncate">{ds.id}</div>
                   </button>
                 ))}
               </div>
@@ -390,17 +842,29 @@ const AnalysisDesign = () => {
 
   if (datasetLoading) {
     return (
-      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center text-sm text-gray-500">Loading dataset…</div>
+      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-6">
+        <div className="w-full max-w-3xl animate-pulse">
+          <div className="h-7 w-56 bg-[color:var(--gray-200)] rounded-[2px]" />
+          <div className="mt-3 h-4 w-80 bg-[color:var(--gray-200)] rounded-[2px]" />
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="h-24 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px]" />
+            <div className="h-24 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px]" />
+            <div className="h-24 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px]" />
+            <div className="h-24 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px]" />
+          </div>
+          <div className="sr-only" aria-live="polite">{t('loading_dataset')}</div>
+        </div>
+      </div>
     );
   }
 
   if (datasetError) {
     return (
       <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-6">
-        <div className="w-full max-w-xl p-6 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="w-full max-w-xl p-6 bg-[color:var(--white)] border border-[color:var(--black)] rounded-[2px] text-sm text-[color:var(--text-primary)]">
           {datasetError}
           <div className="mt-4">
-            <button type="button" onClick={onBack} className="text-red-700 font-semibold hover:underline">Back</button>
+            <button type="button" onClick={onBack} className="text-[color:var(--text-primary)] font-semibold underline underline-offset-4">{t('back')}</button>
           </div>
         </div>
       </div>
@@ -408,115 +872,217 @@ const AnalysisDesign = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              type="button"
-            >
-              <ArrowLeftIcon className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                StatWizard
-              </h1>
-              {datasetName && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {datasetName}
-                </p>
-              )}
+    <>
+      <div className="h-screen flex flex-col bg-[color:var(--bg-secondary)]">
+        <div className="bg-[color:var(--white)] border-b border-[color:var(--border-color)] px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+              <button
+                onClick={onBack}
+                className="h-9 w-9 inline-flex items-center justify-center rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-secondary)] hover:border-black hover:text-black active:scale-[0.98]"
+                type="button"
+                aria-label={t('back')}
+              >
+                <ArrowLeftIcon className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-[color:var(--text-primary)]">
+                  StatWizard
+                </h1>
+                {datasetName && (
+                  <p className="text-sm text-[color:var(--text-secondary)] mt-1">
+                    {datasetName}
+                  </p>
+                )}
+              </div>
+            </div>
+
+              <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowVariables(!showVariables)}
+                disabled={!columns.length}
+                variant={showVariables ? 'secondary' : 'ghost'}
+                className="gap-2"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+                Variables ({columns.length})
+              </Button>
+              <Button
+                onClick={() => setShowAI(!showAI)}
+                disabled={!canRun}
+                variant={showAI ? 'primary' : 'ghost'}
+                className="gap-2"
+                type="button"
+              >
+                <SparklesIcon className="w-4 h-4" />
+                {t('ai_assistant')}
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAI(!showAI)}
-              disabled={!canRun}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                showAI 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-              }`}
-              type="button"
-            >
-              <SparklesIcon className="w-4 h-4" />
-              {t('ai_assistant')}
-            </button>
+            <ResearchFlowNav active="design" datasetId={datasetIdResolved} className="mt-3" />
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-96 flex-shrink-0">
-          <TestSelectionPanel 
-            onTestSelect={handleTestSelect}
-            disabled={isExecuting}
-          />
-        </div>
+        <div className="flex-1 flex overflow-hidden">
+          <div className="w-96 flex-shrink-0">
+            <TestSelectionPanel
+              onTestSelect={handleTestSelect}
+              disabled={isExecuting}
+            />
+          </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {showAI && (
-            <div className="flex-shrink-0 p-4 border-b border-gray-200">
-              <AIRecommendationsPanel
-                datasetId={datasetId}
-                columns={columns}
-                recommendations={aiRecommendations}
-                onAddRecommendation={handleAddRecommendation}
-                onClose={() => setShowAI(false)}
-                isAnalyzing={isAIAnalyzing}
-              />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <ProtocolTemplateSelector
+              templates={templates}
+              templatesLoading={templatesLoading}
+              templatesError={templatesError}
+              selectedTemplateId={selectedTemplateId}
+              onSelectedTemplateIdChange={(nextId) => {
+                setSelectedTemplateId(nextId);
+                setTemplateVars((v) => ({ ...v, group: '', predictor: '' }));
+              }}
+              selectedTemplate={selectedTemplate}
+              templateVars={templateVars}
+              onTemplateVarsChange={setTemplateVars}
+              columnNames={columnNames}
+              columns={columns}
+              columnStatsByName={columnStatsByName}
+              canApplyTemplate={canApplyTemplate}
+              onApplyTemplate={handleApplyTemplate}
+              disabled={isExecuting}
+            />
+
+            {showAI && (
+              <div className="flex-shrink-0 p-4 border-b border-[color:var(--border-color)]">
+                <AIRecommendationsPanel
+                  datasetId={datasetId}
+                  columns={columns}
+                  recommendations={aiRecommendations}
+                  onAddRecommendation={handleAddRecommendation}
+                  onClose={() => setShowAI(false)}
+                  isAnalyzing={isAIAnalyzing}
+                />
+              </div>
+            )}
+
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-hidden">
+                <ProtocolBuilder
+                  protocol={protocol}
+                  datasetName={datasetName}
+                  onRemoveTest={handleRemoveTest}
+                  onEditTest={handleEditTest}
+                  onMoveTest={handleMoveTest}
+                  onExecuteProtocol={handleExecuteProtocol}
+                  onAISuggest={handleAISuggest}
+                  onSaveProtocol={() => {
+                    if (protocol.length === 0) return;
+                    setSaveProtocolSeed(Date.now());
+                    setIsSaveProtocolOpen(true);
+                  }}
+                  onOpenProtocols={() => setIsProtocolLibraryOpen(true)}
+                  onUndo={undoProtocol}
+                  onRedo={redoProtocol}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  isExecuting={isExecuting}
+                  isAIAnalyzing={isAIAnalyzing}
+                />
+              </div>
             </div>
-          )}
 
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-hidden">
-              <ProtocolBuilder
-                protocol={protocol}
-                datasetName={datasetName}
-                onRemoveTest={handleRemoveTest}
-                onEditTest={handleEditTest}
-                onMoveTest={handleMoveTest}
-                onExecuteProtocol={handleExecuteProtocol}
-                onAISuggest={handleAISuggest}
-                isExecuting={isExecuting}
-                isAIAnalyzing={isAIAnalyzing}
-              />
-            </div>
-
+            {/* Variable Workspace Right Sidebar */}
+            {showVariables && (
+              <div className="w-80 flex-shrink-0 border-l border-[color:var(--border-color)]">
+                <VariableWorkspace
+                  columns={columns}
+                  columnStatsByName={columnStatsByName}
+                  roleByName={roleByName}
+                  roles={workspaceRoles}
+                  secondaryRoleLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
+                  onRolesChange={(next) => {
+                    setWorkspaceRoles(next);
+                    setTemplateVars((prev) => {
+                      const out = { ...prev, target: next.target || prev.target };
+                      if (templateSecondaryKey === 'predictor') out.predictor = next.group || prev.predictor;
+                      else out.group = next.group || prev.group;
+                      return out;
+                    });
+                  }}
+                  selectedVariables={selectedVars}
+                  onSelectionChange={setSelectedVars}
+                  onVariableClick={(name) => {
+                    // Auto-fill template vars
+                    if (!templateVars.target) {
+                      setTemplateVars(prev => ({ ...prev, target: name }));
+                    } else if (!templateVars.group && !templateVars.predictor) {
+                      setTemplateVars(prev => ({ ...prev, group: name }));
+                    }
+                  }}
+                  mode="multi"
+                  showStats={true}
+                />
+              </div>
+            )}
             {results && (
-              <div className={`border-t border-gray-200 bg-gray-100 flex-shrink-0 ${isResultsOpen ? 'h-[46vh]' : 'h-12'} transition-[height] duration-200 overflow-hidden`}>
-                <div className="h-12 px-4 flex items-center justify-between bg-white border-b border-gray-200">
+              <div className={`border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] flex-shrink-0 ${isResultsOpen ? 'h-[46vh]' : 'h-12'} transition-[height] duration-200 overflow-hidden`}>
+                <div className="h-12 px-4 flex items-center justify-between bg-[color:var(--white)] border-b border-[color:var(--border-color)]">
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase truncate">
+                    <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase truncate">
                       {t('analysis_results')}
                     </div>
-                    <div className="text-xs text-gray-600 truncate">
-                      {results?.status || '—'} · {results?.completed_steps ?? 0}/{results?.total_steps ?? 0}
+                    <div className="text-xs text-[color:var(--text-secondary)] truncate">
+                      {results?.status || t('not_available_short')} · {results?.completed_steps ?? 0}/{results?.total_steps ?? 0}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsResultsOpen((v) => !v)}
-                    className="text-xs font-semibold text-gray-700 hover:text-gray-900"
+                    className="text-xs font-semibold text-[color:var(--text-secondary)] hover:text-black"
                   >
                     {isResultsOpen ? t('hide_results') : t('view_results')}
                   </button>
                 </div>
 
                 {isResultsOpen && (
-                  <div className="h-[calc(46vh-3rem)] overflow-y-auto p-4 space-y-4">
+                  <div className="h-[calc(46vh-3rem)] overflow-y-auto p-4 space-y-4" aria-live="polite">
                     {Array.isArray(results?.errors) && results.errors.length > 0 && (
-                      <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm">
-                        <div className="text-xs font-semibold tracking-[0.18em] uppercase text-red-500">Errors</div>
-                        <div className="mt-2 space-y-1">
-                          {results.errors.map((e, idx) => (
-                            <div key={`${e?.step_id || 'step'}_${idx}`} className="font-mono text-xs">
-                              {e?.method || 'unknown'}: {e?.error || 'Unknown error'}
-                            </div>
-                          ))}
+                      <div className="bg-[color:var(--white)] border border-[color:var(--black)] text-[color:var(--text-primary)] rounded-[2px] p-4 text-sm">
+                        <div className="text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--accent)]">{t('errors')}</div>
+                        <div className="mt-2 space-y-2">
+                          {results.errors.map((e, idx) => {
+                            const h = humanizeError(e?.error);
+                            return (
+                              <div key={`${e?.step_id || 'step'}_${idx}`} className="rounded-[2px] bg-[color:var(--bg-tertiary)] border border-[color:var(--border-color)] p-3">
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <div className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
+                                    {e?.method || t('unknown')}
+                                  </div>
+                                  <div className="text-[10px] text-[color:var(--text-secondary)] font-mono truncate">
+                                    {h.details ? h.details : (e?.error || t('unknown_error'))}
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">
+                                  {h.title}
+                                </div>
+                                {Array.isArray(h.actions) && h.actions.length > 0 && (
+                                  <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                                    <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-muted)]">Что делать:</div>
+                                    <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                                      {h.actions.map((a, i) => (
+                                        <li key={`${idx}_a_${i}`}>{a}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -525,18 +1091,18 @@ const AnalysisDesign = () => {
                       results.results.map((step, idx) => (
                         <div key={step?.step_id || `${step?.method || 'step'}_${idx}`} className="space-y-3">
                           <div className="flex items-baseline justify-between">
-                            <div className="text-sm font-bold text-gray-900 truncate">
+                            <div className="text-sm font-bold text-[color:var(--text-primary)] truncate">
                               {formatMethodName(step?.method)}
                             </div>
-                            <div className="text-xs text-gray-500 font-mono">
-                              {step?.status || '—'}
+                            <div className="text-xs text-[color:var(--text-secondary)] font-mono">
+                              {step?.status || t('not_available_short')}
                             </div>
                           </div>
                           {renderStepResult(step)}
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-gray-500">No results yet</div>
+                      <div className="text-sm text-[color:var(--text-secondary)]">{t('no_results_yet')}</div>
                     )}
                   </div>
                 )}
@@ -552,8 +1118,36 @@ const AnalysisDesign = () => {
         method={selectedTest?.id}
         initialConfig={editingTest?.config || {}}
         onConfigSave={handleConfigSave}
+        columns={columns}
+        suggestedConfig={workspaceRoles}
       />
-    </div>
+
+      <SaveProtocolModal
+        key={saveProtocolSeed}
+        isOpen={isSaveProtocolOpen}
+        onClose={() => setIsSaveProtocolOpen(false)}
+        onSave={handleSaveProtocol}
+        defaultName={datasetName ? `Протокол: ${datasetName}` : 'Мой протокол'}
+        defaultDescription=""
+      />
+
+      <ProtocolLibraryModal
+        isOpen={isProtocolLibraryOpen}
+        onClose={() => setIsProtocolLibraryOpen(false)}
+        protocols={savedProtocols}
+        onLoad={applySavedProtocol}
+        onDelete={(id) => {
+          setSavedProtocols((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== id) : []));
+        }}
+        onImport={handleImportProtocol}
+        onExport={(p) => exportProtocolAsJsonFile(p)}
+      />
+
+      <KeyboardShortcutsHelp
+        isOpen={isShortcutsHelpOpen}
+        onClose={() => setIsShortcutsHelpOpen(false)}
+      />
+    </>
   );
 };
 

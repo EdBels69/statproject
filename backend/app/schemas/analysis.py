@@ -16,6 +16,7 @@ class ProtocolRequest(BaseModel):
 class DesignRequest(BaseModel):
     dataset_id: str = Field(..., min_length=1, description="Unique identifier for the dataset")
     goal: str = Field(..., min_length=1, description="Analysis goal: 'compare_groups', 'relationship', etc.")
+    template_id: Optional[str] = Field(None, description="Optional template identifier")
     variables: Dict[str, Any] = Field(..., description="Variable mapping: {'target': 'Hb', 'group': 'Treat'}")
     
     @field_validator("goal")
@@ -62,6 +63,10 @@ class AnalysisResult(BaseModel):
     p_value: Optional[float] = None
     effect_size: Optional[float] = None
     effect_size_name: Optional[str] = None  # Cohen's d, r, etc.
+    effect_size_ci_lower: Optional[float] = None
+    effect_size_ci_upper: Optional[float] = None
+    power: Optional[float] = None
+    bf10: Optional[float] = None
     stat_value: Optional[float] = None
     significant: bool = False
     

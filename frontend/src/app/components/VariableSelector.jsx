@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 const TypeIcon = ({ type }) => {
     const getLabel = () => {
@@ -15,20 +17,39 @@ const TypeIcon = ({ type }) => {
             fontSize: '9px',
             fontWeight: 'bold',
             color: 'var(--accent)',
-            background: 'rgba(249, 115, 22, 0.15)',
+            background: 'color-mix(in oklab, var(--accent) 15%, var(--white))',
             padding: '2px 6px',
-            borderRadius: '3px'
+            borderRadius: '2px',
+            border: '1px solid var(--border-color)'
         }}>
             {getLabel()}
         </span>
     );
 };
 
-export default function VariableSelector({ allColumns, onRun, loading }) {
-    const [targetCols, setTargetCols] = useState([]);
-    const [groupCol, setGroupCol] = useState(null);
+export default function VariableSelector({ allColumns, onRun, loading, initialGroupName, initialTargetNames }) {
+    const [groupCol, setGroupCol] = useState(() => {
+        if (!Array.isArray(allColumns) || allColumns.length === 0) return null;
+        if (!initialGroupName) return null;
+        return allColumns.find((c) => c?.name === initialGroupName) || null;
+    });
+    const [targetCols, setTargetCols] = useState(() => {
+        if (!Array.isArray(allColumns) || allColumns.length === 0) return [];
+        if (!Array.isArray(initialTargetNames) || initialTargetNames.length === 0) return [];
+
+        const byName = new Map(allColumns.map((c) => [c?.name, c]).filter(([n, c]) => n && c));
+        const uniqueNames = Array.from(new Set(initialTargetNames.filter(Boolean)));
+
+        return uniqueNames
+            .filter((n) => n !== initialGroupName)
+            .map((n) => byName.get(n))
+            .filter(Boolean);
+    });
     const [selectedAvailableNames, setSelectedAvailableNames] = useState([]);
     const [selectedTargetNames, setSelectedTargetNames] = useState([]);
+
+    const selectedAvailableSet = useMemo(() => new Set(selectedAvailableNames), [selectedAvailableNames]);
+    const selectedTargetSet = useMemo(() => new Set(selectedTargetNames), [selectedTargetNames]);
 
     const available = useMemo(() => {
         const taken = new Set([
@@ -61,42 +82,71 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
         if (groupCol) setGroupCol(null);
     };
 
-    const renderItem = (col, isSelected, onClick) => (
-        <div
-            key={col.name}
-            onClick={onClick}
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                background: isSelected ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
-                borderBottom: '1px solid var(--border-color)',
-                transition: 'background 0.15s'
-            }}
-        >
-            <TypeIcon type={col.type} />
-            <span style={{
-                fontSize: '12px',
-                fontFamily: 'monospace',
-                color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
-                fontWeight: isSelected ? '600' : '400',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-            }} title={col.name}>
-                {col.name}
-            </span>
-        </div>
-    );
+    const toggleAvailable = useCallback((name) => {
+        setSelectedAvailableNames(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
+    }, []);
+
+    const toggleTarget = useCallback((name) => {
+        setSelectedTargetNames(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
+    }, []);
+
+    const itemHeight = 34;
+    const VirtualRow = useCallback(({ index, style, data }) => {
+        const col = data.items[index];
+        if (!col) return null;
+
+        const isSelected = data.selected.has(col.name);
+        return (
+            <div style={style}>
+                <div
+                    onClick={() => data.onToggle(col.name)}
+                    style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        background: isSelected ? 'color-mix(in oklab, var(--accent) 10%, var(--white))' : 'transparent',
+                        borderBottom: '1px solid var(--border-color)',
+                        transition: 'background 0.15s'
+                    }}
+                >
+                    <TypeIcon type={col.type} />
+                    <span style={{
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontWeight: isSelected ? '600' : '400',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                    }} title={col.name}>
+                        {col.name}
+                    </span>
+                </div>
+            </div>
+        );
+    }, []);
+
+    const availableListData = useMemo(() => ({
+        items: available,
+        selected: selectedAvailableSet,
+        onToggle: toggleAvailable
+    }), [available, selectedAvailableSet, toggleAvailable]);
+
+    const targetListData = useMemo(() => ({
+        items: targetCols,
+        selected: selectedTargetSet,
+        onToggle: toggleTarget
+    }), [targetCols, selectedTargetSet, toggleTarget]);
 
     const sectionStyle = {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         border: '1px solid var(--border-color)',
-        borderRadius: '6px',
+        borderRadius: '2px',
         overflow: 'hidden',
         minHeight: 0
     };
@@ -161,19 +211,22 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         <span style={labelStyle}>Available</span>
                         <span style={countStyle}>{available.length}</span>
                     </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {available.map(col => renderItem(
-                        col,
-                        selectedAvailableNames.includes(col.name),
-                        () => {
-                                if (selectedAvailableNames.includes(col.name)) {
-                                    setSelectedAvailableNames(selectedAvailableNames.filter(n => n !== col.name));
-                                } else {
-                                    setSelectedAvailableNames([...selectedAvailableNames, col.name]);
-                                }
-                        }
-                    ))}
-                </div>
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                        <AutoSizer>
+                            {({ height, width }) => (
+                                <List
+                                    height={height}
+                                    width={width}
+                                    itemCount={available.length}
+                                    itemSize={itemHeight}
+                                    itemData={availableListData}
+                                    overscanCount={8}
+                                >
+                                    {VirtualRow}
+                                </List>
+                            )}
+                        </AutoSizer>
+                    </div>
                 </div>
 
                 {/* Actions */}
@@ -202,7 +255,7 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                         <span style={labelStyle}>Dependent (Y)</span>
                         <span style={countStyle}>{targetCols.length}</span>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                    <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                         {targetCols.length === 0 && (
                             <div style={{
                                 position: 'absolute',
@@ -216,17 +269,22 @@ export default function VariableSelector({ allColumns, onRun, loading }) {
                                 Empty
                             </div>
                         )}
-                        {targetCols.map(col => renderItem(
-                            col,
-                            selectedTargetNames.includes(col.name),
-                            () => {
-                                if (selectedTargetNames.includes(col.name)) {
-                                    setSelectedTargetNames(selectedTargetNames.filter(n => n !== col.name));
-                                } else {
-                                    setSelectedTargetNames([...selectedTargetNames, col.name]);
-                                }
-                            }
-                        ))}
+                        {targetCols.length > 0 && (
+                            <AutoSizer>
+                                {({ height, width }) => (
+                                    <List
+                                        height={height}
+                                        width={width}
+                                        itemCount={targetCols.length}
+                                        itemSize={itemHeight}
+                                        itemData={targetListData}
+                                        overscanCount={8}
+                                    >
+                                        {VirtualRow}
+                                    </List>
+                                )}
+                            </AutoSizer>
+                        )}
                     </div>
                 </div>
 

@@ -1,6 +1,6 @@
 {
-  "Value": "float64",
-  "Other": "float64",
+  "Value": "float32",
+  "Other": "float32",
   "Cat": "object",
-  "ValueStr": "float64"
+  "ValueStr": "float32"
 }
