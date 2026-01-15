@@ -160,8 +160,144 @@ METHODS = {
         type="diagnostic",
         min_groups=2,
         max_groups=2
+    ),
+    # === ASSUMPTION TESTS ===
+    "shapiro_wilk": StatMethod(
+        id="shapiro_wilk",
+        name="Shapiro-Wilk Test",
+        description="Tests whether a sample comes from a normally distributed population. Essential before using parametric tests.",
+        type="assumption",
+        min_groups=1,
+        max_groups=1
+    ),
+    "levene": StatMethod(
+        id="levene",
+        name="Levene's Test",
+        description="Tests equality of variances across groups (homogeneity of variance). Required assumption for ANOVA.",
+        type="assumption",
+        min_groups=2,
+        max_groups=100
+    ),
+    # === AGREEMENT & RELIABILITY ===
+    "bland_altman": StatMethod(
+        id="bland_altman",
+        name="Bland-Altman Analysis",
+        description="Assesses agreement between two measurement methods. Shows systematic bias and limits of agreement.",
+        type="agreement",
+        min_groups=2,
+        max_groups=2
+    ),
+    "icc": StatMethod(
+        id="icc",
+        name="Intraclass Correlation (ICC)",
+        description="Measures reliability/agreement for continuous outcomes. Essential for inter-rater reliability studies.",
+        type="agreement",
+        min_groups=2,
+        max_groups=100
+    ),
+    "cohens_kappa": StatMethod(
+        id="cohens_kappa",
+        name="Cohen's Kappa",
+        description="Measures agreement between two raters for categorical outcomes, adjusted for chance agreement.",
+        type="agreement",
+        min_groups=2,
+        max_groups=2
+    ),
+    # === ADDITIONAL CATEGORICAL ===
+    "mcnemar": StatMethod(
+        id="mcnemar",
+        name="McNemar's Test",
+        description="Tests for changes in paired binary outcomes (before/after treatment). Like chi-square for paired data.",
+        type="categorical",
+        min_groups=2,
+        max_groups=2
+    ),
+    "cochran_q": StatMethod(
+        id="cochran_q",
+        name="Cochran's Q Test",
+        description="Extension of McNemar to 3+ related groups. Tests if proportions differ across conditions.",
+        type="categorical",
+        min_groups=3,
+        max_groups=100
+    ),
+    # === ADVANCED ANOVA ===
+    "anova_twoway": StatMethod(
+        id="anova_twoway",
+        name="Two-Way ANOVA",
+        description="Tests effects of two factors and their interaction. Essential for factorial designs.",
+        type="parametric",
+        min_groups=4,
+        max_groups=100
+    ),
+    "ancova": StatMethod(
+        id="ancova",
+        name="ANCOVA",
+        description="ANOVA with covariates. Controls for confounding variables when comparing groups.",
+        type="parametric",
+        min_groups=2,
+        max_groups=100
+    ),
+    # === FACTOR ANALYSIS ===
+    "pca": StatMethod(
+        id="pca",
+        name="Principal Component Analysis (PCA)",
+        description="Reduces dimensionality by finding components that explain maximum variance. Great for exploratory analysis.",
+        type="dimension_reduction",
+        min_groups=0,
+        max_groups=0
+    ),
+    "efa": StatMethod(
+        id="efa",
+        name="Exploratory Factor Analysis (EFA)",
+        description="Discovers latent factors underlying observed variables. Essential for questionnaire validation.",
+        type="dimension_reduction",
+        min_groups=0,
+        max_groups=0
+    ),
+    "cronbach_alpha": StatMethod(
+        id="cronbach_alpha",
+        name="Cronbach's Alpha",
+        description="Measures internal consistency of a scale. Standard for questionnaire reliability.",
+        type="reliability",
+        min_groups=0,
+        max_groups=0
+    ),
+    # === CLUSTERING ===
+    "kmeans": StatMethod(
+        id="kmeans",
+        name="K-Means Clustering",
+        description="Partitions data into K clusters based on similarity. Requires specifying number of clusters.",
+        type="clustering",
+        min_groups=0,
+        max_groups=0
+    ),
+    "hierarchical_clustering": StatMethod(
+        id="hierarchical_clustering",
+        name="Hierarchical Clustering",
+        description="Creates a tree of clusters (dendrogram). Good when number of clusters is unknown.",
+        type="clustering",
+        min_groups=0,
+        max_groups=0
+    ),
+    # === ADDITIONAL CORRELATION ===
+    "point_biserial": StatMethod(
+        id="point_biserial",
+        name="Point-Biserial Correlation",
+        description="Correlation between a continuous and a binary variable. Special case of Pearson.",
+        type="correlation",
+        min_groups=2,
+        max_groups=2
+    ),
+    "partial_correlation": StatMethod(
+        id="partial_correlation",
+        name="Partial Correlation",
+        description="Correlation between two variables while controlling for a third. Removes confounding effects.",
+        type="correlation",
+        min_groups=0,
+        max_groups=0
     )
 }
 
 def get_method(method_id: str) -> StatMethod:
     return METHODS.get(method_id)
+

@@ -4,6 +4,8 @@ from app.stats.engine import run_analysis
 
 def test_anova_tukey():
     print("--- Testing ANOVA with Tukey HSD ---")
+
+    np.random.seed(42)
     
     # 1. Create Data with clear differences
     # Group A: Mean 10

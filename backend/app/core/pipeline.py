@@ -76,9 +76,6 @@ class PipelineManager:
 
         parquet_path = os.path.join(paths["processed"], f"{dataset_id}.parquet")
         df_copy.to_parquet(parquet_path, engine="pyarrow", index=False)
-
-        csv_path = os.path.join(paths["processed"], "data.csv")
-        df_copy.to_csv(csv_path, index=False)
         
         # Save schema/dtypes
         dtypes = df.dtypes.astype(str).to_dict()

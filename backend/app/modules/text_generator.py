@@ -13,12 +13,37 @@ class TextGenerator:
         return f"p = {p:.3f}"
 
     @staticmethod
-    def interpret_effect_size(d: float) -> str:
-        if d is None: return ""
-        abs_d = abs(d)
-        if abs_d < 0.2: return "negligible effect"
-        if abs_d < 0.5: return "small effect"
-        if abs_d < 0.8: return "medium effect"
+    def interpret_effect_size(effect_size: float, effect_size_name: str = "cohen-d") -> str:
+        if effect_size is None:
+            return ""
+
+        name = str(effect_size_name or "").lower().replace("-", "_").replace(" ", "_")
+        abs_es = abs(float(effect_size))
+
+        if name in ["eta2", "eta_sq", "eta_squared", "np2", "partial_eta2", "eps_sq", "epsilon_squared"]:
+            if abs_es < 0.01:
+                return "negligible effect"
+            if abs_es < 0.06:
+                return "small effect"
+            if abs_es < 0.14:
+                return "medium effect"
+            return "large effect"
+
+        if name in ["r", "pearson", "spearman", "rbc", "rank_biserial", "rank_biserial_correlation", "cramers_v", "cramer_v"]:
+            if abs_es < 0.1:
+                return "negligible effect"
+            if abs_es < 0.3:
+                return "small effect"
+            if abs_es < 0.5:
+                return "medium effect"
+            return "large effect"
+
+        if abs_es < 0.2:
+            return "negligible effect"
+        if abs_es < 0.5:
+            return "small effect"
+        if abs_es < 0.8:
+            return "medium effect"
         return "large effect"
 
     @staticmethod
@@ -63,6 +88,7 @@ class TextGenerator:
         plot_stats = results.get('plot_stats', {})
         eff_size = results.get('effect_size')
         eff_interp = results.get('effect_size_interpretation') if isinstance(results, dict) else None
+        eff_name = results.get('effect_size_name')
         
         # Method Name Resolution
         method_obj = results.get("method")
@@ -117,9 +143,18 @@ class TextGenerator:
 
         # Pro Style
         eff_text = ""
-        if eff_size is not None:
-            eff_desc = TextGenerator.interpret_effect_size(eff_size)
-            eff_text = f", Cohen's d = {eff_size:.2f} ({eff_desc})"
+        if isinstance(eff_interp, dict):
+            desc = eff_interp.get("description") or eff_interp.get("label")
+            if desc:
+                eff_text = f", {desc}"
+        elif eff_size is not None:
+            eff_desc = TextGenerator.interpret_effect_size(eff_size, eff_name or "cohen-d")
+            if (eff_name or "").lower().replace(" ", "") in ["eta2", "np2", "eps-sq", "eps_sq", "eta_squared", "partial_eta2"]:
+                eff_text = f", effect size = {float(eff_size):.3f} ({eff_desc})"
+            elif (eff_name or "").lower().replace(" ", "") in ["rbc", "r"]:
+                eff_text = f", effect size = {float(eff_size):.2f} ({eff_desc})"
+            else:
+                eff_text = f", Cohen's d = {float(eff_size):.2f} ({eff_desc})"
             
         text = f"An independent {method_name} was conducted to determine if there were differences in {target} between groups defined by {group_col}. "
         

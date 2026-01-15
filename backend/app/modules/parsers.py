@@ -59,7 +59,7 @@ def parse_file(file_path: str, header_row: int = 0, sheet_name: str = None, orig
 def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
     """
     Centralized function to load DataFrame for any dataset.
-    Checks for processed.csv first (faster), falls back to original file.
+    Checks for processed Parquet first (faster), falls back to original file.
     """
     import json
     
@@ -102,4 +102,11 @@ def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
             original_filename = metadata.get("original_filename")
     
     df, _ = parse_file(file_path, header_row=header_row, sheet_name=sheet_name, original_filename=original_filename)
+    try:
+        from app.modules.smart_scanner import SmartScanner
+
+        scanner = SmartScanner()
+        df = scanner.optimize_dtypes(df)
+    except Exception:
+        pass
     return df

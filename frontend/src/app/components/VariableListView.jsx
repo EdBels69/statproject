@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Badge from './ui/Badge';
 
 const TYPE_OPTIONS = [
@@ -61,6 +61,9 @@ export default function VariableListView({
   onOpenSettings
 }) {
   const [query, setQuery] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const rootRef = useRef(null);
+  const itemRefs = useRef([]);
   const safeColumns = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
   const statsByCol = scanReport?.columns || {};
 
@@ -70,8 +73,111 @@ export default function VariableListView({
     return safeColumns.filter((c) => String(c?.name || '').toLowerCase().includes(q));
   }, [query, safeColumns]);
 
+  const safeFocusedIndex = visible.length > 0
+    ? Math.max(0, Math.min(focusedIndex, visible.length - 1))
+    : 0;
+
+  const focusItem = useCallback((nextIndex) => {
+    if (visible.length === 0) return;
+    const safe = Math.max(0, Math.min(nextIndex, visible.length - 1));
+    setFocusedIndex(safe);
+  }, [visible.length]);
+
+  useEffect(() => {
+    const el = itemRefs.current?.[safeFocusedIndex];
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  }, [safeFocusedIndex, visible]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.defaultPrevented) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const tag = String(e.target?.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.target?.isContentEditable) return;
+
+    if (visible.length === 0) return;
+
+    const key = String(e.key || '').toLowerCase();
+    if (key === 'arrowdown') {
+      e.preventDefault();
+      focusItem(safeFocusedIndex + 1);
+      return;
+    }
+    if (key === 'arrowup') {
+      e.preventDefault();
+      focusItem(safeFocusedIndex - 1);
+      return;
+    }
+
+    const col = visible[safeFocusedIndex];
+    const name = col?.name;
+    if (!name) return;
+
+    if (key === 'enter') {
+      e.preventDefault();
+      onOpenSettings?.(name);
+      return;
+    }
+
+    if (key === 'n') {
+      e.preventDefault();
+      onTypeChange?.(name, 'numeric');
+      return;
+    }
+    if (key === 'c') {
+      e.preventDefault();
+      onTypeChange?.(name, 'categorical');
+      return;
+    }
+    if (key === 'd') {
+      e.preventDefault();
+      onTypeChange?.(name, 'date');
+      return;
+    }
+    if (key === 'i') {
+      e.preventDefault();
+      onTypeChange?.(name, 'id');
+      return;
+    }
+    if (key === '0' || key === 'backspace' || key === 'delete') {
+      e.preventDefault();
+      onTypeChange?.(name, '');
+      return;
+    }
+
+    if (key === 't') {
+      e.preventDefault();
+      onRoleChange?.(name, 'target');
+      return;
+    }
+    if (key === 'g') {
+      e.preventDefault();
+      onRoleChange?.(name, 'factor');
+      return;
+    }
+    if (key === 'x') {
+      e.preventDefault();
+      onRoleChange?.(name, 'ignore');
+      return;
+    }
+    if (key === 'r') {
+      e.preventDefault();
+      onRoleChange?.(name, '');
+      return;
+    }
+  }, [focusItem, onOpenSettings, onRoleChange, onTypeChange, safeFocusedIndex, visible]);
+
   return (
-    <div className="space-y-4">
+    <div
+      ref={rootRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="space-y-4"
+      aria-label="Переменные"
+    >
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">
@@ -84,7 +190,10 @@ export default function VariableListView({
         <div className="w-full max-w-xs">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setFocusedIndex(0);
+            }}
             placeholder="Поиск по имени…"
             className="w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
           />
@@ -92,16 +201,25 @@ export default function VariableListView({
       </div>
 
       <div className="grid grid-cols-1 gap-2">
-        {visible.map((col) => {
+        {visible.map((col, idx) => {
           const role = col.role ?? '';
           const uiType = col.uiType ?? '';
           const colStats = statsByCol?.[col.name];
           const statLine = formatStatLine(colStats, uiType);
+          const isFocused = idx === safeFocusedIndex;
 
           return (
             <div
               key={col.name}
-              className="variable-card rounded-[2px] border border-transparent bg-[color:var(--white)] px-5 py-4"
+              ref={(el) => {
+                itemRefs.current[idx] = el;
+              }}
+              className={`variable-card rounded-[2px] border border-transparent bg-[color:var(--white)] px-5 py-4 ${isFocused ? 'ring-1 ring-[color:var(--accent)] ring-inset' : ''}`}
+              onMouseEnter={() => setFocusedIndex(idx)}
+              onMouseDown={() => {
+                const root = rootRef.current;
+                if (root && typeof root.focus === 'function') root.focus();
+              }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -165,6 +283,12 @@ export default function VariableListView({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-[color:var(--border-color)] text-xs text-[color:var(--text-muted)]">
+        <span className="font-semibold">Горячие клавиши:</span>
+        {' '}↑↓ навигация • N numeric • C categorical • D date • I id
+        {' '}• T target • G factor • X ignore • R убрать роль • Enter настройки
       </div>
     </div>
   );

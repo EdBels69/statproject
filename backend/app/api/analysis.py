@@ -24,6 +24,10 @@ from app.core.logging import logger
 
 from app.api.datasets import DATA_DIR, parse_file
 
+from app.stats.assumptions import check_normality as check_normality_profile
+from app.stats.assumptions import check_homogeneity as check_homogeneity_profile
+from app.stats.assumptions import recommend_test as recommend_test_from_profile
+
 router = APIRouter()
 pipeline = PipelineManager(DATA_DIR)
 protocol_engine = ProtocolEngine(pipeline)
@@ -33,6 +37,122 @@ class ExportDocxRequest(BaseModel):
     results: Dict[str, Any]
     dataset_name: Optional[str] = None
     filename: Optional[str] = None
+
+
+class AssumptionsCheckRequest(BaseModel):
+    dataset_id: str
+    method_id: str
+    config: Dict[str, Any] = {}
+    alpha: float = 0.05
+
+
+@router.post("/assumptions")
+async def check_assumptions(req: AssumptionsCheckRequest):
+    try:
+        df = get_dataframe(req.dataset_id, DATA_DIR)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+
+    method_id = (req.method_id or "").strip()
+    config = req.config or {}
+    alpha = float(req.alpha) if req.alpha is not None else 0.05
+
+    def pick(name: str):
+        v = config.get(name)
+        if v is None:
+            return ""
+        return str(v).strip()
+
+    def pick_targets():
+        v = config.get("targets")
+        if isinstance(v, list):
+            return [str(x).strip() for x in v if str(x).strip()]
+        return []
+
+    is_paired = bool(config.get("is_paired")) or method_id in {"t_test_rel", "wilcoxon", "rm_anova", "friedman"}
+
+    target = pick("target") or pick("outcome")
+    group = pick("group")
+    targets = pick_targets()
+
+    if not target and targets:
+        target = targets[0]
+
+    if method_id in {"pearson", "spearman", "clustered_correlation"}:
+        if len(targets) < 2:
+            return {"alpha": alpha, "method_id": method_id, "shapiro_p": None, "levene_p": None}
+
+        col_a, col_b = targets[0], targets[1]
+        if col_a not in df.columns or col_b not in df.columns:
+            raise HTTPException(status_code=400, detail="Selected columns not found")
+
+        a = pd.to_numeric(df[col_a], errors="coerce").tolist()
+        b = pd.to_numeric(df[col_b], errors="coerce").tolist()
+        norm_a = check_normality_profile(a, alpha=alpha)
+        norm_b = check_normality_profile(b, alpha=alpha)
+        p_vals = [p for p in [norm_a.get("p"), norm_b.get("p")] if p is not None]
+        shapiro_p = min(p_vals) if p_vals else None
+        return {
+            "alpha": alpha,
+            "method_id": method_id,
+            "n_groups": None,
+            "shapiro_p": shapiro_p,
+            "levene_p": None,
+            "normality": {"a": norm_a, "b": norm_b},
+            "homogeneity": None,
+            "recommended_test": None,
+        }
+
+    if not target or not group:
+        return {"alpha": alpha, "method_id": method_id, "shapiro_p": None, "levene_p": None}
+
+    if target not in df.columns or group not in df.columns:
+        raise HTTPException(status_code=400, detail="Selected columns not found")
+
+    df_local = df[[target, group]].copy()
+    df_local[target] = pd.to_numeric(df_local[target], errors="coerce")
+    df_local = df_local.dropna(subset=[group])
+
+    groups = df_local[group].dropna().unique().tolist()
+    n_groups = len(groups)
+    if n_groups < 2:
+        return {"alpha": alpha, "method_id": method_id, "n_groups": n_groups, "shapiro_p": None, "levene_p": None}
+
+    normality = {}
+    per_group_p = []
+    data_groups = []
+    for g in groups:
+        values = df_local.loc[df_local[group] == g, target].dropna().tolist()
+        data_groups.append(values)
+        res = check_normality_profile(values, alpha=alpha)
+        normality[str(g)] = res
+        if res.get("p") is not None:
+            per_group_p.append(res.get("p"))
+
+    shapiro_p = min(per_group_p) if per_group_p else None
+    homogeneity = check_homogeneity_profile(data_groups, alpha=alpha)
+    levene_p = homogeneity.get("p")
+
+    norm_ok_values = [r.get("passed") for r in normality.values() if r.get("passed") is not None]
+    norm_ok = (all(norm_ok_values) if norm_ok_values else None)
+    homo_ok = homogeneity.get("passed")
+    recommended = None
+    if norm_ok is not None and homo_ok is not None:
+        recommended = recommend_test_from_profile(n_groups, is_paired, bool(norm_ok), bool(homo_ok))
+
+    return {
+        "alpha": alpha,
+        "method_id": method_id,
+        "n_groups": n_groups,
+        "shapiro_p": shapiro_p,
+        "levene_p": levene_p,
+        "normality": normality,
+        "homogeneity": homogeneity,
+        "recommended_test": recommended,
+        "independence": True,
+    }
 
 # --- Endpoints ---
 
@@ -54,7 +174,6 @@ def suggest_design(req: DesignRequest):
         # 1. Load Dataset Metadata for Context (types, normality)
         # We assume the profile/scan_report exists or we quickly detect basic types
         # For MVP, we pass minimal metadata or load the scan report
-        pipeline = PipelineManager("workspace/datasets")
         scan_path = os.path.join(pipeline.get_dataset_dir(req.dataset_id), "processed", "scan_report.json")
         
         if os.path.exists(scan_path):
@@ -75,7 +194,6 @@ def get_run_results(run_id: str, dataset_id: str):
     """
     Retrieves the results of a specific analysis run.
     """
-    pipeline = PipelineManager("workspace/datasets")
     try:
         # We need dataset_id to find the run folder in the current hierarchy
         # Pipeline structure: datasets/{id}/analysis/{run_id}/results.json
@@ -86,38 +204,79 @@ def get_run_results(run_id: str, dataset_id: str):
     except Exception as e:
          raise HTTPException(status_code=404, detail=f"Run not found: {str(e)}")
 
+
+def _apply_report_customization(run_data: Dict[str, Any], sections: Optional[str], order: Optional[str]) -> Dict[str, Any]:
+    if not isinstance(run_data, dict):
+        return run_data
+    results = run_data.get("results")
+    if not isinstance(results, dict):
+        return run_data
+
+    selected = None
+    if isinstance(sections, str) and sections.strip():
+        selected = [s.strip() for s in sections.split(",") if s.strip()]
+
+    order_ids = None
+    if isinstance(order, str) and order.strip():
+        order_ids = [s.strip() for s in order.split(",") if s.strip()]
+
+    working_ids = list(results.keys())
+    if selected is not None:
+        selected_set = set(selected)
+        working_ids = [k for k in working_ids if k in selected_set]
+
+    out_items: List[tuple[str, Any]] = []
+    used = set()
+
+    if order_ids:
+        for k in order_ids:
+            if k in results and k in working_ids and k not in used:
+                out_items.append((k, results[k]))
+                used.add(k)
+
+    for k in working_ids:
+        if k in results and k not in used:
+            out_items.append((k, results[k]))
+            used.add(k)
+
+    next_run = dict(run_data)
+    next_run["results"] = dict(out_items)
+    return next_run
+
 @router.get("/protocol/report/{run_id}/html")
-def get_protocol_report_html(run_id: str, dataset_id: str):
+def get_protocol_report_html(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
     """
     Generates a printable HTML report for the analysis run.
     """
     from fastapi.responses import HTMLResponse
     from app.modules.reporting import render_protocol_report
     
-    pipeline = PipelineManager("workspace/datasets")
     try:
         res = pipeline.get_run_results(dataset_id, run_id)
         if not res:
              raise HTTPException(status_code=404, detail="Results not found")
+
+        res = _apply_report_customization(res, sections, order)
              
         # Generate HTML
-        html = render_protocol_report(res, dataset_name=f"Dataset {dataset_id[:5]}...")
+        html = render_protocol_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
         return HTMLResponse(content=html)
     except Exception as e:
          raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
 
 @router.get("/protocol/report/{run_id}/pdf")
-def get_protocol_report_pdf(run_id: str, dataset_id: str):
+def get_protocol_report_pdf(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
     from fastapi.responses import Response
 
-    pipeline = PipelineManager("workspace/datasets")
     try:
         res = pipeline.get_run_results(dataset_id, run_id)
         if not res:
             raise HTTPException(status_code=404, detail="Results not found")
 
-        pdf_bytes = generate_protocol_pdf_report(res, dataset_name=f"Dataset {dataset_id[:5]}...")
+        res = _apply_report_customization(res, sections, order)
+
+        pdf_bytes = generate_protocol_pdf_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
         filename = f"protocol_report_{run_id}.pdf"
         return Response(
             content=pdf_bytes,
@@ -130,16 +289,17 @@ def get_protocol_report_pdf(run_id: str, dataset_id: str):
         raise HTTPException(status_code=500, detail=f"PDF report generation failed: {str(e)}")
 
 @router.get("/protocol/report/{run_id}/docx")
-def get_protocol_report_docx(run_id: str, dataset_id: str):
+def get_protocol_report_docx(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
     from fastapi.responses import Response
 
-    pipeline = PipelineManager("workspace/datasets")
     try:
         res = pipeline.get_run_results(dataset_id, run_id)
         if not res:
             raise HTTPException(status_code=404, detail="Results not found")
 
-        docx_bytes = generate_protocol_docx_report(res, dataset_name=f"Dataset {dataset_id[:5]}...")
+        res = _apply_report_customization(res, sections, order)
+
+        docx_bytes = generate_protocol_docx_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
         filename = f"protocol_report_{run_id}.docx"
         return Response(
             content=docx_bytes,
@@ -478,14 +638,14 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
     from app.schemas.analysis import DescriptiveStat, BatchAnalysisResponse, AnalysisResult
     from fastapi.concurrency import run_in_threadpool
     
-    # 1. Load Data (async via threadpool)
-    async def load_batch_data():
+    # 1. Load Data (sync function in threadpool)
+    def load_batch_data():
         return get_dataframe(request.dataset_id, DATA_DIR)
     
     df = await run_in_threadpool(load_batch_data)
 
-    # 2. Compute Descriptives (async via threadpool)
-    async def compute_descriptives_async():
+    # 2. Compute Descriptives (sync function in threadpool)
+    def compute_descriptives_sync():
         from app.stats.engine import compute_descriptive_compare
         
         descriptives = []
@@ -526,13 +686,13 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                 descriptives.append(ds)
         return descriptives
     
-    descriptives = await run_in_threadpool(compute_descriptives_async)
+    descriptives = await run_in_threadpool(compute_descriptives_sync)
     
     # Sanitize Descriptives
     descriptives = _sanitize(descriptives)
     
-    # 3. Running Hypothesis Tests (async via threadpool)
-    async def run_tests_async():
+    # 3. Running Hypothesis Tests (sync function in threadpool)
+    def run_tests_sync():
         results = {}
         group_col = request.group_column
         
@@ -588,6 +748,6 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                 pass
         return results
     
-    results = await run_in_threadpool(run_tests_async)
+    results = await run_in_threadpool(run_tests_sync)
 
     return BatchAnalysisResponse(descriptives=descriptives, results=results)

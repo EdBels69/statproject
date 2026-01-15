@@ -24,7 +24,7 @@ import math
 
 router = APIRouter()
 
-WORKSPACE_DIR = "workspace"
+WORKSPACE_DIR = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
 DATA_DIR = os.path.join(WORKSPACE_DIR, "datasets")
 pipeline = PipelineManager(DATA_DIR)
 

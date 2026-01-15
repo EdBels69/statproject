@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from app.schemas.analysis import AnalysisResult
@@ -164,9 +164,10 @@ class ProtocolReport:
     V2 Report Engine supporting multi-step protocols.
     """
     
-    def __init__(self, run_data: Dict, dataset_name: str = "Dataset"):
+    def __init__(self, run_data: Dict, dataset_name: str = "Dataset", style: str = "apa7"):
         self.data = run_data # The full results.json
         self.dataset_name = dataset_name
+        self.style = style or "apa7"
         self.html_parts = []
         
     def generate_html(self) -> str:
@@ -191,32 +192,71 @@ class ProtocolReport:
         return "\n".join(self.html_parts)
 
     def _add_header(self):
-        # Professional Print-Friendly CSS
-        css = """
-        <style>
-            body { font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; }
-            h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
-            h2 { color: #2980b9; margin-top: 40px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-            h3 { color: #16a085; font-size: 1.1em; margin-top: 20px; }
-            .card { background: #fff; border: 1px solid #e1e4e8; padding: 25px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
-            th, td { padding: 12px 15px; border-bottom: 1px solid #e1e4e8; text-align: left; }
-            th { background-color: #f8f9fa; font-weight: 600; color: #444; }
-            tr:last-child td { border-bottom: none; }
-            .stat-val { font-family: 'SF Mono', 'Monaco', monospace; font-weight: 600; }
-            .sig-yes { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 2px 6px; border-radius: 4px; }
-            .sig-no { color: #7f8c8d; }
-            .plot-container { text-align: center; margin-top: 20px; background: #fff; padding: 10px; }
-            img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #eee; }
-            .ai-box { background: #f0f7fb; border-left: 4px solid #3498db; padding: 15px; margin-top: 20px; border-radius: 0 4px 4px 0; }
-            .meta-info { color: #666; font-size: 0.9em; margin-bottom: 30px; }
-            @media print { 
-                body { padding: 0; max-width: 100%; } 
-                .card { break-inside: avoid; border: none; box-shadow: none; padding: 0; margin-bottom: 40px; }
-                h1 { margin-top: 0; }
-            }
-        </style>
-        """
+        style_key = str(self.style or "apa7").strip().lower()
+        if style_key == "gost":
+            css = """
+            <style>
+                body { font-family: 'Times New Roman', 'Times', serif; line-height: 1.5; color: #111; max-width: 820px; margin: 0 auto; padding: 48px; font-size: 14px; }
+                h1 { font-size: 22px; font-weight: 700; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid #111; }
+                h2 { font-size: 18px; font-weight: 700; margin-top: 28px; padding-bottom: 6px; border-bottom: 1px solid #ddd; }
+                h3 { font-size: 15px; font-weight: 700; margin-top: 16px; }
+                .card { background: #fff; border: 1px solid #ddd; padding: 18px 20px; margin-bottom: 18px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+                th, td { padding: 10px 12px; border-bottom: 1px solid #e6e6e6; text-align: left; vertical-align: top; }
+                th { background-color: #f7f7f7; font-weight: 700; color: #111; }
+                .stat-val { font-family: 'Courier New', monospace; font-weight: 700; }
+                .sig-yes { color: #0f5132; font-weight: 700; }
+                .sig-no { color: #495057; }
+                .plot-container { text-align: center; margin-top: 14px; }
+                img { max-width: 100%; height: auto; border: 1px solid #e6e6e6; }
+                .ai-box { background: #fafafa; border-left: 3px solid #111; padding: 12px 14px; margin-top: 14px; }
+                .meta-info { color: #333; font-size: 13px; margin-bottom: 22px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; border: none; padding: 0; margin-bottom: 26px; } }
+            </style>
+            """
+        elif style_key == "simple":
+            css = """
+            <style>
+                body { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.55; color: #111; max-width: 920px; margin: 0 auto; padding: 44px; }
+                h1 { font-size: 20px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
+                h2 { font-size: 16px; margin-top: 26px; padding-bottom: 6px; border-bottom: 1px solid #eef2f7; }
+                h3 { font-size: 13px; margin-top: 14px; }
+                .card { border: 1px solid #e5e7eb; padding: 16px 16px; margin-bottom: 14px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+                th, td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+                th { font-weight: 700; color: #111; background: #fafafa; }
+                .stat-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 600; }
+                .sig-yes { color: #111; font-weight: 700; }
+                .sig-no { color: #64748b; }
+                .plot-container { text-align: center; margin-top: 12px; }
+                img { max-width: 100%; height: auto; border: 1px solid #f1f5f9; }
+                .ai-box { background: #fafafa; border-left: 2px solid #111; padding: 10px 12px; margin-top: 12px; }
+                .meta-info { color: #475569; font-size: 12px; margin-bottom: 18px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; border: none; padding: 0; margin-bottom: 22px; } }
+            </style>
+            """
+        else:
+            css = """
+            <style>
+                body { font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; }
+                h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+                h2 { color: #2980b9; margin-top: 40px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+                h3 { color: #16a085; font-size: 1.1em; margin-top: 20px; }
+                .card { background: #fff; border: 1px solid #e1e4e8; padding: 25px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
+                th, td { padding: 12px 15px; border-bottom: 1px solid #e1e4e8; text-align: left; }
+                th { background-color: #f8f9fa; font-weight: 600; color: #444; }
+                tr:last-child td { border-bottom: none; }
+                .stat-val { font-family: 'SF Mono', 'Monaco', monospace; font-weight: 600; }
+                .sig-yes { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 2px 6px; border-radius: 4px; }
+                .sig-no { color: #7f8c8d; }
+                .plot-container { text-align: center; margin-top: 20px; background: #fff; padding: 10px; }
+                img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #eee; }
+                .ai-box { background: #f0f7fb; border-left: 4px solid #3498db; padding: 15px; margin-top: 20px; border-radius: 0 4px 4px 0; }
+                .meta-info { color: #666; font-size: 0.9em; margin-bottom: 30px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; border: none; box-shadow: none; padding: 0; margin-bottom: 40px; } h1 { margin-top: 0; } }
+            </style>
+            """
         self.html_parts.append(f"""
         <!DOCTYPE html>
         <html>
@@ -402,7 +442,7 @@ class ProtocolReport:
             logger.error(f"Plotting failed: {e}", exc_info=True)
             return ""
 
-def generate_protocol_docx_report(run_data: Dict[str, Any], dataset_name: str = "Dataset") -> bytes:
+def generate_protocol_docx_report(run_data: Dict[str, Any], dataset_name: str = "Dataset", style: Optional[str] = None) -> bytes:
     from io import BytesIO
     from docx import Document
     from docx.shared import Inches
@@ -432,20 +472,23 @@ def generate_protocol_docx_report(run_data: Dict[str, Any], dataset_name: str = 
     def _txt(value: Any) -> str:
         return "-" if value is None else str(value)
 
+    style_key = str(style or "gost").strip().lower()
+    is_ru = style_key in {"gost"}
+
     doc = Document()
-    doc.add_heading("Результаты статистического анализа", level=0)
-    doc.add_paragraph(f"Набор данных: {dataset_name}")
+    doc.add_heading("Результаты статистического анализа" if is_ru else "Statistical Analysis Results", level=0)
+    doc.add_paragraph(("Набор данных" if is_ru else "Dataset") + f": {dataset_name}")
     protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
     if protocol_name:
-        doc.add_paragraph(f"Протокол: {protocol_name}")
-    doc.add_paragraph(f"Дата: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}")
+        doc.add_paragraph(("Протокол" if is_ru else "Protocol") + f": {protocol_name}")
+    doc.add_paragraph(("Дата" if is_ru else "Date") + f": {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}")
 
     results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
     for step_id, res in (results or {}).items():
-        doc.add_heading(f"Шаг: {step_id}", level=1)
+        doc.add_heading(("Шаг" if is_ru else "Step") + f": {step_id}", level=1)
 
         if not isinstance(res, dict):
-            doc.add_paragraph("Нет структурированного результата")
+            doc.add_paragraph("Нет структурированного результата" if is_ru else "No structured result")
             continue
 
         if res.get("type") == "table_1":
@@ -622,8 +665,8 @@ def render_report(
     template = env.get_template("report.html")
     return template.render(**context)
 
-def render_protocol_report(run_data: Dict, dataset_name: str) -> str:
-    report = ProtocolReport(run_data, dataset_name)
+def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[str] = None) -> str:
+    report = ProtocolReport(run_data, dataset_name, style=style or "apa7")
     return report.generate_html()
 
 def generate_pdf_report(results, variables, dataset_id):
@@ -733,7 +776,7 @@ def generate_pdf_report(results, variables, dataset_id):
     return _pdf_bytes(pdf)
 
 
-def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "Dataset") -> bytes:
+def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "Dataset", style: Optional[str] = None) -> bytes:
     def _safe_text(value: Any) -> str:
         if value is None:
             return ""
@@ -771,23 +814,26 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
             return bytes(out)
         return str(out).encode("latin-1", errors="replace")
 
+    style_key = str(style or "apa7").strip().lower()
+    is_ru = style_key in {"gost"}
+
     pdf = FPDF(unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 9, _safe_text("Protocol Analysis Report"), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 9, _safe_text("Отчёт по протоколу" if is_ru else "Protocol Analysis Report"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 6, _safe_text(f"Dataset: {dataset_name}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, _safe_text(("Набор данных" if is_ru else "Dataset") + f": {dataset_name}"), new_x="LMARGIN", new_y="NEXT")
     protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
     if protocol_name:
-        pdf.cell(0, 6, _safe_text(f"Protocol: {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, _safe_text(("Протокол" if is_ru else "Protocol") + f": {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
 
     results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
     for step_id, res in (results or {}).items():
         pdf.set_font("Helvetica", "B", 12)
-        pdf.multi_cell(0, 6, _safe_text(f"Step: {step_id}"))
+        pdf.multi_cell(0, 6, _safe_text(("Шаг" if is_ru else "Step") + f": {step_id}"))
 
         if not isinstance(res, dict):
             pdf.set_font("Helvetica", "", 10)

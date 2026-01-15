@@ -20,6 +20,46 @@ import ExportSettingsModal from './ExportSettingsModal';
 import { exportPlot } from '../utils/exportPlot';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
+const GRAPHPAD_STYLE = {
+    fontFamily: "'Arial', 'Helvetica Neue', sans-serif",
+    fontSize: {
+        title: 16,
+        axisLabel: 13,
+        tickLabel: 11,
+        legend: 11
+    },
+    fontWeight: {
+        title: 600,
+        axisLabel: 500,
+        tickLabel: 400
+    },
+    colors: {
+        primary: '#2E86AB',
+        secondary: '#A23B72',
+        tertiary: '#F18F01',
+        quaternary: '#C73E1D',
+        text: '#1a1a1a',
+        axis: '#4a4a4a',
+        grid: '#f0f0f0'
+    },
+    palette: ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3B1F2B', '#6B8E23'],
+    margin: { top: 25, right: 30, bottom: 55, left: 65 },
+    axis: {
+        strokeWidth: 1.2,
+        tickSize: 5,
+        tickWidth: 1
+    },
+    errorBar: {
+        strokeWidth: 1.5,
+        capWidth: 6
+    },
+    grid: {
+        stroke: '#f0f0f0',
+        strokeDasharray: 'none',
+        vertical: false
+    }
+};
+
 function VisualizeTooltip({ active, payload }) {
     const { t } = useTranslation();
 
@@ -77,7 +117,7 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
     const [jitterStrength, setJitterStrength] = useState(0.3);
     const [rawOpacity, setRawOpacity] = useState(0.4);
     const [rawPointSize, setRawPointSize] = useState(3);
-    const [showGrid, setShowGrid] = useState(true);
+    const [showGrid, setShowGrid] = useState(false);
     const [showRandomLine, setShowRandomLine] = useState(true);
     const [rocCurveWidth, setRocCurveWidth] = useState(3);
     const [rocShowDots, setRocShowDots] = useState(false);
@@ -254,34 +294,39 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                     </button>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={safeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={showGrid} horizontal={showGrid} />
+                            <CartesianGrid strokeDasharray="2 6" stroke="var(--border-color)" strokeOpacity={0.35} vertical={showGrid} horizontal={showGrid} />
                         <XAxis
                             type="number"
                             dataKey="x"
                             domain={[0, 1]}
                             label={{ value: t('roc_fpr'), position: 'insideBottomRight', offset: -5, fill: 'var(--text-muted)' }}
-                            stroke="var(--text-muted)"
+                            stroke={GRAPHPAD_STYLE.colors.axis}
+                            tickLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.tickWidth }}
+                            axisLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.strokeWidth }}
+                            tick={{ fill: GRAPHPAD_STYLE.colors.axis, fontSize: GRAPHPAD_STYLE.fontSize.tickLabel, fontFamily: GRAPHPAD_STYLE.fontFamily }}
                         />
                         <YAxis
                             type="number"
                             dataKey="y"
                             domain={[0, 1]}
                             label={{ value: t('roc_tpr'), angle: -90, position: 'insideLeft', fill: 'var(--text-muted)' }}
-                            stroke="var(--text-muted)"
+                            stroke={GRAPHPAD_STYLE.colors.axis}
+                            tickLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.tickWidth }}
+                            axisLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.strokeWidth }}
+                            tick={{ fill: GRAPHPAD_STYLE.colors.axis, fontSize: GRAPHPAD_STYLE.fontSize.tickLabel, fontFamily: GRAPHPAD_STYLE.fontFamily }}
                         />
                         <Tooltip
                             contentStyle={{ backgroundColor: 'var(--white)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 2 }}
                             formatter={(val) => val.toFixed(3)}
                             labelFormatter={(val) => t('roc_fpr_short', { value: parseFloat(val).toFixed(3) })}
                         />
-                        <Legend />
                         {showRandomLine && (
-                            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="var(--text-muted)" strokeDasharray="3 3" label={t('roc_random')} />
+                            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="var(--text-muted)" strokeDasharray="3 3" strokeOpacity={0.7} label={t('roc_random')} />
                         )}
                         <Line
                             type="monotone"
                             dataKey="y"
-                            stroke="var(--accent)"
+                            stroke={GRAPHPAD_STYLE.colors.primary}
                             strokeWidth={rocCurveWidth}
                             dot={rocShowDots ? { r: 3 } : false}
                             name={t('roc_curve')}
@@ -314,7 +359,22 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
     const rawShape = (shapeProps) => {
         const { cx, cy } = shapeProps;
         if (cx == null || cy == null) return null;
-        return <circle cx={cx} cy={cy} r={rawPointSize} fill="var(--black)" fillOpacity={rawOpacity} />;
+        return <circle cx={cx} cy={cy} r={rawPointSize} fill={GRAPHPAD_STYLE.colors.primary} fillOpacity={rawOpacity} />;
+    };
+
+    const meanShape = (shapeProps) => {
+        const { cx, cy } = shapeProps;
+        if (cx == null || cy == null) return null;
+        return (
+            <circle
+                cx={cx}
+                cy={cy}
+                r={5}
+                fill="var(--white)"
+                stroke={GRAPHPAD_STYLE.colors.tertiary}
+                strokeWidth={2}
+            />
+        );
     };
 
     return (
@@ -332,9 +392,16 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={combinedData}
-                        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                        margin={GRAPHPAD_STYLE.margin}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={showGrid} horizontal={showGrid} />
+                        <CartesianGrid
+                            stroke={GRAPHPAD_STYLE.grid.stroke}
+                            strokeWidth={1}
+                            strokeOpacity={1}
+                            strokeDasharray={GRAPHPAD_STYLE.grid.strokeDasharray}
+                            vertical={GRAPHPAD_STYLE.grid.vertical && showGrid}
+                            horizontal={showGrid}
+                        />
 
                     {/* X Axis: Categorical mapped to Number */}
                     <XAxis
@@ -343,12 +410,18 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                         domain={[0, uniqueGroups.length + 1]}
                         ticks={uniqueGroups.map((_, i) => i + 1)}
                         tickFormatter={(val) => uniqueGroups[val - 1] || ""}
-                        stroke="var(--text-muted)"
+                        stroke={GRAPHPAD_STYLE.colors.axis}
+                        tickLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.tickWidth, length: GRAPHPAD_STYLE.axis.tickSize }}
+                        axisLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.strokeWidth }}
+                        tick={{ fill: GRAPHPAD_STYLE.colors.axis, fontSize: GRAPHPAD_STYLE.fontSize.tickLabel, fontFamily: GRAPHPAD_STYLE.fontFamily }}
                     />
                     <YAxis
                         domain={yDomain}
                         tickFormatter={(val) => val.toFixed(1)}
-                        stroke="var(--text-muted)"
+                        stroke={GRAPHPAD_STYLE.colors.axis}
+                        tickLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.tickWidth, length: GRAPHPAD_STYLE.axis.tickSize }}
+                        axisLine={{ stroke: GRAPHPAD_STYLE.colors.axis, strokeWidth: GRAPHPAD_STYLE.axis.strokeWidth }}
+                        tick={{ fill: GRAPHPAD_STYLE.colors.axis, fontSize: GRAPHPAD_STYLE.fontSize.tickLabel, fontFamily: GRAPHPAD_STYLE.fontFamily }}
                     />
 
                     <Tooltip content={<VisualizeTooltip />} cursor={false} />
@@ -383,10 +456,10 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
 
                                             return (
                                                 <g key={`${c.a}_${c.b}_${i}`}>
-                                                    <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--text-primary)" strokeWidth={1.5} />
-                                                    <line x1={x1} y1={y} x2={x1} y2={y + cap} stroke="var(--text-primary)" strokeWidth={1.5} />
-                                                    <line x1={x2} y1={y} x2={x2} y2={y + cap} stroke="var(--text-primary)" strokeWidth={1.5} />
-                                                    <text x={mid} y={y - 4} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--text-primary)">
+                                                    <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--text-secondary)" strokeWidth={1.25} />
+                                                    <line x1={x1} y1={y} x2={x1} y2={y + cap} stroke="var(--text-secondary)" strokeWidth={1.25} />
+                                                    <line x1={x2} y1={y} x2={x2} y2={y + cap} stroke="var(--text-secondary)" strokeWidth={1.25} />
+                                                    <text x={mid} y={y - 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)">
                                                         {labelForP(c.p_value)}
                                                     </text>
                                                 </g>
@@ -414,10 +487,16 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                             data={summaryData}
                             name={t('mean_ci')}
                             dataKey="mean"
-                            fill="var(--accent)"
-                            shape="d" /* diamond or square */
+                            fill={GRAPHPAD_STYLE.colors.tertiary}
+                            shape={meanShape}
                         >
-                            <ErrorBar dataKey="error" width={4} strokeWidth={2} stroke="var(--accent)" direction="y" />
+                            <ErrorBar
+                                dataKey="error"
+                                width={GRAPHPAD_STYLE.errorBar.capWidth}
+                                strokeWidth={GRAPHPAD_STYLE.errorBar.strokeWidth}
+                                stroke={GRAPHPAD_STYLE.colors.tertiary}
+                                direction="y"
+                            />
                         </Scatter>
                     )}
 

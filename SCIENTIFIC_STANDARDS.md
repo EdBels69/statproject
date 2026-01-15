@@ -1,12 +1,22 @@
-# 🔬 SCIENTIFIC_STANDARDS.md — Научные стандарты StatWizard
+# 🔬 SCIENTIFIC_STANDARDS.md —# Scientific Standards for StatWizard
 
-> **Источники:**
->
-> - Python Data Science Handbook (Jake VanderPlas)
-> - Pandas Best Practices 2024
-> - SciPy / Statsmodels documentation
-> - Matplotlib / Seaborn publication standards
-> - APA 7th Edition
+> Стандарты научного кода для AI-агентов и разработчиков.  
+> Основано на: Python Data Science Handbook, Nathan Yau "Visualize This", de Smith "Statistical Analysis Handbook"
+
+## 📚 Основные источники
+
+1. **Python Data Science Handbook** (Jake VanderPlas) — NumPy, Pandas, Matplotlib best practices
+2. **Visualize This** (Nathan Yau) — FlowingData принципы визуализации
+3. **Statistical Analysis Handbook** (Dr. Michael J. de Smith) — методологическая строгость
+   - Online: <https://www.statsref.com/>
+4. **Cohen (1988)** — Effect size conventions (d = 0.2, 0.5, 0.8)
+5. **APA Publication Manual (7th ed.)** — стандарты отчётности
+6. **ASA Statement on p-Values (2016)** — интерпретация p-value
+7. Pandas Best Practices 2024
+8. SciPy / Statsmodels documentation
+9. Matplotlib / Seaborn publication standards
+10. **Nathan Yau "Visualize This" (FlowingData)** — см. `docs/nathan-yau-visualize-this...pdf`
+11. **VISUALIZATION_STYLE_GUIDE.md** — практическое руководство по графикам
 
 ---
 

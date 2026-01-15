@@ -150,6 +150,29 @@ export async function runAnalysisProtocol(datasetId, protocol) {
   return response.json();
 }
 
+export async function checkAssumptions({ datasetId, methodId, config, alpha, signal } = {}) {
+  const payload = {
+    dataset_id: datasetId,
+    method_id: methodId,
+    config: config || {},
+    alpha: (alpha ?? getAlphaSetting())
+  };
+
+  const response = await fetch(`${API_URL}/analysis/assumptions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to check assumptions");
+  }
+
+  return response.json();
+}
+
 export async function getAnalysisResults(datasetId, runId) {
   const response = await fetch(`${API_URL}/analysis/run/${runId}?dataset_id=${datasetId}`);
   if (!response.ok) throw new Error("Failed to get analysis results");
@@ -259,6 +282,65 @@ export async function downloadBatchReport(datasetId, batchResult, selectedVar) {
     console.error('Download report error:', error);
     throw new Error(error.message || 'Failed to export report');
   }
+}
+
+/* -- KNOWLEDGE API -- */
+
+export async function getKnowledgeTerms() {
+  const response = await fetch(`${API_URL}/v2/knowledge/terms`);
+  if (!response.ok) throw new Error("Failed to fetch knowledge terms");
+  return response.json();
+}
+
+export async function getKnowledgeTerm(term, level = 'junior') {
+  const params = new URLSearchParams();
+  if (level) params.set('level', level);
+
+  const response = await fetch(`${API_URL}/v2/knowledge/terms/${encodeURIComponent(term)}?${params.toString()}`);
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch term explanation");
+  }
+  return response.json();
+}
+
+export async function getKnowledgeTests() {
+  const response = await fetch(`${API_URL}/v2/knowledge/tests`);
+  if (!response.ok) throw new Error("Failed to fetch knowledge tests");
+  return response.json();
+}
+
+export async function getKnowledgeTest(testId, { level = 'junior', shapiro_p, levene_p, signal } = {}) {
+  const params = new URLSearchParams();
+  if (level) params.set('level', level);
+  if (shapiro_p !== undefined && shapiro_p !== null) params.set('shapiro_p', String(shapiro_p));
+  if (levene_p !== undefined && levene_p !== null) params.set('levene_p', String(levene_p));
+
+  const response = await fetch(`${API_URL}/v2/knowledge/tests/${encodeURIComponent(testId)}?${params.toString()}`, { signal });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch test rationale");
+  }
+  return response.json();
+}
+
+export async function interpretEffectSize(type, value) {
+  const params = new URLSearchParams();
+  params.set('type', type);
+  params.set('value', String(value));
+
+  const response = await fetch(`${API_URL}/v2/knowledge/effect-size?${params.toString()}`);
+  if (!response.ok) throw new Error("Failed to interpret effect size");
+  return response.json();
+}
+
+export async function getPowerInfo(power) {
+  const params = new URLSearchParams();
+  params.set('power', String(power));
+
+  const response = await fetch(`${API_URL}/v2/knowledge/power?${params.toString()}`);
+  if (!response.ok) throw new Error("Failed to fetch power info");
+  return response.json();
 }
 
 export function getPDFExportUrl(datasetId, variable, groupColumn = 'Group') {

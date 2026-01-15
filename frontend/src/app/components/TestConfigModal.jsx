@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { XMarkIcon, CogIcon, InformationCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import WhyThisTest from './education/WhyThisTest';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { checkAssumptions, getAlphaSetting } from '../../lib/api';
 
 const TestConfigModal = ({
   isOpen,
@@ -8,7 +11,8 @@ const TestConfigModal = ({
   initialConfig = {},
   onConfigSave,
   columns = [],
-  suggestedConfig
+  suggestedConfig,
+  datasetId
 }) => {
   return (
     <TestConfigModalContent
@@ -19,6 +23,7 @@ const TestConfigModal = ({
       onConfigSave={onConfigSave}
       columns={columns}
       suggestedConfig={suggestedConfig}
+      datasetId={datasetId}
       isOpen={isOpen}
     />
   );
@@ -112,11 +117,16 @@ const SearchableSelect = ({ field, value, onChange, options, multiple = false })
 };
 
 
-const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, columns, suggestedConfig, isOpen }) => {
+const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, columns, suggestedConfig, datasetId, isOpen }) => {
+  const { educationLevel } = useLanguage();
   const [config, setConfig] = useState(() => initialConfig || {});
-  const [activeTab, setActiveTab] = useState('variables');
+  const [activeTab, setActiveTab] = useState('basics');
   const [touchedFields, setTouchedFields] = useState(() => ({}));
   const dialogRef = useRef(null);
+  const [assumptionProfile, setAssumptionProfile] = useState(null);
+
+  const shouldFetchAssumptions = Boolean(isOpen && method && datasetId);
+  const assumptionProfileForUI = shouldFetchAssumptions ? (assumptionProfile || {}) : {};
 
   useEffect(() => {
     if (!isOpen) return;
@@ -237,6 +247,15 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     anova: {
       variables: [targetField, groupField],
       advanced: [{
+        id: 'alpha',
+        type: 'number',
+        label: 'Уровень значимости',
+        default: 0.05,
+        min: 0.01,
+        max: 0.10,
+        step: 0.01
+      }],
+      postHoc: [{
         id: 'post_hoc',
         type: 'select',
         label: 'Post-hoc тест',
@@ -431,6 +450,36 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     return next;
   }, [config, suggestedConfig, touchedFields]);
 
+  useEffect(() => {
+    if (!shouldFetchAssumptions) return;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      (async () => {
+        try {
+          setAssumptionProfile(null);
+          const payload = await checkAssumptions({
+            datasetId,
+            methodId: method,
+            config: effectiveConfig,
+            alpha: getAlphaSetting(),
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setAssumptionProfile(payload || null);
+        } catch {
+          if (controller.signal.aborted) return;
+          setAssumptionProfile(null);
+        }
+      })();
+    }, 120);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [datasetId, effectiveConfig, method, shouldFetchAssumptions]);
+
   const methodTemplate = methodTemplates[method] || methodTemplates.default;
 
   const handleConfigChange = (fieldId, value) => {
@@ -478,6 +527,7 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
   const previewBlocks = (() => {
     const vars = Array.isArray(methodTemplate?.variables) ? methodTemplate.variables : [];
     const adv = Array.isArray(methodTemplate?.advanced) ? methodTemplate.advanced : [];
+    const postHoc = Array.isArray(methodTemplate?.postHoc) ? methodTemplate.postHoc : [];
 
     const fmtValue = (field) => {
       const v = effectiveConfig?.[field.id] ?? field.default;
@@ -511,6 +561,14 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
       }))
       .filter((x) => x.label);
 
+    const postHocOut = postHoc
+      .map((f) => ({
+        id: f.id,
+        label: f.label,
+        value: fmtValue(f)
+      }))
+      .filter((x) => x.label);
+
     const outcome = String(effectiveConfig?.outcome || effectiveConfig?.target || '').trim();
     const group = String(effectiveConfig?.group || '').trim();
     const predictors = Array.isArray(effectiveConfig?.predictors) ? effectiveConfig.predictors : [];
@@ -523,6 +581,7 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     return {
       varsOut,
       advOut,
+      postHocOut,
       formula
     };
   })();
@@ -608,6 +667,13 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
 
   const variableFields = methodTemplate.variables || [];
   const advancedFields = methodTemplate.advanced || [];
+  const postHocFields = methodTemplate.postHoc || [];
+
+  const resolvedTab = (() => {
+    if (activeTab === 'advanced' && advancedFields.length === 0) return 'basics';
+    if (activeTab === 'posthoc' && postHocFields.length === 0) return 'basics';
+    return activeTab;
+  })();
 
   return (
     <div
@@ -681,40 +747,31 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           <div className="overflow-hidden flex flex-col">
             <div className="flex-shrink-0 px-5 pt-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">
-                  Config
-                </div>
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Настройка</div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('variables')}
-                    className={`px-3 py-1 rounded-[2px] border text-xs font-semibold tracking-[0.12em] ${activeTab === 'variables'
-                      ? 'border-[color:var(--text-primary)] text-[color:var(--text-primary)]'
-                      : 'border-[color:var(--border-color)] text-[color:var(--text-secondary)] hover:border-[color:var(--text-primary)] hover:text-[color:var(--text-primary)]'
-                      }`}
-                  >
-                    VARIABLES
-                  </button>
-                  {advancedFields.length > 0 && (
+                  {[
+                    { id: 'basics', label: 'Основные', visible: true },
+                    { id: 'advanced', label: 'Дополнительно', visible: advancedFields.length > 0 },
+                    { id: 'posthoc', label: 'Post-hoc', visible: postHocFields.length > 0 }
+                  ].filter((t) => t.visible).map((tab) => (
                     <button
+                      key={tab.id}
                       type="button"
-                      onClick={() => setActiveTab('advanced')}
-                      className={`px-3 py-1 rounded-[2px] border text-xs font-semibold tracking-[0.12em] ${activeTab === 'advanced'
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-3 py-1 rounded-[2px] border text-xs font-semibold tracking-[0.12em] ${resolvedTab === tab.id
                         ? 'border-[color:var(--text-primary)] text-[color:var(--text-primary)]'
                         : 'border-[color:var(--border-color)] text-[color:var(--text-secondary)] hover:border-[color:var(--text-primary)] hover:text-[color:var(--text-primary)]'
                         }`}
                     >
-                      OPTIONS
+                      {tab.label}
                     </button>
-                  )}
+                  ))}
                 </div>
               </div>
 
               {missingRequired.length > 0 && (
                 <div className="mt-3 border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2 rounded-[2px]">
-                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">
-                    Missing
-                  </div>
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Нужно заполнить</div>
                   <div className="mt-1 text-sm text-[color:var(--text-primary)]">
                     {missingRequired.map((f) => f.label).join(' · ')}
                   </div>
@@ -723,7 +780,7 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4">
-              {activeTab === 'variables' && (
+              {resolvedTab === 'basics' && (
                 <div className="space-y-6">
                   {variableFields.length > 0 ? variableFields.map(field => (
                     <div key={field.id}>
@@ -743,9 +800,25 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
                 </div>
               )}
 
-              {activeTab === 'advanced' && (
+              {resolvedTab === 'advanced' && (
                 <div className="space-y-6">
                   {advancedFields.map(field => (
+                    <div key={field.id}>
+                      {renderField(field)}
+                      {field.description && (
+                        <p className="text-xs text-[color:var(--text-muted)] mt-2 flex items-center">
+                          <InformationCircleIcon className="w-4 h-4 mr-1" />
+                          {field.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {resolvedTab === 'posthoc' && (
+                <div className="space-y-6">
+                  {postHocFields.map(field => (
                     <div key={field.id}>
                       {renderField(field)}
                       {field.description && (
@@ -763,16 +836,14 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
 
           <aside className="border-t md:border-t-0 md:border-l border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden flex flex-col">
             <div className="flex-shrink-0 px-5 pt-4">
-              <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">
-                Live Preview
-              </div>
+              <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Предпросмотр</div>
               <div className="mt-2">
                 <div className="text-sm font-black text-[color:var(--text-primary)]">
                   {getMethodName(method)}
                 </div>
                 {previewBlocks.formula && (
                   <div className="mt-2 px-3 py-2 border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--bg-secondary)]">
-                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Formula</div>
+                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Формула</div>
                     <div className="mt-1 text-xs font-mono text-[color:var(--text-primary)] break-words">{previewBlocks.formula}</div>
                   </div>
                 )}
@@ -780,8 +851,16 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-5 pt-4 space-y-4">
+              {method && (
+                <WhyThisTest
+                  testId={method}
+                  dataProfile={assumptionProfileForUI}
+                  level={educationLevel}
+                  defaultExpanded={true}
+                />
+              )}
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Inputs</div>
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Поля</div>
                 <div className="mt-2 space-y-2">
                   {previewBlocks.varsOut.map((x) => (
                     <div key={x.id} className="flex items-baseline justify-between gap-3 border-b border-[color:var(--border-color)] py-2">
@@ -794,9 +873,23 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
 
               {previewBlocks.advOut.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Options</div>
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Опции</div>
                   <div className="mt-2 space-y-2">
                     {previewBlocks.advOut.map((x) => (
+                      <div key={x.id} className="flex items-baseline justify-between gap-3 border-b border-[color:var(--border-color)] py-2">
+                        <div className="text-xs text-[color:var(--text-secondary)]">{x.label}</div>
+                        <div className="text-xs font-semibold text-[color:var(--text-primary)] text-right">{x.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {previewBlocks.postHocOut.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Post-hoc</div>
+                  <div className="mt-2 space-y-2">
+                    {previewBlocks.postHocOut.map((x) => (
                       <div key={x.id} className="flex items-baseline justify-between gap-3 border-b border-[color:var(--border-color)] py-2">
                         <div className="text-xs text-[color:var(--text-secondary)]">{x.label}</div>
                         <div className="text-xs font-semibold text-[color:var(--text-primary)] text-right">{x.value}</div>
@@ -813,15 +906,13 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
         <div className="bg-[color:var(--bg-secondary)] px-5 py-4 flex justify-end gap-3 flex-shrink-0 border-t border-[color:var(--border-color)]">
           <button
             onClick={onClose}
-            className="btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '12px' }}
+            className="btn-secondary px-3.5 py-2 text-xs"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
-            className="btn-primary"
-            style={{ padding: '8px 14px', fontSize: '12px' }}
+            className="btn-primary px-3.5 py-2 text-xs"
             disabled={!canSave}
           >
             Сохранить

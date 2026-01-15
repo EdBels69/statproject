@@ -54,9 +54,14 @@ class StatMethod(BaseModel):
     id: str
     name: str
     description: str
-    type: Literal["parametric", "non-parametric", "correlation", "categorical", "survival", "diagnostic"]
+    type: Literal[
+        "parametric", "non-parametric", "correlation", "categorical", 
+        "survival", "diagnostic", "assumption", "agreement", 
+        "reliability", "dimension_reduction", "clustering"
+    ]
     min_groups: int = 1
     max_groups: int = 100
+
 
 class AnalysisResult(BaseModel):
     method: StatMethod

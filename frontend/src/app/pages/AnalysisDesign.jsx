@@ -43,6 +43,150 @@ function makeId() {
   return `p_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function VariablePreview({ t, targetVar, groupVar, groupLabel, statsByName }) {
+  const payloadTarget = statsByName?.[targetVar] || null;
+  const payloadGroup = statsByName?.[groupVar] || null;
+
+  const targetStats = useMemo(() => {
+    if (!targetVar || !payloadTarget || typeof payloadTarget !== 'object') return null;
+    const total = Number(payloadTarget.total);
+    const missing = Number(payloadTarget.missing_count);
+    const n = (Number.isFinite(total) ? total : 0) - (Number.isFinite(missing) ? missing : 0);
+
+    const warnings = [];
+    if (Number.isFinite(n) && n > 0 && n < 30) warnings.push(`${t('sample_size_short')} n=${n}`);
+    if (Number.isFinite(n) && n <= 1) warnings.push(t('no_variation_warning'));
+    if (Number.isFinite(missing) && missing > 0) warnings.push(`${t('missing')}: ${missing}`);
+
+    const mean = typeof payloadTarget.mean === 'number' ? payloadTarget.mean : null;
+    const min = typeof payloadTarget.min === 'number' ? payloadTarget.min : null;
+    const max = typeof payloadTarget.max === 'number' ? payloadTarget.max : null;
+    const normalityP = payloadTarget?.normality?.p_value;
+
+    return {
+      n: Number.isFinite(n) ? n : null,
+      mean,
+      min,
+      max,
+      normalityP: typeof normalityP === 'number' ? normalityP : null,
+      warnings,
+    };
+  }, [payloadTarget, t, targetVar]);
+
+  const groupStats = useMemo(() => {
+    if (!groupVar || !payloadGroup || typeof payloadGroup !== 'object') return null;
+    const unique = typeof payloadGroup.unique_count === 'number' ? payloadGroup.unique_count : null;
+    const missing = typeof payloadGroup.missing_count === 'number' ? payloadGroup.missing_count : null;
+    const topValues = Array.isArray(payloadGroup.top_values) ? payloadGroup.top_values : [];
+
+    const warnings = [];
+    if (typeof unique === 'number' && unique < 2) warnings.push(t('groups_too_few_warning'));
+    if (typeof unique === 'number' && unique > 20) warnings.push(t('groups_too_many_warning'));
+    if (typeof missing === 'number' && missing > 0) warnings.push(`${t('missing')}: ${missing}`);
+
+    return {
+      unique,
+      topValues,
+      warnings,
+    };
+  }, [groupVar, payloadGroup, t]);
+
+  if (!targetStats && !groupStats) return null;
+
+  const warningLine = [...(targetStats?.warnings || []), ...(groupStats?.warnings || [])]
+    .filter(Boolean)
+    .slice(0, 4);
+
+  return (
+    <div className="px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mt-4 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-[color:var(--text-muted)] font-semibold">
+              {t('preview')}
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {targetStats ? (
+              <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)] p-3">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)] font-semibold">{t('target')}</div>
+                <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{targetVar}</div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--text-secondary)]">
+                  {typeof targetStats.n === 'number' ? (
+                    <div><span className="text-[color:var(--text-muted)]">n = </span><span className="font-mono font-semibold text-[color:var(--text-primary)]">{targetStats.n}</span></div>
+                  ) : null}
+                  {typeof targetStats.mean === 'number' ? (
+                    <div><span className="text-[color:var(--text-muted)]">M = </span><span className="font-mono font-semibold text-[color:var(--text-primary)]">{targetStats.mean.toFixed(2)}</span></div>
+                  ) : null}
+                  {typeof targetStats.min === 'number' && typeof targetStats.max === 'number' ? (
+                    <div><span className="text-[color:var(--text-muted)]">Range: </span><span className="font-mono">{targetStats.min.toFixed(2)}–{targetStats.max.toFixed(2)}</span></div>
+                  ) : null}
+                  {typeof targetStats.normalityP === 'number' ? (
+                    <div><span className="text-[color:var(--text-muted)]">{t('normality')} p = </span><span className="font-mono">{targetStats.normalityP < 0.001 ? '<0.001' : targetStats.normalityP.toFixed(3)}</span></div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {groupStats ? (
+              <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)] p-3">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)] font-semibold">{groupLabel}</div>
+                <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{groupVar}</div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--text-secondary)]">
+                  {typeof groupStats.unique === 'number' ? (
+                    <div><span className="text-[color:var(--text-muted)]">{t('groups')} = </span><span className="font-mono font-semibold text-[color:var(--text-primary)]">{groupStats.unique}</span></div>
+                  ) : null}
+                  {Array.isArray(groupStats.topValues) && groupStats.topValues.length > 0 ? (
+                    <div className="min-w-0"><span className="text-[color:var(--text-muted)]">Top: </span><span className="font-mono">{groupStats.topValues.slice(0, 3).map((tv) => tv?.value).filter(Boolean).join(', ')}</span></div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {warningLine.length > 0 ? (
+            <div className="mt-3 text-xs text-[color:var(--text-secondary)]">
+              <span className="text-[color:var(--accent)] font-semibold">{t('warnings')}:</span> {warningLine.join(' • ')}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepPreviewPanel({ title, steps }) {
+  const safeSteps = Array.isArray(steps) ? steps.filter(Boolean) : [];
+  if (safeSteps.length === 0) return null;
+
+  return (
+    <div className="px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mt-4 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden">
+          <div className="px-4 py-2 bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-color)]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">
+              {title}
+            </div>
+          </div>
+
+          <div className="divide-y divide-[color:var(--border-color)]">
+            {safeSteps.map((step, idx) => (
+              <div key={`${step.label}_${idx}`} className="px-4 py-3">
+                <div className="text-xs text-[color:var(--text-secondary)]">{step.label}</div>
+                <div className="mt-1 text-sm text-[color:var(--text-primary)] font-mono">{step.summary}</div>
+                {step.warning ? (
+                  <div className="mt-1 text-xs text-amber-700">⚠️ {step.warning}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function normalizeSavedProtocol(raw) {
   const name = safeString(raw?.name);
   const steps = Array.isArray(raw?.steps) ? raw.steps : [];
@@ -114,17 +258,7 @@ const AnalysisDesign = () => {
   const [results, setResults] = useState(null);
 
   const chartFallback = useMemo(() => (
-    <div className="animate-pulse" style={{
-      height: 360,
-      borderRadius: '2px',
-      border: '1px solid var(--border-color)',
-      background: 'var(--bg-tertiary)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'var(--text-muted)',
-      fontSize: '12px'
-    }}>
+    <div className="animate-pulse h-[360px] rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)] flex items-center justify-center text-[color:var(--text-muted)] text-xs">
       {t('loading')}
     </div>
   ), [t]);
@@ -141,6 +275,11 @@ const AnalysisDesign = () => {
   });
 
   const datasetIdResolved = datasetIdFromRoute || datasetId;
+
+  const totalRows = useMemo(() => {
+    const n = scanReport?.missing_report?.total_rows;
+    return typeof n === 'number' ? n : 0;
+  }, [scanReport]);
 
   useEffect(() => {
     saveSavedProtocols(savedProtocols);
@@ -379,8 +518,8 @@ const AnalysisDesign = () => {
         const predictors = Array.isArray(c.predictors)
           ? c.predictors
           : Array.isArray(c.targets)
-          ? c.targets
-          : [];
+            ? c.targets
+            : [];
         const covariates = Array.isArray(c.covariates) ? c.covariates : [];
         const group = c.group || predictors?.[0] || '';
         return { ...step, method, config: { ...c, outcome, group, predictors, covariates } };
@@ -454,12 +593,12 @@ const AnalysisDesign = () => {
 
   const selectedTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
 
-  const formatMethodName = (methodId) => {
+  const formatMethodName = useCallback((methodId) => {
     if (!methodId) return '';
     if (methodId === 'mixed_effects') return t('mixed_effects');
     if (methodId === 'clustered_correlation') return t('clustered_correlation');
     return String(methodId).replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-  };
+  }, [t]);
 
   const humanizeError = (raw) => {
     const text = String(raw || '').trim();
@@ -591,6 +730,102 @@ const AnalysisDesign = () => {
     }
     return map;
   }, [workspaceRoles]);
+
+  const flowStepData = useMemo(() => {
+    const dataLoaded = Boolean(datasetIdResolved) && Array.isArray(columns) && columns.length > 0;
+    const variablesSet = Boolean(workspaceRoles?.target) && Boolean(workspaceRoles?.group);
+
+    const analysisRunning = Boolean(isExecuting);
+    const analysisDone = Boolean(results) && results?.status !== 'error';
+    const resultsReady = Boolean(results) && results?.status !== 'error';
+
+    const dataSummary = totalRows > 0
+      ? `${totalRows}×${columns.length}`
+      : columns.length > 0
+        ? `${columns.length} колонок`
+        : '';
+
+    const designSummary = workspaceRoles?.target
+      ? `${workspaceRoles.target}${workspaceRoles?.group ? `, ${workspaceRoles.group}` : ''}`
+      : '';
+
+    const analyzeSummary = analysisRunning
+      ? 'выполняется'
+      : analysisDone
+        ? `${results?.completed_steps ?? 0}/${results?.total_steps ?? 0}`
+        : '';
+
+    const reportSummary = resultsReady ? 'готово' : '';
+
+    return {
+      dataLoaded,
+      variablesSet,
+      analysisRunning,
+      analysisDone,
+      resultsReady,
+      data_summary: dataSummary,
+      design_summary: designSummary,
+      analyze_summary: analyzeSummary,
+      report_summary: reportSummary,
+    };
+  }, [columns, datasetIdResolved, isExecuting, results, totalRows, workspaceRoles?.group, workspaceRoles?.target]);
+
+  const previewSteps = useMemo(() => {
+    const out = [];
+    if (datasetIdResolved && (totalRows > 0 || columns.length > 0)) {
+      out.push({
+        label: 'После загрузки',
+        summary: `${totalRows > 0 ? `n = ${totalRows}` : 'n = —'} • ${columns.length} колонок`,
+      });
+    }
+
+    const target = workspaceRoles?.target;
+    const group = workspaceRoles?.group;
+    if (target || group) {
+      const targetStats = target ? columnStatsByName?.[target] : null;
+      const groupStats = group ? columnStatsByName?.[group] : null;
+
+      const pieces = [];
+      if (target) {
+        const mean = typeof targetStats?.mean === 'number' ? targetStats.mean : null;
+        pieces.push(mean != null ? `Target: ${target} (M=${mean.toFixed(2)})` : `Target: ${target}`);
+      }
+      if (group) {
+        const top = Array.isArray(groupStats?.top_values) ? groupStats.top_values : [];
+        const topLine = top
+          .slice(0, 3)
+          .map((v) => (v?.value != null && typeof v?.count === 'number' ? `${v.value}: ${v.count}` : null))
+          .filter(Boolean)
+          .join(', ');
+        pieces.push(topLine ? `Group: ${group} (${topLine})` : `Group: ${group}`);
+      }
+
+      let warning = '';
+      const unique = typeof groupStats?.unique_count === 'number' ? groupStats.unique_count : null;
+      if (unique != null && unique < 2) warning = t('groups_too_few_warning');
+
+      out.push({
+        label: 'После выбора переменных',
+        summary: pieces.join(' • ') || '—',
+        warning: warning || undefined,
+      });
+    }
+
+    if (results) {
+      const resList = Array.isArray(results?.results) ? results.results : [];
+      const best = resList.find((r) => typeof r?.p_value === 'number') || resList[0] || null;
+      const method = best?.method ? formatMethodName(best.method) : null;
+      const p = typeof best?.p_value === 'number' ? best.p_value : null;
+      const pStr = typeof p === 'number' ? (p < 0.001 ? '<0.001' : p.toFixed(4)) : null;
+
+      out.push({
+        label: 'После анализа',
+        summary: method && pStr ? `${method} • p=${pStr}` : results?.status ? String(results.status) : '—',
+      });
+    }
+
+    return out;
+  }, [columnStatsByName, columns.length, datasetIdResolved, formatMethodName, results, t, totalRows, workspaceRoles?.group, workspaceRoles?.target]);
 
   const canApplyTemplate = Boolean(selectedTemplate)
     && Boolean(datasetIdResolved)
@@ -878,53 +1113,53 @@ const AnalysisDesign = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-              <button
-                onClick={onBack}
-                className="h-9 w-9 inline-flex items-center justify-center rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-secondary)] hover:border-black hover:text-black active:scale-[0.98]"
-                type="button"
-                aria-label={t('back')}
-              >
-                <ArrowLeftIcon className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-[color:var(--text-primary)]">
-                  StatWizard
-                </h1>
-                {datasetName && (
-                  <p className="text-sm text-[color:var(--text-secondary)] mt-1">
-                    {datasetName}
-                  </p>
-                )}
+                <button
+                  onClick={onBack}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-secondary)] hover:border-black hover:text-black active:scale-[0.98]"
+                  type="button"
+                  aria-label={t('back')}
+                >
+                  <ArrowLeftIcon className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-xl font-bold text-[color:var(--text-primary)]">
+                    StatWizard
+                  </h1>
+                  {datasetName && (
+                    <p className="text-sm text-[color:var(--text-secondary)] mt-1">
+                      {datasetName}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowVariables(!showVariables)}
+                  disabled={!columns.length}
+                  variant={showVariables ? 'secondary' : 'ghost'}
+                  className="gap-2"
+                  type="button"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                  Variables ({columns.length})
+                </Button>
+                <Button
+                  onClick={() => setShowAI(!showAI)}
+                  disabled={!canRun}
+                  variant={showAI ? 'primary' : 'ghost'}
+                  className="gap-2"
+                  type="button"
+                >
+                  <SparklesIcon className="w-4 h-4" />
+                  {t('ai_assistant')}
+                </Button>
               </div>
             </div>
 
-              <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setShowVariables(!showVariables)}
-                disabled={!columns.length}
-                variant={showVariables ? 'secondary' : 'ghost'}
-                className="gap-2"
-                type="button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-                Variables ({columns.length})
-              </Button>
-              <Button
-                onClick={() => setShowAI(!showAI)}
-                disabled={!canRun}
-                variant={showAI ? 'primary' : 'ghost'}
-                className="gap-2"
-                type="button"
-              >
-                <SparklesIcon className="w-4 h-4" />
-                {t('ai_assistant')}
-              </Button>
-            </div>
-          </div>
-
-            <ResearchFlowNav active="design" datasetId={datasetIdResolved} className="mt-3" />
+            <ResearchFlowNav active="variables" datasetId={datasetIdResolved} className="mt-3" stepData={flowStepData} />
           </div>
         </div>
 
@@ -932,6 +1167,8 @@ const AnalysisDesign = () => {
           <div className="w-96 flex-shrink-0">
             <TestSelectionPanel
               onTestSelect={handleTestSelect}
+              datasetId={datasetIdResolved}
+              suggestedConfig={workspaceRoles}
               disabled={isExecuting}
             />
           </div>
@@ -956,6 +1193,18 @@ const AnalysisDesign = () => {
               onApplyTemplate={handleApplyTemplate}
               disabled={isExecuting}
             />
+
+            {(workspaceRoles?.target || workspaceRoles?.group) ? (
+              <VariablePreview
+                t={t}
+                targetVar={workspaceRoles?.target}
+                groupVar={workspaceRoles?.group}
+                groupLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
+                statsByName={columnStatsByName}
+              />
+            ) : null}
+
+            <StepPreviewPanel title="📊 PREVIEW" steps={previewSteps} />
 
             {showAI && (
               <div className="flex-shrink-0 p-4 border-b border-[color:var(--border-color)]">
@@ -1120,6 +1369,7 @@ const AnalysisDesign = () => {
         onConfigSave={handleConfigSave}
         columns={columns}
         suggestedConfig={workspaceRoles}
+        datasetId={datasetIdResolved}
       />
 
       <SaveProtocolModal

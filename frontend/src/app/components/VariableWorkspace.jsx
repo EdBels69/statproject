@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useRef, useState } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import {
@@ -64,6 +64,9 @@ export default function VariableWorkspace({
     const [showFilters, setShowFilters] = useState(false);
     const [previewName, setPreviewName] = useState(null);
     const [dragActiveRole, setDragActiveRole] = useState(null);
+    const [draggingName, setDraggingName] = useState(null);
+    const [focusedIndex, setFocusedIndex] = useState(0);
+    const listRef = useRef(null);
 
     const effectivePreviewName = previewName
         ? previewName
@@ -81,15 +84,13 @@ export default function VariableWorkspace({
     }, [columns]);
 
     // Filter and search
-    const filteredColumns = useMemo(() => {
+    const filteredColumns = (() => {
         let result = processedColumns;
 
-        // Type filter
         if (typeFilter) {
             result = result.filter(col => col.varType === typeFilter);
         }
 
-        // Search filter (case-insensitive)
         if (search.trim()) {
             const query = search.toLowerCase();
             result = result.filter(col =>
@@ -105,7 +106,11 @@ export default function VariableWorkspace({
         }
 
         return result;
-    }, [processedColumns, roleByName, roleFilter, search, typeFilter]);
+    })();
+
+    const safeFocusedIndex = filteredColumns.length > 0
+        ? Math.max(0, Math.min(focusedIndex, filteredColumns.length - 1))
+        : 0;
 
     // Type statistics
     const typeStats = useMemo(() => {
@@ -183,14 +188,45 @@ export default function VariableWorkspace({
         setPreviewName(name);
     }, [roles, onRolesChange]);
 
+    const removeRole = useCallback((roleKey, name) => {
+        const next = {
+            target: roles?.target || '',
+            group: roles?.group || '',
+            covariates: Array.isArray(roles?.covariates) ? roles.covariates : [],
+        };
+
+        if (roleKey === 'target') {
+            next.target = '';
+        } else if (roleKey === 'group') {
+            next.group = '';
+        } else if (roleKey === 'covariates') {
+            const list = Array.isArray(next.covariates) ? next.covariates : [];
+            next.covariates = name ? list.filter((n) => n !== name) : [];
+        }
+
+        onRolesChange?.(next);
+    }, [onRolesChange, roles]);
+
     const handleDragStart = (e, name) => {
+        if (!name) return;
+        setPreviewName(name);
+        setDraggingName(name);
+        e.dataTransfer.setData('application/x-statwizard-variable', name);
+        e.dataTransfer.setData('variable', name);
         e.dataTransfer.setData('text/plain', name);
-        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnd = () => {
+        setDraggingName(null);
+        setDragActiveRole(null);
     };
 
     const handleDrop = (e, roleKey) => {
         e.preventDefault();
-        const name = e.dataTransfer.getData('text/plain');
+        const name = e.dataTransfer.getData('application/x-statwizard-variable')
+            || e.dataTransfer.getData('variable')
+            || e.dataTransfer.getData('text/plain');
         assignRole(roleKey, name);
         setDragActiveRole(null);
     };
@@ -199,6 +235,79 @@ export default function VariableWorkspace({
         e.preventDefault();
         setDragActiveRole(roleKey);
     };
+
+    const handleDragLeave = (e, roleKey) => {
+        const current = e?.currentTarget;
+        const next = e?.relatedTarget;
+        if (current && next && typeof current.contains === 'function' && current.contains(next)) return;
+        setDragActiveRole((prev) => (prev === roleKey ? null : prev));
+    };
+
+    const focusItem = useCallback((nextIndex) => {
+        if (filteredColumns.length === 0) return;
+        const safe = Math.max(0, Math.min(nextIndex, filteredColumns.length - 1));
+        setFocusedIndex(safe);
+        const name = filteredColumns[safe]?.name;
+        if (name) setPreviewName(name);
+        if (listRef.current?.scrollToItem) listRef.current.scrollToItem(safe, 'smart');
+    }, [filteredColumns]);
+
+    const handleListKeyDown = useCallback((e) => {
+        const tag = e.target?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (filteredColumns.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            focusItem(safeFocusedIndex + 1);
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            focusItem(safeFocusedIndex - 1);
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const name = filteredColumns[safeFocusedIndex]?.name;
+            if (!name) return;
+
+            if (mode === 'single') {
+                onSelectionChange?.([name]);
+                onVariableClick?.(name);
+                return;
+            }
+
+            const roleKey = roles?.target
+                ? (roles?.group ? 'covariates' : 'group')
+                : 'target';
+            assignRole(roleKey, name);
+            return;
+        }
+
+        if (e.key === 't' || e.key === 'T') {
+            e.preventDefault();
+            const name = filteredColumns[safeFocusedIndex]?.name;
+            if (name) assignRole('target', name);
+            return;
+        }
+
+        if (e.key === 'g' || e.key === 'G') {
+            e.preventDefault();
+            const name = filteredColumns[safeFocusedIndex]?.name;
+            if (name) assignRole('group', name);
+            return;
+        }
+
+        if (e.key === 'c' || e.key === 'C') {
+            e.preventDefault();
+            const name = filteredColumns[safeFocusedIndex]?.name;
+            if (name) assignRole('covariates', name);
+            return;
+        }
+    }, [assignRole, filteredColumns, safeFocusedIndex, mode, onSelectionChange, onVariableClick, roles?.group, roles?.target, focusItem]);
 
     const handleSelectAll = () => {
         const allNames = filteredColumns.map(c => c.name);
@@ -215,6 +324,7 @@ export default function VariableWorkspace({
         if (!col) return null;
 
         const isSelected = data.selectedSet.has(col.name);
+        const isFocused = data.focusedIndex === index;
         const typeConfig = TYPE_CONFIG[col.varType] || TYPE_CONFIG.text;
         const Icon = typeConfig.icon;
 
@@ -230,12 +340,16 @@ export default function VariableWorkspace({
                         data.onToggle(col.name);
                         data.onPreview(col.name);
                     }}
+                    onMouseEnter={() => data.onFocus(index)}
                     draggable
                     onDragStart={(e) => data.onDragStart(e, col.name)}
+                    onDragEnd={data.onDragEnd}
                     className={`
-            h-full flex items-center gap-3 px-3 cursor-pointer transition-colors transition-transform active:scale-[0.99]
+            variable-card h-full flex items-center gap-3 px-3 cursor-pointer transition-colors transition-transform active:scale-[0.99] cursor-grab active:cursor-grabbing
             border-b border-[color:var(--border-color)]
             ${isSelected ? 'bg-[color:var(--bg-secondary)] border-l-2 border-l-[color:var(--accent)]' : 'hover:bg-[color:var(--bg-secondary)]'}
+            ${isFocused ? 'ring-1 ring-[color:var(--accent)] ring-inset' : ''}
+            ${data.draggingName === col.name ? 'opacity-60 scale-[0.985]' : ''}
           `}
                 >
                     {/* Checkbox for multi-select */}
@@ -288,11 +402,15 @@ export default function VariableWorkspace({
         selectedSet,
         onToggle: handleToggle,
         onPreview: (name) => setPreviewName(name),
+        onFocus: (idx) => setFocusedIndex(idx),
+        focusedIndex: safeFocusedIndex,
         onDragStart: handleDragStart,
+        onDragEnd: handleDragEnd,
+        draggingName,
         columnStatsByName,
         mode,
         showStats
-    }), [filteredColumns, selectedSet, handleToggle, mode, showStats, columnStatsByName]);
+    }), [filteredColumns, selectedSet, handleToggle, safeFocusedIndex, mode, showStats, columnStatsByName, draggingName]);
 
     return (
         <div className="flex flex-col h-full bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] overflow-hidden">
@@ -317,13 +435,19 @@ export default function VariableWorkspace({
                     <input
                         type="text"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setFocusedIndex(0);
+                        }}
                         placeholder="Поиск по названию…"
                         className="w-full pl-9 pr-8 py-2 text-sm border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none focus:border-[color:var(--accent)]"
                     />
                     {search && (
                         <button
-                            onClick={() => setSearch('')}
+                            onClick={() => {
+                                setSearch('');
+                                setFocusedIndex(0);
+                            }}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             type="button"
                         >
@@ -336,19 +460,25 @@ export default function VariableWorkspace({
                 {showFilters && (
                     <div className="flex flex-wrap gap-1 mt-2">
                         <button
-                            onClick={() => setTypeFilter(null)}
+                            onClick={() => {
+                                setTypeFilter(null);
+                                setFocusedIndex(0);
+                            }}
                             className={`px-2 py-1 text-xs rounded-[2px] border transition-colors ${typeFilter === null
                                     ? 'bg-[color:var(--accent)] border-[color:var(--accent)] text-[color:var(--white)]'
                                     : 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]'
                                 }`}
                             type="button"
                         >
-                            All ({processedColumns.length})
+                            Все ({processedColumns.length})
                         </button>
                         {Object.entries(TYPE_CONFIG).map(([type, config]) => (
                             <button
                                 key={type}
-                                onClick={() => setTypeFilter(typeFilter === type ? null : type)}
+                                onClick={() => {
+                                    setTypeFilter(typeFilter === type ? null : type);
+                                    setFocusedIndex(0);
+                                }}
                                 className={`px-2 py-1 text-xs rounded-[2px] border transition-colors flex items-center gap-1 ${typeFilter === type
                                         ? 'bg-[color:var(--bg-secondary)] border-[color:var(--accent)] text-[color:var(--accent)]'
                                         : 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]'
@@ -366,7 +496,10 @@ export default function VariableWorkspace({
                         {[{ id: 'all', label: 'Все' }, { id: 'unused', label: 'Не назначены' }, { id: 'target', label: 'Target' }, { id: 'group', label: secondaryRoleLabel || 'Group' }, { id: 'covariate', label: 'Covariates' }].map((opt) => (
                             <button
                                 key={opt.id}
-                                onClick={() => setRoleFilter(roleFilter === opt.id ? 'all' : opt.id)}
+                                onClick={() => {
+                                    setRoleFilter(roleFilter === opt.id ? 'all' : opt.id);
+                                    setFocusedIndex(0);
+                                }}
                                 className={`px-2 py-1 text-xs rounded-[2px] border transition-colors ${roleFilter === opt.id
                                     ? 'bg-[color:var(--accent)] border-[color:var(--accent)] text-[color:var(--white)]'
                                     : 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]'
@@ -384,33 +517,101 @@ export default function VariableWorkspace({
                 <div className="grid grid-cols-1 gap-2">
                     <div
                         onDragOver={(e) => handleDragOver(e, 'target')}
+                        onDragLeave={(e) => handleDragLeave(e, 'target')}
                         onDrop={(e) => handleDrop(e, 'target')}
-                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${dragActiveRole === 'target' ? 'border-[color:var(--accent)] bg-[color:var(--bg-secondary)]' : 'border-[color:var(--border-color)] bg-[color:var(--bg-secondary)]'}`}
+                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${roles?.target ? 'bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]' : 'bg-[color:var(--white)] border-[color:var(--border-color)]'} ${dragActiveRole === 'target' ? 'border-[color:var(--accent)] bg-[color:var(--bg-tertiary)]' : ''}`}
+                        aria-label="Цель: зона назначения"
                     >
-                        <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Target</div>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Цель</div>
+                            {roles?.target ? (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeRole('target');
+                                    }}
+                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+                                    aria-label="Убрать цель"
+                                >
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            ) : null}
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.target || 'Перетащите переменную сюда'}</div>
                     </div>
 
                     <div
                         onDragOver={(e) => handleDragOver(e, 'group')}
+                        onDragLeave={(e) => handleDragLeave(e, 'group')}
                         onDrop={(e) => handleDrop(e, 'group')}
-                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${dragActiveRole === 'group' ? 'border-[color:var(--accent)] bg-[color:var(--bg-secondary)]' : 'border-[color:var(--border-color)] bg-[color:var(--bg-secondary)]'}`}
+                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${roles?.group ? 'bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]' : 'bg-[color:var(--white)] border-[color:var(--border-color)]'} ${dragActiveRole === 'group' ? 'border-[color:var(--accent)] bg-[color:var(--bg-tertiary)]' : ''}`}
+                        aria-label="Группа: зона назначения"
                     >
-                        <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{secondaryRoleLabel || 'Group'}</div>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{secondaryRoleLabel || 'Group'}</div>
+                            {roles?.group ? (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeRole('group');
+                                    }}
+                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+                                    aria-label="Убрать группу"
+                                >
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            ) : null}
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.group || 'Перетащите переменную сюда'}</div>
                     </div>
 
                     <div
                         onDragOver={(e) => handleDragOver(e, 'covariates')}
+                        onDragLeave={(e) => handleDragLeave(e, 'covariates')}
                         onDrop={(e) => handleDrop(e, 'covariates')}
-                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${dragActiveRole === 'covariates' ? 'border-[color:var(--accent)] bg-[color:var(--bg-secondary)]' : 'border-[color:var(--border-color)] bg-[color:var(--bg-secondary)]'}`}
+                        className={`rounded-[2px] border px-3 py-2 text-xs transition-colors ${(Array.isArray(roles?.covariates) && roles.covariates.length > 0) ? 'bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]' : 'bg-[color:var(--white)] border-[color:var(--border-color)]'} ${dragActiveRole === 'covariates' ? 'border-[color:var(--accent)] bg-[color:var(--bg-tertiary)]' : ''}`}
+                        aria-label="Ковариаты: зона назначения"
                     >
-                        <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Covariates</div>
-                        <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">
-                            {Array.isArray(roles?.covariates) && roles.covariates.length > 0
-                                ? roles.covariates.join(', ')
-                                : 'Перетащите переменные сюда'}
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Ковариаты</div>
+                            {Array.isArray(roles?.covariates) && roles.covariates.length > 0 ? (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeRole('covariates');
+                                    }}
+                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+                                    aria-label="Очистить ковариаты"
+                                >
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            ) : null}
                         </div>
+                        {Array.isArray(roles?.covariates) && roles.covariates.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                {roles.covariates.map((n) => (
+                                    <span key={n} className="inline-flex items-center gap-1 rounded-[999px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 py-1 text-xs text-[color:var(--text-secondary)]">
+                                        <span className="max-w-[180px] truncate">{n}</span>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeRole('covariates', n);
+                                            }}
+                                            className="text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+                                            aria-label={`Убрать ковариату ${n}`}
+                                        >
+                                            <XMarkIcon className="w-3.5 h-3.5" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">Перетащите переменные сюда</div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -419,7 +620,7 @@ export default function VariableWorkspace({
             {mode === 'multi' && (
                 <div className="flex-shrink-0 px-3 py-2 border-b border-[color:var(--border-color)] flex items-center justify-between bg-[color:var(--white)]">
                     <span className="text-xs text-[color:var(--text-muted)]">
-                        {selectedVariables.length} selected
+                        Выбрано: {selectedVariables.length}
                     </span>
                     <div className="flex gap-2">
                         <button
@@ -427,14 +628,14 @@ export default function VariableWorkspace({
                             className="text-xs text-[color:var(--accent)] hover:opacity-80"
                             type="button"
                         >
-                            Select all
+                            Выбрать все
                         </button>
                         <button
                             onClick={handleClearSelection}
                             className="text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                             type="button"
                         >
-                            Clear
+                            Очистить
                         </button>
                     </div>
                 </div>
@@ -447,34 +648,37 @@ export default function VariableWorkspace({
                         Переменные не найдены
                     </div>
                 ) : (
-                    <AutoSizer>
-                        {({ height: autoHeight, width }) => (
-                            <List
-                                height={autoHeight}
-                                width={width}
-                                itemCount={filteredColumns.length}
-                                itemSize={40}
-                                itemData={listData}
-                                overscanCount={10}
-                            >
-                                {VariableRow}
-                            </List>
-                        )}
-                    </AutoSizer>
+                    <div className="h-full" tabIndex={0} onKeyDown={handleListKeyDown}>
+                        <AutoSizer>
+                            {({ height: autoHeight, width }) => (
+                                <List
+                                    ref={listRef}
+                                    height={autoHeight}
+                                    width={width}
+                                    itemCount={filteredColumns.length}
+                                    itemSize={40}
+                                    itemData={listData}
+                                    overscanCount={10}
+                                >
+                                    {VariableRow}
+                                </List>
+                            )}
+                        </AutoSizer>
+                    </div>
                 )}
             </div>
 
             {/* Footer status */}
             <div className="flex-shrink-0 px-3 py-2 border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] text-xs text-[color:var(--text-muted)]">
-                {filteredColumns.length} of {processedColumns.length} variables
-                {typeFilter && ` • Filtered by ${TYPE_CONFIG[typeFilter].label}`}
+                {filteredColumns.length} из {processedColumns.length} переменных
+                {typeFilter && ` • Тип: ${TYPE_CONFIG[typeFilter].label}`}
             </div>
 
             {preview?.merged && (
                 <div className="flex-shrink-0 border-t border-[color:var(--border-color)] bg-[color:var(--white)] p-3">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Preview</div>
+                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Предпросмотр</div>
                             <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{preview.merged.name}</div>
                             <div className="mt-1 text-xs text-[color:var(--text-muted)] font-mono">
                                 {typeof preview.merged.unique_count === 'number' ? `u:${preview.merged.unique_count}` : null}
@@ -488,7 +692,7 @@ export default function VariableWorkspace({
                             type="button"
                             onClick={() => setPreviewName(null)}
                             className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
-                            aria-label="close"
+                            aria-label="закрыть"
                         >
                             <XMarkIcon className="w-4 h-4" />
                         </button>

@@ -2,10 +2,14 @@ import React, { useMemo, useState, useEffect, lazy, Suspense } from 'react';
 import { getAnalysisResults } from '../../../lib/api';
 import { useTranslation } from '../../../hooks/useTranslation';
 import Button from '../../components/ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import {
     BeakerIcon,
     ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
+
+// Contextual Education Components
+import { StatTooltip, EffectSizeExplainer, PowerExplainer } from '../../components/education';
 
 const VisualizePlot = lazy(() => import('../../components/VisualizePlot'));
 const ClusteredHeatmap = lazy(() => import('../../components/ClusteredHeatmap'));
@@ -68,6 +72,7 @@ const Table1View = ({ data }) => {
 /* --- SUB-COMPONENT: HYPOTHESIS TEST --- */
 const CompareView = ({ result, stepId }) => {
     const { t } = useTranslation();
+    const { educationLevel } = useLanguage();
     const methodId = result?.method?.id || result?.type || result?.method;
     const assumptions = result?.assumption_checks || result?.assumptions;
     const methodRequested = result?.method_requested;
@@ -91,11 +96,6 @@ const CompareView = ({ result, stepId }) => {
             {t('loading')}
         </div>
     ), [t]);
-
-    const ciText =
-        typeof result?.effect_size_ci_lower === 'number' && typeof result?.effect_size_ci_upper === 'number'
-            ? `[${result.effect_size_ci_lower.toFixed(2)}, ${result.effect_size_ci_upper.toFixed(2)}]`
-            : null;
 
     const plot = (() => {
         if (methodId === 'clustered_correlation') {
@@ -146,10 +146,12 @@ const CompareView = ({ result, stepId }) => {
                     )}
                 </div>
                 <div className="ml-auto text-right">
-                    <div className="text-2xl font-bold text-[color:var(--accent)]">
-                        {t('p_value_short', { value: typeof result?.p_value === 'number' ? result.p_value.toFixed(4) : t('not_available') })}
-                    </div>
-                    <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('p_value')}</div>
+                    <StatTooltip term="p_value" level={educationLevel} position="left">
+                        <div className="text-2xl font-bold text-[color:var(--accent)]">
+                            {t('p_value_short', { value: typeof result?.p_value === 'number' ? result.p_value.toFixed(4) : t('not_available') })}
+                        </div>
+                        <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('p_value')}</div>
+                    </StatTooltip>
                 </div>
             </div>
 
@@ -280,28 +282,89 @@ const CompareView = ({ result, stepId }) => {
                 </div>
             )}
 
+            {/* Effect Size with Visual Explainer */}
+            {typeof result?.effect_size === 'number' && (
+                <EffectSizeExplainer
+                    type={result.effect_size_name === "Cohen's d" ? 'cohens_d' :
+                        result.effect_size_name === 'η²' ? 'eta_squared' :
+                            result.effect_size_name === 'r' ? 'r' : 'cohens_d'}
+                    value={result.effect_size}
+                    ci={typeof result.effect_size_ci_lower === 'number' && typeof result.effect_size_ci_upper === 'number'
+                        ? [result.effect_size_ci_lower, result.effect_size_ci_upper]
+                        : undefined}
+                />
+            )}
+
+            {/* Power with Recommendations */}
+            {typeof result?.power === 'number' && (
+                <PowerExplainer
+                    power={result.power}
+                    effectSize={typeof result?.effect_size === 'number' ? result.effect_size : undefined}
+                />
+            )}
+
+            {/* Additional Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
-                    <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('effect_size')}</div>
-                    <div className="mt-1 text-lg font-mono font-bold text-[color:var(--text-primary)]">
-                        {typeof result?.effect_size === 'number'
-                            ? `${result.effect_size_name || t('effect')} ${result.effect_size.toFixed(2)}`
-                            : t('not_available_short')
-                        }
+                {/* Effect Size Compact (fallback if no visual explainer) */}
+                {typeof result?.effect_size !== 'number' && (
+                    <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
+                        <StatTooltip term="effect_size">
+                            <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('effect_size')}</div>
+                        </StatTooltip>
+                        <div className="mt-1 text-lg font-mono font-bold text-[color:var(--text-primary)]">
+                            {t('not_available_short')}
+                        </div>
                     </div>
-                    <div className="mt-1 text-xs text-[color:var(--text-secondary)] font-mono">{t('confidence_interval')}: {ciText || t('not_available_short')}</div>
-                </div>
-                <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
-                    <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('power')}</div>
-                    <div className="mt-1 text-lg font-mono font-bold text-[color:var(--text-primary)]">
-                        {typeof result?.power === 'number' ? result.power.toFixed(2) : t('not_available_short')}
+                )}
+
+                {/* Power Compact (fallback if no visual explainer) */}
+                {typeof result?.power !== 'number' && (
+                    <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
+                        <StatTooltip term="power">
+                            <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('power')}</div>
+                        </StatTooltip>
+                        <div className="mt-1 text-lg font-mono font-bold text-[color:var(--text-primary)]">
+                            {t('not_available_short')}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* BF10 */}
                 <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
                     <div className="text-xs text-[color:var(--text-secondary)] uppercase tracking-wide">{t('bf10')}</div>
                     <div className="mt-1 text-lg font-mono font-bold text-[color:var(--text-primary)]">
                         {typeof result?.bf10 === 'number' ? result.bf10.toPrecision(3) : t('not_available_short')}
                     </div>
+                    {typeof result?.bf10 === 'number' && Number.isFinite(result.bf10) && (
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-sm text-[color:var(--text-secondary)]">Bayes Factor (BF₁₀):</span>
+                            <span className="font-mono font-semibold">{Number(result.bf10).toFixed(2)}</span>
+                            <span
+                                className={`text-xs px-2 py-0.5 rounded ${
+                                    result.bf10 > 100
+                                        ? 'bg-green-100 text-green-800'
+                                        : result.bf10 > 10
+                                            ? 'bg-green-50 text-green-700'
+                                            : result.bf10 > 3
+                                                ? 'bg-yellow-50 text-yellow-700'
+                                                : result.bf10 > 1
+                                                    ? 'bg-gray-100 text-gray-600'
+                                                    : 'bg-red-50 text-red-700'
+                                }`}
+                            >
+                                {result.bf10 > 100
+                                    ? 'очень сильные'
+                                    : result.bf10 > 10
+                                        ? 'сильные'
+                                        : result.bf10 > 3
+                                            ? 'умеренные'
+                                            : result.bf10 > 1
+                                                ? 'слабые'
+                                                : 'против H₁'}
+                                {' '}доказательства
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -318,83 +381,227 @@ const StepResults = ({ runId, datasetId }) => {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(0);
+    const [sectionOrder, setSectionOrder] = useState([]);
+    const [sectionEnabled, setSectionEnabled] = useState({});
+    const [reportFormat, setReportFormat] = useState('docx');
+    const [reportStyle, setReportStyle] = useState('apa7');
 
     useEffect(() => {
-        if (runId && datasetId) {
-            getAnalysisResults(datasetId, runId)
-                .then(setResults)
-                .catch(console.error)
-                .finally(() => setLoading(false));
-        }
+        if (!runId || !datasetId) return;
+        let cancelled = false;
+
+        queueMicrotask(() => {
+            if (cancelled) return;
+            setLoading(true);
+        });
+
+        getAnalysisResults(datasetId, runId)
+            .then((data) => {
+                if (cancelled) return;
+                setResults(data);
+            })
+            .catch(console.error)
+            .finally(() => {
+                if (cancelled) return;
+                setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [runId, datasetId]);
+
+    const baseSteps = useMemo(() => {
+        const map = results?.results && typeof results.results === 'object' ? results.results : {};
+        return Object.keys(map).map((key) => {
+            const i18nKey = `step_${key}`;
+            const label = hasTranslation(i18nKey) ? t(i18nKey) : key.replace(/_/g, ' ').toUpperCase();
+            return {
+                id: key,
+                data: map[key],
+                label,
+            };
+        });
+    }, [hasTranslation, results, t]);
+
+    const baseStepIds = useMemo(() => baseSteps.map((s) => s.id), [baseSteps]);
+
+    const mergedSectionOrder = useMemo(() => {
+        const prevSafe = Array.isArray(sectionOrder) ? sectionOrder : [];
+        const preserved = prevSafe.filter((id) => baseStepIds.includes(id));
+        const appended = baseStepIds.filter((id) => !preserved.includes(id));
+        return preserved.length || appended.length ? [...preserved, ...appended] : [];
+    }, [baseStepIds, sectionOrder]);
+
+    const mergedSectionEnabled = useMemo(() => {
+        const src = (sectionEnabled && typeof sectionEnabled === 'object') ? sectionEnabled : {};
+        const out = {};
+        baseStepIds.forEach((id) => {
+            const v = src[id];
+            out[id] = typeof v === 'boolean' ? v : true;
+        });
+        return out;
+    }, [baseStepIds, sectionEnabled]);
+
+    const stepsById = useMemo(() => {
+        const map = new Map();
+        baseSteps.forEach((s) => map.set(s.id, s));
+        return map;
+    }, [baseSteps]);
+
+    const orderedSteps = useMemo(() => {
+        const order = mergedSectionOrder;
+        const stitched = order.map((id) => stepsById.get(id)).filter(Boolean);
+        const extras = baseSteps.filter((s) => !order.includes(s.id));
+        return [...stitched, ...extras];
+    }, [baseSteps, mergedSectionOrder, stepsById]);
+
+    const visibleSteps = useMemo(() => {
+        return orderedSteps.filter((s) => mergedSectionEnabled?.[s.id] !== false);
+    }, [mergedSectionEnabled, orderedSteps]);
+
+    const safeActiveTab = Math.max(0, Math.min(activeTab, Math.max(0, visibleSteps.length - 1)));
+    const activeStep = visibleSteps[safeActiveTab];
+
+    const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
+    const makeReportUrl = (format) => {
+        const params = new URLSearchParams();
+        params.set('dataset_id', String(datasetId));
+        if (reportStyle) params.set('style', reportStyle);
+        const enabledIds = visibleSteps.map((s) => s.id);
+        if (enabledIds.length) params.set('sections', enabledIds.join(','));
+        const orderIds = mergedSectionOrder;
+        if (orderIds.length) params.set('order', orderIds.join(','));
+        return `${apiBase}/analysis/protocol/report/${runId}/${format}?${params.toString()}`;
+    };
+
+    const moveSection = (id, direction) => {
+        setSectionOrder((prev) => {
+            const prevSafe = Array.isArray(prev) ? prev : [];
+            const preserved = prevSafe.filter((k) => baseStepIds.includes(k));
+            const appended = baseStepIds.filter((k) => !preserved.includes(k));
+            const order = [...preserved, ...appended];
+            const idx = order.indexOf(id);
+            if (idx < 0) return prev;
+            const nextIdx = idx + direction;
+            if (nextIdx < 0 || nextIdx >= order.length) return prev;
+            const tmp = order[idx];
+            order[idx] = order[nextIdx];
+            order[nextIdx] = tmp;
+            return order;
+        });
+    };
 
     if (loading) return <div className="p-10 text-center animate-pulse text-[color:var(--text-secondary)]">{t('loading_results')}</div>;
     if (!results) return <div className="p-10 text-center text-[color:var(--error)]">{t('failed_to_load_results')}</div>;
 
-    // Convert results map to array for tabs
-    // Expected keys: "desc_stats", "hypothesis_test", etc.
-    const steps = Object.keys(results.results).map(key => {
-        const i18nKey = `step_${key}`;
-        const label = hasTranslation(i18nKey) ? t(i18nKey) : key.replace(/_/g, ' ').toUpperCase();
-        return {
-            id: key,
-            data: results.results[key],
-            label,
-        };
-    });
-
-    const activeStep = steps[activeTab];
-
-    const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
-    const reportHtmlUrl = `${apiBase}/analysis/protocol/report/${runId}/html?dataset_id=${encodeURIComponent(datasetId)}`;
-    const reportPdfUrl = `${apiBase}/analysis/protocol/report/${runId}/pdf?dataset_id=${encodeURIComponent(datasetId)}`;
-    const reportDocxUrl = `${apiBase}/analysis/protocol/report/${runId}/docx?dataset_id=${encodeURIComponent(datasetId)}`;
-
     return (
         <div className="animate-fadeIn min-h-screen pb-20">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">{results.protocol_name}</h2>
                     <p className="text-[color:var(--text-secondary)] text-sm">{t('run_id')}: {runId}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" onClick={() => window.open(reportHtmlUrl, '_blank')}>
-                        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-                        {t('export_html')}
-                    </Button>
-                    <Button variant="secondary" onClick={() => window.open(reportPdfUrl, '_blank')}>
-                        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-                        {t('export_pdf')}
-                    </Button>
-                    <Button variant="ghost" onClick={() => window.open(reportDocxUrl, '_blank')}>
-                        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-                        {t('export_docx')}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            window.dispatchEvent(
-                                new CustomEvent('statproject:export-plot', { detail: { scopeId: activeStep?.id, key: 'main' } })
-                            );
-                        }}
-                    >
-                        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-                        {t('export_plot')}
-                    </Button>
+                <div className="w-full lg:w-[520px] rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-[color:var(--text-primary)]">📄 Отчёт</div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={reportFormat}
+                                onChange={(e) => setReportFormat(e.target.value)}
+                                className="h-8 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 text-xs text-[color:var(--text-primary)]"
+                                aria-label="Формат отчёта"
+                            >
+                                <option value="docx">DOCX</option>
+                                <option value="pdf">PDF</option>
+                                <option value="html">HTML</option>
+                            </select>
+                            <select
+                                value={reportStyle}
+                                onChange={(e) => setReportStyle(e.target.value)}
+                                className="h-8 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 text-xs text-[color:var(--text-primary)]"
+                                aria-label="Стиль отчёта"
+                            >
+                                <option value="apa7">APA 7</option>
+                                <option value="gost">ГОСТ</option>
+                                <option value="simple">Простой</option>
+                            </select>
+                            <Button variant="ghost" size="sm" onClick={() => window.open(makeReportUrl('html'), '_blank')}>
+                                👁 Превью
+                            </Button>
+                            <Button variant="secondary" size="sm" onClick={() => window.open(makeReportUrl(reportFormat), '_blank')}>
+                                <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
+                                Скачать
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="p-3">
+                        <div className="grid grid-cols-1 gap-1">
+                            {orderedSteps.map((s, idx) => (
+                                <div key={s.id} className="flex items-center justify-between gap-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-3 py-2">
+                                    <label className="flex items-center gap-3 min-w-0 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={mergedSectionEnabled?.[s.id] !== false}
+                                            onChange={() => setSectionEnabled((prev) => ({
+                                                ...(prev && typeof prev === 'object' ? prev : {}),
+                                                [s.id]: !(prev?.[s.id] !== false)
+                                            }))}
+                                            className="h-4 w-4 accent-[color:var(--accent)]"
+                                        />
+                                        <span className="text-sm text-[color:var(--text-primary)] truncate">{s.label}</span>
+                                    </label>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => moveSection(s.id, -1)}
+                                            disabled={idx === 0}
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-secondary)] disabled:opacity-40"
+                                            aria-label="Поднять секцию"
+                                        >
+                                            ↑
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveSection(s.id, 1)}
+                                            disabled={idx === orderedSteps.length - 1}
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-secondary)] disabled:opacity-40"
+                                            aria-label="Опустить секцию"
+                                        >
+                                            ↓
+                                        </button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                window.dispatchEvent(
+                                                    new CustomEvent('statproject:export-plot', { detail: { scopeId: s.id, key: 'main' } })
+                                                );
+                                            }}
+                                        >
+                                            <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
+                                            {t('export_plot')}
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Tabs */}
             <div className="border-b border-[color:var(--border-color)] mb-6">
                 <nav className="-mb-px flex space-x-8">
-                    {steps.map((step, idx) => (
+                    {visibleSteps.map((step, idx) => (
                         <button
                             key={step.id}
                             onClick={() => setActiveTab(idx)}
                             className={`
                                 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
-                                ${activeTab === idx
+                                ${safeActiveTab === idx
                                     ? 'border-[color:var(--accent)] text-[color:var(--accent)]'
                                     : 'border-transparent text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:border-[color:var(--border-color)]'}
                             `}
@@ -407,25 +614,30 @@ const StepResults = ({ runId, datasetId }) => {
 
             {/* Content Body */}
             <div className="bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] p-6">
-                {activeStep.data.type === 'table_1' && (
-                    <Table1View data={activeStep.data} />
-                )}
+                {!activeStep ? (
+                    <div className="text-sm text-[color:var(--text-secondary)]">Нет выбранных секций отчёта</div>
+                ) : (
+                    <>
+                        {activeStep.data.type === 'table_1' && (
+                            <Table1View data={activeStep.data} />
+                        )}
 
-                {(activeStep.data.p_value !== undefined) && (
-                    <CompareView result={activeStep.data} stepId={activeStep.id} />
-                )}
+                        {(activeStep.data.p_value !== undefined) && (
+                            <CompareView result={activeStep.data} stepId={activeStep.id} />
+                        )}
 
-                {activeStep.data.error && (
-                    <div className="text-[color:var(--error)] p-4 bg-[color:var(--bg-secondary)] rounded-[2px] border border-[color:var(--border-color)]">
-                        {t('analysis_error')}: {activeStep.data.error}
-                    </div>
-                )}
+                        {activeStep.data.error && (
+                            <div className="text-[color:var(--error)] p-4 bg-[color:var(--bg-secondary)] rounded-[2px] border border-[color:var(--border-color)]">
+                                {t('analysis_error')}: {activeStep.data.error}
+                            </div>
+                        )}
 
-                {/* Fallback JSON view for debugging or unknown types */}
-                {!['table_1'].includes(activeStep.data.type) && activeStep.data.p_value === undefined && (
-                    <pre className="text-xs bg-[color:var(--bg-secondary)] p-4 rounded-[2px] border border-[color:var(--border-color)] overflow-auto max-h-96">
-                        {JSON.stringify(activeStep.data, null, 2)}
-                    </pre>
+                        {!['table_1'].includes(activeStep.data.type) && activeStep.data.p_value === undefined && (
+                            <pre className="text-xs bg-[color:var(--bg-secondary)] p-4 rounded-[2px] border border-[color:var(--border-color)] overflow-auto max-h-96">
+                                {JSON.stringify(activeStep.data, null, 2)}
+                            </pre>
+                        )}
+                    </>
                 )}
             </div>
         </div>

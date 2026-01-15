@@ -36,6 +36,11 @@ const resources = {
       "unknown": "неизвестно",
       "unknown_error": "Неизвестная ошибка",
       "no_results_yet": "Пока нет результатов",
+      "preview": "Предпросмотр",
+      "sample_size_short": "Малая выборка",
+      "no_variation_warning": "Нет вариации в данных",
+      "groups_too_few_warning": "Слишком мало групп",
+      "groups_too_many_warning": "Слишком много групп",
       
       // Analysis types
       "analysis_type": "Тип анализа",
@@ -262,7 +267,29 @@ const resources = {
       "optional_ai": "Опционально: AI рекомендации",
       "analysis_results": "Результаты анализа",
       "view_results": "Просмотреть результаты",
-      "hide_results": "Скрыть результаты"
+      "hide_results": "Скрыть результаты",
+
+      "settings_title": "Настройки",
+      "settings_subtitle": "Персонализируйте поведение анализа",
+      "settings_alpha_title": "Уровень значимости (α)",
+      "settings_alpha_desc": "Порог статистической значимости: p < α считается значимым.",
+      "settings_alpha_001_label": "0.01 (Очень строго)",
+      "settings_alpha_001_desc": "Выше уверенность, ниже риск ложноположительных",
+      "settings_alpha_005_label": "0.05 (Стандарт)",
+      "settings_alpha_005_desc": "Самый распространённый порог в исследованиях",
+      "settings_alpha_010_label": "0.10 (Мягко)",
+      "settings_alpha_010_desc": "Выше чувствительность для разведочного анализа",
+
+      "settings_education_title": "Уровень объяснений",
+      "settings_education_desc": "Определяет глубину подсказок и пояснений в интерфейсе.",
+      "settings_education_junior_label": "Junior",
+      "settings_education_junior_desc": "Коротко и интуитивно",
+      "settings_education_mid_label": "Mid",
+      "settings_education_mid_desc": "Больше деталей и практических нюансов",
+      "settings_education_senior_label": "Senior",
+      "settings_education_senior_desc": "Техническая глубина и оговорки",
+
+      "settings_saved": "Настройки сохранены"
     }
   },
   en: {
@@ -298,6 +325,11 @@ const resources = {
       "unknown": "unknown",
       "unknown_error": "Unknown error",
       "no_results_yet": "No results yet",
+      "preview": "Preview",
+      "sample_size_short": "Small sample",
+      "no_variation_warning": "No variation in data",
+      "groups_too_few_warning": "Too few groups",
+      "groups_too_many_warning": "Too many groups",
       
       // Analysis types
       "analysis_type": "Analysis type",
@@ -510,7 +542,29 @@ const resources = {
       "optional_ai": "Optional: AI recommendations",
       "analysis_results": "Analysis results",
       "view_results": "View results",
-      "hide_results": "Hide results"
+      "hide_results": "Hide results",
+
+      "settings_title": "Settings",
+      "settings_subtitle": "Configure your analysis preferences",
+      "settings_alpha_title": "Significance Level (α)",
+      "settings_alpha_desc": "The threshold for statistical significance. Results with p-value < α are considered statistically significant.",
+      "settings_alpha_001_label": "0.01 (Very Strict)",
+      "settings_alpha_001_desc": "Higher confidence, lower false positive rate",
+      "settings_alpha_005_label": "0.05 (Standard)",
+      "settings_alpha_005_desc": "Most common in scientific research",
+      "settings_alpha_010_label": "0.10 (More Lenient)",
+      "settings_alpha_010_desc": "Higher sensitivity, exploratory analysis",
+
+      "settings_education_title": "Education Level",
+      "settings_education_desc": "Controls how deep the in-app explanations go.",
+      "settings_education_junior_label": "Junior",
+      "settings_education_junior_desc": "Short, intuitive explanations",
+      "settings_education_mid_label": "Mid",
+      "settings_education_mid_desc": "More detail and practical nuance",
+      "settings_education_senior_label": "Senior",
+      "settings_education_senior_desc": "Technical depth and caveats",
+
+      "settings_saved": "Settings saved successfully"
     }
   }
 };

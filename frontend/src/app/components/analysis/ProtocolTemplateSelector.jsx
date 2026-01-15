@@ -59,10 +59,19 @@ function buildValidation(templateVars, templateSecondaryKey, typeByName, columnS
     if (templateSecondaryKey === 'predictor') {
       if (!secondaryType.includes('num') && secondaryType !== 'numeric') errors.push('Predictor должен быть числовой переменной.');
     } else {
-      if (!secondaryType.includes('cat') && secondaryType !== 'categorical') errors.push('Group должен быть категориальной переменной.');
-      const uc = columnStatsByName?.[secondaryName]?.unique_count;
-      if (typeof uc === 'number' && (uc < 2 || uc > 5)) {
-        warnings.push(`Для Group обычно ожидается 2–5 категорий (сейчас: ${uc}).`);
+      // For Group: allow categorical OR numeric with low unique count
+      const uniqueCount = columnStatsByName?.[secondaryName]?.unique_count;
+      const isLowCardinality = typeof uniqueCount === 'number' && uniqueCount >= 2 && uniqueCount <= 10;
+
+      if (!secondaryType.includes('cat') && secondaryType !== 'categorical' && !isLowCardinality) {
+        errors.push('Group должен быть категориальной переменной или иметь мало уникальных значений.');
+      } else if (!secondaryType.includes('cat') && secondaryType !== 'categorical' && isLowCardinality) {
+        // It's numeric but low cardinality - just warn, don't error
+        warnings.push(`Переменная "${secondaryName}" числовая, но имеет ${uniqueCount} уникальных значений — можно использовать как группу.`);
+      }
+
+      if (typeof uniqueCount === 'number' && (uniqueCount < 2 || uniqueCount > 20)) {
+        warnings.push(`Для Group обычно ожидается 2–10 категорий (сейчас: ${uniqueCount}).`);
       }
     }
   }
