@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatasets } from '../../lib/api';
+import { getDatasets, deleteDataset } from '../../lib/api';
 import { PlusIcon, DocumentIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 
@@ -21,6 +21,16 @@ export default function DatasetList() {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id, filename) => {
+        if (!confirm(`Удалить датасет "${filename}"?`)) return;
+        try {
+            await deleteDataset(id);
+            await loadDatasets(); // Reload list
+        } catch (err) {
+            alert('Ошибка удаления: ' + err.message);
         }
     };
 
@@ -145,10 +155,10 @@ export default function DatasetList() {
                     <table style={{ fontSize: '13px' }}>
                         <thead>
                             <tr>
-                                <th>Filename</th>
-                                <th>ID</th>
-                                <th>Uploaded</th>
-                                <th style={{ textAlign: 'right' }}>Actions</th>
+                                <th>Имя файла</th>
+                                <th style={{ minWidth: '300px' }}>ID</th>
+                                <th>Загружен</th>
+                                <th style={{ textAlign: 'right' }}>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -169,18 +179,19 @@ export default function DatasetList() {
                                         </span>
                                         <span>{ds.filename}</span>
                                     </td>
-                                    <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{ds.id.substring(0, 8)}...</td>
+                                    <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)', fontSize: '11px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ds.id}>{ds.id}</td>
                                     <td style={{ color: 'var(--text-secondary)' }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                             <CalendarIcon className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                                            Today
+                                            {ds.uploaded_at ? new Date(ds.uploaded_at).toLocaleDateString('ru-RU') : 'Неизвестно'}
                                         </span>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'inline-flex', gap: '12px' }}>
-                                            <Link to={`/profile/${ds.id}`} style={{ color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none' }}>Profile</Link>
-                                            <Link to={`/design/${ds.id}`} style={{ color: 'var(--text-primary)', fontWeight: 700, textDecoration: 'none' }}>Design</Link>
-                                            <Link to={`/analyze/${ds.id}`} style={{ color: 'var(--accent)', fontWeight: 800, textDecoration: 'none' }}>Analyze</Link>
+                                            <Link to={`/prep/${ds.id}`} style={{ color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none' }}>Таблица</Link>
+                                            <Link to={`/design/${ds.id}`} style={{ color: 'var(--text-primary)', fontWeight: 700, textDecoration: 'none' }}>Дизайн</Link>
+                                            <Link to={`/analyze/${ds.id}`} style={{ color: 'var(--accent)', fontWeight: 800, textDecoration: 'none' }}>Анализ</Link>
+                                            <button onClick={() => handleDelete(ds.id, ds.filename)} style={{ color: 'var(--accent)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Удалить</button>
                                         </div>
                                     </td>
                                 </tr>
