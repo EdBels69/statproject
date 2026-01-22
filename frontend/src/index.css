@@ -164,6 +164,117 @@ button {
   opacity: 0.9;
 }
 
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 2px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 22%, var(--border-color));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--white) 94%, var(--black)) 0%,
+    var(--white) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(10, 10, 10, 0.08),
+    0 14px 28px -24px rgba(10, 10, 10, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0 rgba(10, 10, 10, 0.10);
+}
+
+.table-actions:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.table-actions .action-chip + .action-chip {
+  border-left: 1px solid color-mix(in oklab, var(--text-primary) 18%, var(--border-color));
+}
+
+.table-actions .action-chip:first-child {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.table-actions .action-chip:last-child {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.action-chip:hover {
+  background: color-mix(in oklab, var(--bg-tertiary) 70%, transparent);
+}
+
+.action-chip:active {
+  background: color-mix(in oklab, var(--bg-tertiary) 90%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(10, 10, 10, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.70);
+}
+
+.action-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.action-chip--neutral {
+  color: var(--text-secondary);
+}
+
+.action-chip--dark {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--black) 9%, var(--white)) 0%,
+    color-mix(in oklab, var(--black) 2%, var(--white)) 100%
+  );
+  color: var(--text-primary);
+}
+
+.action-chip--dark:hover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--black) 12%, var(--white)) 0%,
+    color-mix(in oklab, var(--black) 4%, var(--white)) 100%
+  );
+}
+
+.action-chip--accent {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 22%, var(--white)) 0%,
+    color-mix(in oklab, var(--accent) 10%, var(--white)) 100%
+  );
+  color: var(--text-primary);
+}
+
+.action-chip--danger {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--error) 18%, var(--white)) 0%,
+    color-mix(in oklab, var(--error) 8%, var(--white)) 100%
+  );
+  color: color-mix(in oklab, var(--error) 82%, var(--black));
+}
+
 /* Cards */
 .card {
   background: var(--white);

@@ -9,26 +9,27 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 function HeaderRenderer(props) {
     const { displayName, column } = props;
-    const type = column?.getColDef()?.typeTag;
-
-    let badge = 'T';
-    let badgeClass = 'text-[color:var(--text-secondary)] bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]';
-    if (type === 'numeric') {
-        badge = '#';
-        badgeClass = 'text-[color:var(--accent)] bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]';
-    } else if (type === 'categorical') {
-        badge = 'Ab';
-        badgeClass = 'text-[color:var(--text-primary)] bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]';
-    } else if (type === 'datetime') {
-        badge = '⏱';
-        badgeClass = 'text-[color:var(--text-muted)] bg-[color:var(--bg-secondary)] border-[color:var(--border-color)]';
-    }
 
     return (
-        <div className="flex items-center gap-2 min-w-0">
-            <span className={`text-[10px] font-bold px-1 py-0.5 rounded-[2px] border ${badgeClass}`}>{badge}</span>
+        <div className="flex items-center gap-2 min-w-0 group">
             <span className="truncate font-bold text-[color:var(--text-primary)]">{displayName}</span>
-            <span className="ml-auto opacity-40 text-[10px]">▼</span>
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const colName = column?.getColDef?.()?.field;
+                    const onHeaderMenu = props?.context?.onHeaderMenu;
+                    if (!colName || typeof onHeaderMenu !== 'function') return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    onHeaderMenu({ colName, x: r.left, y: r.bottom + 6 });
+                }}
+                className="ml-auto h-6 w-6 rounded-[2px] border border-transparent text-[color:var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-[color:var(--text-primary)] hover:border-[color:var(--border-color)] transition"
+                aria-label="Меню столбца"
+                title="Меню столбца"
+            >
+                ⋯
+            </button>
         </div>
     );
 }
@@ -45,10 +46,11 @@ function RowIndexCellRenderer(props) {
                     e.stopPropagation();
                     onDelete?.();
                 }}
-                className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-[color:var(--bg-secondary)] text-[color:var(--error)]"
-                aria-label="Delete row"
+                className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-[color:var(--bg-secondary)] text-[color:var(--error)] text-xs font-semibold"
+                aria-label="Удалить строку"
+                title="Удалить строку"
             >
-                🗑
+                Удалить
             </button>
         </div>
     );
@@ -90,7 +92,7 @@ export default function EditableDataGrid({
                 onDelete: () => {
                     const rowIndex = p?.node?.rowIndex;
                     if (typeof rowIndex !== 'number') return;
-                    if (!confirm('Delete row?')) return;
+                    if (!confirm('Удалить строку?')) return;
                     onDropRow?.(rowIndex);
                 },
             }),
@@ -188,6 +190,7 @@ export default function EditableDataGrid({
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     quickFilterText={quickFilterText || ''}
+                    context={{ onHeaderMenu }}
                     singleClickEdit={false}
                     stopEditingWhenCellsLoseFocus
                     suppressRowClickSelection

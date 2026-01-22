@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 def get_dataset_path(dataset_id: str, data_dir: str) -> Tuple[Optional[str], str]:
     """
@@ -110,3 +110,86 @@ def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
     except Exception:
         pass
     return df
+
+
+def _get_processed_parquet_path(dataset_id: str, data_dir: str) -> str:
+    return os.path.join(data_dir, dataset_id, "processed", f"{dataset_id}.parquet")
+
+
+def _get_processed_csv_paths(dataset_id: str, data_dir: str) -> List[str]:
+    upload_dir = os.path.join(data_dir, dataset_id)
+    return [
+        os.path.join(upload_dir, "processed", "data.csv"),
+        os.path.join(upload_dir, "processed.csv"),
+    ]
+
+
+def get_dataset_columns(dataset_id: str, data_dir: str) -> List[str]:
+    parquet_path = _get_processed_parquet_path(dataset_id, data_dir)
+    if os.path.exists(parquet_path):
+        import pyarrow.parquet as pq
+
+        meta = pq.read_metadata(parquet_path)
+        return [str(c) for c in meta.schema.names]
+
+    for csv_path in _get_processed_csv_paths(dataset_id, data_dir):
+        if os.path.exists(csv_path):
+            df0 = pd.read_csv(csv_path, nrows=0)
+            return [str(c) for c in df0.columns]
+
+    df = get_dataframe(dataset_id, data_dir)
+    return [str(c) for c in df.columns]
+
+
+def get_dataset_row_count(dataset_id: str, data_dir: str) -> int:
+    parquet_path = _get_processed_parquet_path(dataset_id, data_dir)
+    if os.path.exists(parquet_path):
+        import pyarrow.parquet as pq
+
+        meta = pq.read_metadata(parquet_path)
+        return int(meta.num_rows)
+
+    for csv_path in _get_processed_csv_paths(dataset_id, data_dir):
+        if os.path.exists(csv_path):
+            with open(csv_path, "rb") as f:
+                total = 0
+                for _ in f:
+                    total += 1
+            return max(0, total - 1)
+
+    df = get_dataframe(dataset_id, data_dir)
+    return int(len(df))
+
+
+def get_dataframe_window(
+    dataset_id: str,
+    data_dir: str,
+    columns: List[str],
+    start: int,
+    end: int,
+) -> pd.DataFrame:
+    safe_cols = [str(c) for c in (columns or []) if c is not None]
+    safe_start = max(0, int(start))
+    safe_end = max(safe_start, int(end))
+
+    parquet_path = _get_processed_parquet_path(dataset_id, data_dir)
+    if os.path.exists(parquet_path):
+        df = pd.read_parquet(parquet_path, columns=safe_cols or None)
+        return df.iloc[safe_start:safe_end]
+
+    for csv_path in _get_processed_csv_paths(dataset_id, data_dir):
+        if os.path.exists(csv_path):
+            nrows = max(0, safe_end - safe_start)
+            skiprows = range(1, safe_start + 1) if safe_start > 0 else None
+            return pd.read_csv(
+                csv_path,
+                usecols=safe_cols or None,
+                nrows=nrows,
+                skiprows=skiprows,
+                low_memory=False,
+            )
+
+    df = get_dataframe(dataset_id, data_dir)
+    if safe_cols:
+        df = df[safe_cols]
+    return df.iloc[safe_start:safe_end]

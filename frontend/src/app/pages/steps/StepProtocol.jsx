@@ -23,7 +23,7 @@ const StepProtocol = ({ data, onResultsReady }) => {
                 );
                 setProtocol(proto);
             } catch (err) {
-                setError("Failed to generate study design: " + err.message);
+                setError("Не удалось сформировать дизайн исследования: " + err.message);
             } finally {
                 setLoading(false);
             }
@@ -40,10 +40,10 @@ const StepProtocol = ({ data, onResultsReady }) => {
             if (res.run_id) {
                 onResultsReady(res.run_id);
             } else {
-                setError("Analysis failed to start.");
+                setError("Не удалось запустить анализ.");
             }
         } catch (err) {
-            setError("Execution failed: " + err.message);
+            setError("Ошибка выполнения: " + err.message);
             setRunning(false);
         }
     };
@@ -52,8 +52,8 @@ const StepProtocol = ({ data, onResultsReady }) => {
         return (
             <div className="flex flex-col items-center justify-center py-20 animate-pulse">
                 <BeakerIcon className="w-16 h-16 text-[color:var(--accent)] mb-4" />
-                <h3 className="text-xl font-medium text-[color:var(--text-primary)]">Designing Study Protocol...</h3>
-                <p className="text-[color:var(--text-secondary)] mt-2">AI is analyzing variable types and normality</p>
+                <h3 className="text-xl font-medium text-[color:var(--text-primary)]">Формируем протокол исследования…</h3>
+                <p className="text-[color:var(--text-secondary)] mt-2">AI анализирует типы переменных и нормальность распределения</p>
             </div>
         );
     }
@@ -61,9 +61,9 @@ const StepProtocol = ({ data, onResultsReady }) => {
     if (error) {
         return (
             <div className="bg-[color:var(--bg-secondary)] border border-[color:var(--error)] p-6 rounded-[2px] text-center">
-                <div className="text-[color:var(--error)] font-medium mb-2">Error</div>
+                <div className="text-[color:var(--error)] font-medium mb-2">Ошибка</div>
                 {error}
-                <button onClick={() => window.location.reload()} className="mt-4 text-sm text-[color:var(--accent)] underline">Retry</button>
+                <button onClick={() => window.location.reload()} className="mt-4 text-sm text-[color:var(--accent)] underline">Повторить</button>
             </div>
         );
     }
@@ -75,9 +75,9 @@ const StepProtocol = ({ data, onResultsReady }) => {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-[2px] bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] text-[color:var(--accent)] mb-4">
                     <ClipboardDocumentCheckIcon className="w-6 h-6" />
                 </div>
-                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Proposed Analysis Plan</h2>
+                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">Предложенный план анализа</h2>
                 <p className="text-[color:var(--text-secondary)] mt-2">
-                    Based on your goal <strong>{data.goal?.replace('_', ' ')}</strong>, we recommend the following pipeline:
+                    На основе вашей цели <strong>{data.goal?.replace('_', ' ')}</strong> рекомендуем следующую цепочку шагов:
                 </p>
             </div>
 
@@ -86,7 +86,7 @@ const StepProtocol = ({ data, onResultsReady }) => {
                 <div className="bg-[color:var(--bg-secondary)] p-4 border-b border-[color:var(--border-color)] flex justify-between items-center">
                     <span className="font-semibold text-[color:var(--text-primary)]">{protocol.name}</span>
                     <span className="text-xs bg-[color:var(--white)] border border-[color:var(--border-color)] text-[color:var(--text-secondary)] px-2 py-1 rounded-[2px] uppercase tracking-wide">
-                        {protocol.steps.length} Steps
+                        {protocol.steps.length} шагов
                     </span>
                 </div>
 
@@ -101,9 +101,9 @@ const StepProtocol = ({ data, onResultsReady }) => {
                                     {step.type.replace(/_/g, ' ')}
                                 </h4>
                                 <p className="text-sm text-[color:var(--text-secondary)] mt-1">
-                                    Target: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.target}</code>
-                                    {step.group && <> vs Group: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.group}</code></>}
-                                    {step.split_by && <> (Split by: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] text-[color:var(--accent)] px-1 rounded-[2px]">{step.split_by}</code>)</>}
+                                    Цель: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.target}</code>
+                                    {step.group && <> · Группировка: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] px-1 rounded-[2px]">{step.group}</code></>}
+                                    {step.split_by && <> · Разбить по: <code className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] text-[color:var(--accent)] px-1 rounded-[2px]">{step.split_by}</code></>}
                                 </p>
                             </div>
                         </div>
@@ -121,12 +121,12 @@ const StepProtocol = ({ data, onResultsReady }) => {
                     {running ? (
                         <>
                             <ArrowPathIcon className="w-5 h-5 mr-2 animate-spin" />
-                            Running Analysis...
+                            Запускаю анализ…
                         </>
                     ) : (
                         <>
                             <PlayIcon className="w-5 h-5 mr-2" />
-                            Confirm & Run Protocol
+                            Подтвердить и запустить
                         </>
                     )}
                 </button>

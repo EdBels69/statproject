@@ -303,4 +303,4 @@ def read_dataset_columns(dataset_id: str, columns: List[str]) -> pd.DataFrame:
             parquet_handler.csv_to_parquet(str(csv_path), dataset_id)
             return df
         else:
-            raise FileNotFoundError(f"Dataset not found: {dataset_id}")
+            raise FileNotFoundError(f"Файл данных не найден: {dataset_id}")

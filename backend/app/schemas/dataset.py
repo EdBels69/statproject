@@ -13,6 +13,10 @@ class DatasetProfile(BaseModel):
     col_count: int
     columns: List[ColumnInfo]
     head: List[Dict[str, Any]]  # Current page rows
+    head_col_offset: int = 0
+    head_col_limit: int = 0
+    stats_sampled: bool = False
+    stats_sample_rows: Optional[int] = None
     page: int = 1
     total_pages: int = 1
 

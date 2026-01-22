@@ -18,7 +18,7 @@ const GoalCard = ({ title, description, icon: Icon, active, onClick }) => {
             onClick={onClick}
             type="button"
             aria-pressed={active}
-            aria-label={`Select ${title}: ${description}`}
+            aria-label={`Выбрать ${title}: ${description}`}
             className={`p-6 rounded-[2px] border cursor-pointer transition-colors duration-200 flex flex-col items-center text-center group ${active
                 ? 'border-[color:var(--accent)] bg-[color:var(--bg-secondary)]'
                 : 'border-[color:var(--border-color)] bg-[color:var(--white)] hover:border-[color:var(--accent)]'
@@ -35,25 +35,25 @@ const GoalCard = ({ title, description, icon: Icon, active, onClick }) => {
 };
 
 const STEPS = [
-    { id: 'goal', title: 'Start' },
-    { id: 'data', title: 'Data Prep' },
-    { id: 'protocol', title: 'Study Design' },
-    { id: 'results', title: 'Results' }
+    { id: 'goal', title: 'Старт' },
+    { id: 'data', title: 'Подготовка данных' },
+    { id: 'protocol', title: 'Дизайн' },
+    { id: 'results', title: 'Результаты' }
 ];
 
 const StepGoal = ({ selectedGoal, onSelect }) => {
     const goals = [
-        { id: 'compare_groups', title: 'Compare Groups', desc: 'Find differences between two or more groups (e.g. Treatment vs Control).', icon: UserGroupIcon },
-        { id: 'relationship', title: 'Find Relationships', desc: 'Analyze correlations or associations between variables.', icon: ChartBarIcon },
-        { id: 'prediction', title: 'Make Predictions', desc: 'Predict an outcome based on multiple risk factors.', icon: ArrowTrendingUpIcon },
-        { id: 'survival', title: 'Survival Analysis', desc: 'Time-to-event analysis (Kaplan-Meier, Cox Regression).', icon: ClockIcon },
-        { id: 'repeated_measures', title: 'Repeated Measures', desc: 'Same subjects measured multiple times (e.g. Before/During/After treatment).', icon: ArrowPathIcon },
+        { id: 'compare_groups', title: 'Сравнить группы', desc: 'Найти различия между двумя или более группами (например, лечение vs контроль).', icon: UserGroupIcon },
+        { id: 'relationship', title: 'Найти связи', desc: 'Проанализировать корреляции или ассоциации между переменными.', icon: ChartBarIcon },
+        { id: 'prediction', title: 'Сделать прогноз', desc: 'Предсказать исход на основе нескольких факторов риска.', icon: ArrowTrendingUpIcon },
+        { id: 'survival', title: 'Анализ выживаемости', desc: 'Время до события (Каплан—Майер, регрессия Кокса).', icon: ClockIcon },
+        { id: 'repeated_measures', title: 'Повторные измерения', desc: 'Те же участники измеряются несколько раз (например, до/во время/после лечения).', icon: ArrowPathIcon },
     ];
 
     return (
         <div className="animate-fadeIn">
-            <h2 className="text-xl font-semibold mb-2">What is your research question?</h2>
-            <p className="text-[color:var(--text-secondary)] mb-8">Select the primary goal of your analysis to get AI-guided recommendations.</p>
+            <h2 className="text-xl font-semibold mb-2">Какой у вас исследовательский вопрос?</h2>
+            <p className="text-[color:var(--text-secondary)] mb-8">Выберите основную цель анализа, чтобы получить рекомендации ИИ.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {goals.map((goal) => (
@@ -155,9 +155,9 @@ export default function NewWizard() {
                             ? 'text-[color:var(--text-muted)] cursor-not-allowed'
                             : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)]'
                             } `}
-                        aria-label="Go back to previous step"
+                        aria-label="Вернуться к предыдущему шагу"
                     >
-                        Back
+                        Назад
                     </button>
 
                     <button
@@ -170,9 +170,9 @@ export default function NewWizard() {
                             ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-muted)] cursor-not-allowed border-[color:var(--border-color)]'
                             : 'bg-[color:var(--accent)] text-[color:var(--white)] border-[color:var(--accent)] hover:bg-[color:var(--accent-hover)] hover:border-[color:var(--accent-hover)]'
                             } `}
-                        aria-label="Continue to next step"
+                        aria-label="Перейти к следующему шагу"
                     >
-                        Continue
+                        Продолжить
                     </button>
                 </div>
             )}

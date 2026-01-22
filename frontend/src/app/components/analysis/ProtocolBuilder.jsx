@@ -16,16 +16,18 @@ import { useTranslation } from '../../../hooks/useTranslation';
 
 const ProtocolBuilder = ({
   protocol,
-  datasetName,
   onRemoveTest,
   onEditTest,
   onMoveTest,
   onExecuteProtocol,
   onAISuggest,
+  onVibeDesign,
   onSaveProtocol,
   onOpenProtocols,
   onUndo,
   onRedo,
+  selectedStepId,
+  onSelectStep,
   canUndo = false,
   canRedo = false,
   isExecuting = false,
@@ -67,12 +69,10 @@ const ProtocolBuilder = ({
   };
 
   const getTestDisplayName = (test) => {
-    if (test.method === 'mixed_effects') {
-      return 'Mixed Effects (LMM)';
-    }
-    if (test.method === 'clustered_correlation') {
-      return 'Clustered Correlation';
-    }
+    const translated = t(test.method);
+    if (translated && translated !== test.method) return translated;
+    if (test.method === 'mixed_effects') return 'Смешанные эффекты (LMM)';
+    if (test.method === 'clustered_correlation') return 'Кластерная корреляция';
     return test.method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -104,96 +104,88 @@ const ProtocolBuilder = ({
 
   return (
     <div className="h-full flex flex-col bg-[color:var(--bg-secondary)]">
-      <div className="p-4 border-b border-[color:var(--border-color)] bg-[color:var(--white)]">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[color:var(--text-primary)] flex items-center gap-2">
-            <DocumentTextIcon className="w-5 h-5 text-[color:var(--accent)]" />
-            {t('protocol_builder')}
-          </h2>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onUndo}
-              disabled={!canUndo || isExecuting}
-              className="p-2 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-              title="Отменить (Ctrl+Z)"
-              aria-label="Отменить"
-              aria-keyshortcuts="Control+Z Meta+Z"
-            >
-              <ArrowUturnLeftIcon className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={onRedo}
-              disabled={!canRedo || isExecuting}
-              className="p-2 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-              title="Повторить (Ctrl+Shift+Z)"
-              aria-label="Повторить"
-              aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z"
-            >
-              <ArrowUturnRightIcon className="w-5 h-5" />
-            </button>
-          </div>
+      <div className="h-12 px-4 border-b border-[color:var(--border-color)] bg-[color:var(--white)] flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <DocumentTextIcon className="w-5 h-5 text-[color:var(--accent)]" />
+          <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase truncate">{t('protocol_builder')}</div>
         </div>
-        
-        {datasetName && (
-          <div className="mt-2 p-2 bg-[color:var(--bg-secondary)] rounded-[2px]">
-            <div className="text-xs text-[color:var(--accent)] font-medium">
-              Dataset:
-            </div>
-            <div className="text-sm text-[color:var(--text-primary)] truncate">
-              {datasetName}
-            </div>
-          </div>
-        )}
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo || isExecuting}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+            title="Отменить (Ctrl+Z)"
+            aria-label="Отменить"
+            aria-keyshortcuts="Control+Z Meta+Z"
+          >
+            <ArrowUturnLeftIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={!canRedo || isExecuting}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+            title="Повторить (Ctrl+Shift+Z)"
+            aria-label="Повторить"
+            aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z"
+          >
+            <ArrowUturnRightIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-4">
         {protocol.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-[color:var(--text-muted)]">
-            <DocumentTextIcon className="w-12 h-12 mb-3 opacity-50" />
-            <p className="text-sm text-center">
-              {t('protocol_empty')}
-            </p>
-            <p className="text-xs text-center mt-1">
-              {t('protocol_empty_hint')}
-            </p>
+          <div className="h-full flex items-center justify-center">
+            <div className="max-w-sm text-center">
+              <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('protocol_empty')}</div>
+              <div className="mt-2 text-sm text-[color:var(--text-secondary)]">{t('protocol_empty_hint')}</div>
+              <div className="mt-4 text-xs text-[color:var(--text-muted)]">Добавь тест слева — он появится здесь как шаг.</div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="relative pl-6 space-y-3">
+            <div className="absolute left-2 top-1 bottom-1 w-px bg-[color:var(--border-color)]" />
             {protocol.map((test, index) => {
               const isExpanded = expandedTests[test.id];
               const displayName = getTestDisplayName(test);
               const description = getTestDescription(test);
               const isLeaving = Boolean(leavingTestIds?.[test.id]);
+              const isSelected = selectedStepId === test.id;
 
               return (
                 <div
                   key={test.id}
-                  className={`bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden transition-all duration-200 ease-out animate-slideUp ${isLeaving ? 'opacity-0 translate-x-2 scale-[0.99] pointer-events-none' : 'opacity-100 translate-x-0 scale-100'}`}
+                  className={`relative bg-[color:var(--white)] border rounded-[2px] overflow-hidden transition-all duration-200 ease-out ${isLeaving ? 'opacity-0 translate-x-2 scale-[0.99] pointer-events-none' : 'opacity-100 translate-x-0 scale-100'} ${isSelected ? 'border-black' : 'border-[color:var(--border-color)]'}`}
                 >
-                  <div className="p-3">
-                    <div className="flex items-start justify-between">
+                  <button
+                    type="button"
+                    onClick={() => onSelectStep?.(test.id)}
+                    className="absolute inset-0 z-10 cursor-pointer"
+                    aria-label={displayName}
+                  />
+                  <div className="absolute -left-[22px] top-4 h-3 w-3 rounded-full border border-[color:var(--border-color)] bg-[color:var(--white)]" />
+
+                  <div className="relative z-20 p-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-[color:var(--text-muted)]">
-                            {index + 1}.
-                          </span>
-                          <div className="font-medium text-[color:var(--text-primary)] text-sm">
-                            {displayName}
-                          </div>
+                        <div className="flex items-baseline gap-2 min-w-0">
+                          <span className="text-[10px] font-semibold tracking-[0.2em] text-[color:var(--text-muted)] uppercase tabular-nums">{index + 1}</span>
+                          <div className="font-semibold text-[color:var(--text-primary)] text-sm truncate">{displayName}</div>
                         </div>
                         
                         {description && (
-                          <div className="text-xs text-[color:var(--text-muted)] mt-1 ml-6">
+                          <div className="text-xs text-[color:var(--text-secondary)] mt-1 font-mono truncate">
                             {description}
                           </div>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-shrink-0 relative">
                         <button
+                          type="button"
                           onClick={() => handleMoveUp(index)}
                           disabled={index === 0}
                           className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
@@ -203,6 +195,7 @@ const ProtocolBuilder = ({
                           <ArrowUpIcon className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleMoveDown(index)}
                           disabled={index === protocol.length - 1}
                           className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
@@ -212,6 +205,7 @@ const ProtocolBuilder = ({
                           <ArrowDownIcon className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => onEditTest(test)}
                           className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--accent)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] active:scale-[0.98]"
                           title={t('edit')}
@@ -220,6 +214,7 @@ const ProtocolBuilder = ({
                           <PencilIcon className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleRemoveWithAnimation(test.id)}
                           className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--error)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] active:scale-[0.98]"
                           title={t('remove')}
@@ -230,10 +225,11 @@ const ProtocolBuilder = ({
                       </div>
                     </div>
 
-                    {test.config && (
+                    {test.config ? (
                       <button
+                        type="button"
                         onClick={() => toggleTestExpansion(test.id)}
-                        className="flex items-center gap-1 text-xs text-[color:var(--accent)] hover:opacity-80 mt-2"
+                        className="relative mt-2 flex items-center gap-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                       >
                         {isExpanded ? (
                           <ChevronUpIcon className="w-3 h-3" />
@@ -242,7 +238,7 @@ const ProtocolBuilder = ({
                         )}
                         {isExpanded ? t('hide_details') : t('show_details')}
                       </button>
-                    )}
+                    ) : null}
 
                     {isExpanded && test.config && (
                       <div className="mt-2 p-2 bg-[color:var(--bg-secondary)] rounded-[2px] text-xs space-y-1">
@@ -266,49 +262,62 @@ const ProtocolBuilder = ({
         )}
       </div>
 
-      <div className="p-3 border-t border-[color:var(--border-color)] bg-[color:var(--white)] space-y-2">
-        <div className="grid grid-cols-2 gap-2">
+      <div className="p-3 border-t border-[color:var(--border-color)] bg-[color:var(--white)]">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onExecuteProtocol(protocol)}
+            disabled={isExecuting || protocol.length === 0}
+            className="flex-1 h-10 inline-flex items-center justify-center gap-2 px-4 rounded-[2px] bg-[color:var(--accent)] text-[color:var(--white)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            title="Выполнить протокол (Ctrl+Enter)"
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+          >
+            <PlayIcon className="w-5 h-5" />
+            {isExecuting ? t('executing') : t('execute_protocol')}
+          </button>
+
+          <button
+            type="button"
+            onClick={onAISuggest}
+            disabled={isAIAnalyzing || protocol.length === 0}
+            className="h-10 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--accent)] bg-[color:var(--white)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t('ai_suggest_tests')}
+          >
+            <SparklesIcon className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onVibeDesign?.()}
+            disabled={isExecuting}
+            className="h-10 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)] bg-[color:var(--white)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Собрать протокол из текста"
+          >
+            <span className="text-[10px] font-black tracking-[0.24em]">TXT</span>
+          </button>
+
           <button
             type="button"
             onClick={onSaveProtocol}
             disabled={isExecuting || protocol.length === 0}
-            className="w-full px-3 py-2 rounded-[2px] text-sm font-semibold bg-[color:var(--accent)] text-[color:var(--white)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            className="h-10 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)] bg-[color:var(--white)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
             title="Сохранить протокол (Ctrl+S)"
             aria-keyshortcuts="Control+S Meta+S"
           >
-            Сохранить протокол
+            <DocumentTextIcon className="w-4 h-4" />
           </button>
+
           <button
             type="button"
             onClick={onOpenProtocols}
             disabled={isExecuting}
-            className="w-full px-3 py-2 rounded-[2px] text-sm font-semibold bg-[color:var(--white)] border border-[color:var(--border-color)] text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-            title="Открыть библиотеку протоколов (Ctrl+O)"
+            className="h-10 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)] bg-[color:var(--white)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Мои протоколы (Ctrl+O)"
             aria-keyshortcuts="Control+O Meta+O"
           >
-            Мои протоколы
+            <DocumentTextIcon className="w-4 h-4" />
           </button>
         </div>
-
-        <button
-          onClick={onAISuggest}
-          disabled={isAIAnalyzing || protocol.length === 0}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[color:var(--white)] border border-[color:var(--border-color)] text-[color:var(--accent)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm active:scale-[0.98]"
-        >
-          <SparklesIcon className="w-4 h-4" />
-          {isAIAnalyzing ? t('ai_analyzing') : t('ai_suggest_tests')}
-        </button>
-
-        <button
-          onClick={() => onExecuteProtocol(protocol)}
-          disabled={isExecuting || protocol.length === 0}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[color:var(--accent)] text-[color:var(--white)] hover:opacity-90 rounded-[2px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium active:scale-[0.98]"
-          title="Выполнить протокол (Ctrl+Enter)"
-          aria-keyshortcuts="Control+Enter Meta+Enter"
-        >
-          <PlayIcon className="w-5 h-5" />
-          {isExecuting ? t('executing') : t('execute_protocol')}
-        </button>
       </div>
     </div>
   );

@@ -57,21 +57,21 @@ export default function Upload() {
 
     return (
         <div style={{ maxWidth: '600px', margin: '0 auto' }} className="animate-fadeIn">
-            <ResearchFlowNav active="data" className="mb-6" />
+            <ResearchFlowNav active="data" className="mb-6" showMenu={false} />
             <h1 style={{
                 fontSize: '24px',
                 fontWeight: '600',
                 marginBottom: '8px',
                 color: 'var(--text-primary)'
             }}>
-                Upload Dataset
+                Загрузить файл данных
             </h1>
             <p style={{
                 color: 'var(--text-muted)',
                 marginBottom: '32px',
                 fontSize: '14px'
             }}>
-                Drag and drop your CSV or Excel file to begin analysis.
+                Перетащите CSV или Excel-файл, чтобы начать анализ.
             </p>
 
             <form
@@ -111,7 +111,7 @@ export default function Upload() {
                         }} />
                         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                            Processing {fileName}...
+                            Обрабатываю {fileName}…
                         </p>
                     </div>
                 ) : (
@@ -128,24 +128,24 @@ export default function Upload() {
                             fontSize: '24px'
                         }}>📄</div>
                         <p style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '15px' }}>
-                            Drop your file here
+                            Перетащите файл сюда
                         </p>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '13px' }}>
-                            or click to browse
+                            или нажмите, чтобы выбрать
                         </p>
                         <label
                             htmlFor="file-upload"
                             className="btn-primary"
                             style={{ display: 'inline-block', cursor: 'pointer' }}
                         >
-                            Select File
+                            Выбрать файл
                         </label>
                         <p style={{
                             marginTop: '16px',
                             color: 'var(--text-muted)',
                             fontSize: '12px'
                         }}>
-                            Supported: CSV, XLSX, XLS
+                            Поддерживается: CSV, XLSX, XLS
                         </p>
                     </>
                 )}
@@ -162,7 +162,7 @@ export default function Upload() {
                         color: 'var(--error)'
                     }}
                 >
-                    <strong>Error:</strong> {error}
+                    <strong>Ошибка:</strong> {error}
                 </div>
             )}
         </div>

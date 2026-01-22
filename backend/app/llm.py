@@ -1,6 +1,6 @@
 import httpx
 import json
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from app.core.config import settings
 from app.schemas.analysis import AnalysisResult
 from app.core.logging import logger
@@ -174,3 +174,99 @@ Return ONLY JSON. No markdown, no commentary.
     except Exception as e:
         logger.error(f"LLM Quality Scan Error: {e}", exc_info=True)
         return []
+
+
+def _strip_json_fences(content: str) -> str:
+    text = str(content or "").strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
+
+
+async def analyze_research_design(
+    *,
+    text: str,
+    dataset_meta: Dict[str, Any],
+    current_protocol: Optional[List[Dict[str, Any]]] = None,
+    preferences: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    if not getattr(settings, "GLM_ENABLED", True):
+        return None
+
+    meta_json = json.dumps(dataset_meta, ensure_ascii=False)
+    protocol_json = json.dumps(current_protocol or [], ensure_ascii=False)
+    prefs_json = json.dumps(preferences or {}, ensure_ascii=False)
+
+    prompt = f"""
+Ты — методолог-биостатистик. По описанию исследования составь исполнимый протокол анализа.
+
+Вход:
+1) Описание исследования (текст пользователя)
+2) Метаданные датасета (только имена столбцов и типы)
+3) Текущий протокол (если есть)
+4) Предпочтения (глобальные настройки)
+
+Ограничения:
+- Не выдумывай столбцы: используй только из dataset_meta.columns.
+- Верни ТОЛЬКО JSON без markdown.
+- steps: массив шагов в порядке выполнения.
+- method: один из идентификаторов: descriptive_compare, auto, t_test_ind, t_test_welch, mann_whitney, t_test_rel, wilcoxon, anova, anova_welch, kruskal, chi_square, pearson, spearman, linear_regression, logistic_regression, mixed_effects, clustered_correlation, responders, anova_twoway, rm_anova, friedman.
+- config:
+  - Для сравнений: outcome и group обязательны.
+  - Для корреляций: outcome и group обязательны.
+  - Для регрессий: outcome, predictors (массив) и covariates (массив) при необходимости.
+  - Для mixed_effects: outcome, time, group, subject.
+  - Для clustered_correlation: variables (массив).
+  - Для responders: outcome_columns (массив), time_labels (массив), group, subject, threshold, direction.
+
+Формат ответа:
+{{
+  "status": "completed",
+  "protocol_name": "...",
+  "globals": {{
+    "alternative": "two-sided" | "less" | "greater" | null,
+    "post_hoc": "tukey" | "dunn" | "none" | null,
+    "post_hoc_correction": "bh" | "bky" | "none" | null
+  }},
+  "protocol": [
+    {{"id": "step_1", "name": "...", "method": "...", "config": {{}}}}
+  ],
+  "notes": ["..."]
+}}
+
+Описание исследования:
+{str(text or "").strip()}
+
+dataset_meta:
+{meta_json}
+
+current_protocol:
+{protocol_json}
+
+preferences:
+{prefs_json}
+"""
+
+    content = await _chat_completion(
+        model=settings.GLM_MODEL,
+        prompt=prompt,
+        temperature=0.2,
+        max_tokens=1400,
+        timeout_s=30.0,
+    )
+    if not content:
+        return None
+
+    payload = _strip_json_fences(content)
+    try:
+        parsed = json.loads(payload)
+        if isinstance(parsed, dict):
+            return parsed
+        return None
+    except Exception as e:
+        logger.error(f"LLM analyze design JSON parse error: {e}", exc_info=True)
+        return None

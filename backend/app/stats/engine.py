@@ -52,6 +52,27 @@ def _extract_ci_bounds(ci_value):
     return None, None
 
 
+def _bf10_from_p_value_bound(p_value: Any) -> Optional[float]:
+    try:
+        if p_value is None:
+            return None
+        p = float(p_value)
+        if not np.isfinite(p) or p <= 0.0 or p >= 1.0:
+            return None
+    except Exception:
+        return None
+
+    try:
+        if p >= (1.0 / float(np.e)):
+            return 1.0
+        bf01_min = -float(np.e) * p * float(np.log(p))
+        if not np.isfinite(bf01_min) or bf01_min <= 0.0:
+            return None
+        return float(1.0 / bf01_min)
+    except Exception:
+        return None
+
+
 def interpret_effect_size(effect_size: float, effect_size_name: str) -> dict:
     """
     Interpret effect size with Cohen's thresholds.
@@ -246,37 +267,172 @@ def _format_posthoc_results(posthoc_df: pd.DataFrame, alpha: float) -> Optional[
 
     return out
 
-def check_normality(data: pd.Series) -> tuple[bool, float, float]:
+
+def _apply_posthoc_correction(post_hoc: Optional[List[Dict[str, Any]]], alpha: float, correction: Optional[str]) -> Optional[List[Dict[str, Any]]]:
+    if not isinstance(post_hoc, list) or not post_hoc:
+        return post_hoc
+    corr = str(correction or '').strip().lower()
+    if not corr or corr == 'none':
+        return post_hoc
+
+    method = None
+    if corr in {'bh', 'fdr_bh'}:
+        method = 'fdr_bh'
+    elif corr in {'bky', 'fdr_tsbky'}:
+        method = 'fdr_tsbky'
+    elif corr in {'by', 'fdr_by'}:
+        method = 'fdr_by'
+    elif corr in {'bonferroni', 'bonf'}:
+        method = 'bonferroni'
+    elif corr in {'holm'}:
+        method = 'holm'
+    elif corr in {'sidak'}:
+        method = 'sidak'
+    elif corr in {'holm-sidak', 'holmsidak', 'holm_sidak'}:
+        method = 'holm-sidak'
+
+    if not method:
+        return post_hoc
+
+    pvals = []
+    idxs = []
+    for i, r in enumerate(post_hoc):
+        try:
+            p = r.get('p_value', None)
+            pf = float(p)
+            if not np.isfinite(pf):
+                continue
+            pvals.append(pf)
+            idxs.append(i)
+        except Exception:
+            continue
+
+    if not pvals:
+        return post_hoc
+
+    reject, pvals_corrected, _, _ = multipletests(pvals, alpha=alpha, method=method)
+    out = [dict(r) for r in post_hoc]
+    for j, i in enumerate(idxs):
+        out[i]['p_value_adj'] = float(pvals_corrected[j])
+        out[i]['significant_adj'] = bool(reject[j])
+        out[i]['correction'] = method
+    return out
+
+
+def _run_dunn_posthoc(data_groups: List[pd.Series], groups: List[Any], alpha: float = 0.05) -> Optional[List[Dict[str, Any]]]:
+    cleaned = []
+    cleaned_groups = []
+    for i, g in enumerate(groups):
+        s = data_groups[i]
+        if s is None:
+            continue
+        vals = pd.Series(s).dropna().to_numpy()
+        if vals.size == 0:
+            continue
+        cleaned.append(vals)
+        cleaned_groups.append(g)
+
+    if len(cleaned) < 2:
+        return None
+
+    all_vals = np.concatenate(cleaned)
+    labels = []
+    for i, g in enumerate(cleaned_groups):
+        labels.extend([g] * cleaned[i].size)
+    labels = np.array(labels, dtype=object)
+
+    n_total = int(all_vals.size)
+    if n_total < 3:
+        return None
+
+    ranks = stats.rankdata(all_vals, method='average')
+
+    _, counts = np.unique(all_vals, return_counts=True)
+    tie_counts = counts[counts > 1]
+    if tie_counts.size > 0:
+        tie_sum = float(np.sum(np.power(tie_counts, 3) - tie_counts))
+        denom = float(n_total ** 3 - n_total)
+        tie_c = 1.0 - (tie_sum / denom if denom != 0 else 0.0)
+    else:
+        tie_c = 1.0
+
+    base = (n_total * (n_total + 1) / 12.0) * tie_c
+    if base <= 0:
+        return None
+
+    mean_ranks = {}
+    ns = {}
+    for g in cleaned_groups:
+        mask = labels == g
+        rg = ranks[mask]
+        if rg.size == 0:
+            continue
+        mean_ranks[g] = float(np.mean(rg))
+        ns[g] = int(rg.size)
+
+    out: List[Dict[str, Any]] = []
+    for i in range(len(cleaned_groups)):
+        for j in range(i + 1, len(cleaned_groups)):
+            a = cleaned_groups[i]
+            b = cleaned_groups[j]
+            na = ns.get(a, 0)
+            nb = ns.get(b, 0)
+            if na <= 0 or nb <= 0:
+                continue
+            se = np.sqrt(base * (1.0 / na + 1.0 / nb))
+            if not np.isfinite(se) or se <= 0:
+                continue
+            z = (mean_ranks[a] - mean_ranks[b]) / se
+            p = float(2.0 * stats.norm.sf(abs(float(z))))
+            out.append(
+                {
+                    'group1': str(a),
+                    'group2': str(b),
+                    'diff': float(mean_ranks[a] - mean_ranks[b]),
+                    'p_value': p,
+                    'ci_lower': None,
+                    'ci_upper': None,
+                    'significant': bool(p < alpha),
+                }
+            )
+    return out if out else None
+
+def check_normality(data: pd.Series) -> tuple[Optional[bool], Optional[float], Optional[float]]:
     """
     Shapiro-Wilk test for normality.
     Returns (is_normal, p_value, statistic).
     """
-    clean_data = data.dropna()
-    if len(clean_data) < 3:
-        return False, 0.0, 0.0
-    # Shapiro-Wilk is sensitive to large samples; limit to 5000
-    if len(clean_data) > 5000:
-        clean_data = clean_data.sample(5000, random_state=42)
-    
+    clean_data = data.replace([np.inf, -np.inf], np.nan).dropna()
+    n = int(len(clean_data))
+    if n < 3 or n > 5000:
+        return None, None, None
+
     try:
         stat, p_value = stats.shapiro(clean_data)
-        return p_value > 0.05, p_value, stat
-    except:
-        return False, 0.0, 0.0
+        return bool(p_value > 0.05), float(p_value), float(stat)
+    except Exception:
+        return None, None, None
 
-def check_homogeneity(groups_data: List[pd.Series]) -> tuple[bool, float, float]:
+def check_homogeneity(groups_data: List[pd.Series]) -> tuple[Optional[bool], Optional[float], Optional[float]]:
     """
     Levene's test for homogeneity of variances.
     Returns (equal_var, p_value, statistic).
     """
     if len(groups_data) < 2:
-        return True, 1.0, 0.0
-        
+        return None, None, None
+
+    cleaned_groups: List[pd.Series] = []
+    for g in groups_data:
+        clean = g.replace([np.inf, -np.inf], np.nan).dropna()
+        if len(clean) < 2:
+            return None, None, None
+        cleaned_groups.append(clean)
+
     try:
-        stat, p_value = stats.levene(*groups_data)
-        return p_value > 0.05, p_value, stat
-    except:
-        return False, 0.0, 0.0
+        stat, p_value = stats.levene(*cleaned_groups)
+        return bool(p_value > 0.05), float(p_value), float(stat)
+    except Exception:
+        return None, None, None
 
 def select_test(
     df: pd.DataFrame, 
@@ -293,9 +449,9 @@ def select_test(
     
     # 1. Numeric vs Numeric -> Correlation
     if type_a == "numeric" and type_b == "numeric":
-        norm_a = check_normality(df[col_a])
-        norm_b = check_normality(df[col_b])
-        return "pearson" if norm_a and norm_b else "spearman"
+        is_norm_a, _, _ = check_normality(df[col_a])
+        is_norm_b, _, _ = check_normality(df[col_b])
+        return "pearson" if (is_norm_a is True and is_norm_b is True) else "spearman"
 
     # 2. Categorical vs Categorical -> Chi-Square
     if type_a == "categorical" and type_b == "categorical":
@@ -315,7 +471,7 @@ def select_test(
     for g in groups:
         subset = df[df[cat_col] == g][num_col].dropna()
         is_normal, _, _ = check_normality(subset)
-        if not is_normal:
+        if is_normal is False:
             all_normal = False
         groups_data.append(subset)
             
@@ -325,6 +481,8 @@ def select_test(
         
         # Check Homogeneity for Independent
         equal_var, _, _ = check_homogeneity(groups_data)
+        if equal_var is None:
+            equal_var = True
         
         if not all_normal:
             return "mann_whitney"
@@ -363,13 +521,43 @@ def run_analysis(
     
     # Handle 'auto' method selection
     if method_id == "auto":
-        # Infer column types
         types = {}
         for col in [col_a, col_b]:
             if col and col in df.columns:
-                dtype_str = str(df[col].dtype)
-                if "int" in dtype_str or "float" in dtype_str:
-                    types[col] = "numeric"
+                s = df[col]
+                name_l = str(col).strip().lower()
+                if pd.api.types.is_numeric_dtype(s):
+                    try:
+                        non_na = s.dropna()
+                        n = int(len(non_na))
+                        unique = int(non_na.nunique(dropna=True)) if n else 0
+                    except Exception:
+                        n = int(len(s))
+                        try:
+                            unique = int(s.nunique(dropna=True))
+                        except Exception:
+                            unique = 0
+
+                    ratio = float(unique) / float(max(1, n))
+                    looks_like_group = any(
+                        k in name_l
+                        for k in [
+                            "группа",
+                            "group",
+                            "treatment",
+                            "arm",
+                            "cohort",
+                            "класс",
+                            "категор",
+                            "category",
+                            "групп",
+                            "рандом",
+                        ]
+                    )
+                    if (unique and unique <= 12 and ratio <= 0.2) or (looks_like_group and unique and unique <= 50):
+                        types[col] = "categorical"
+                    else:
+                        types[col] = "numeric"
                 else:
                     types[col] = "categorical"
         
@@ -388,17 +576,36 @@ def run_analysis(
         assumptions = _check_assumptions(groups, data_groups) if groups else {}
         warnings = _generate_warnings(str(requested_method_id).strip(), path_type="group", assumptions=assumptions)
 
-        normality_ok = True
         norm_res = assumptions.get("normality") if isinstance(assumptions, dict) else None
+        normality_state: str = "unknown"
         if isinstance(norm_res, dict) and norm_res:
-            normality_ok = all(bool(v.get("passed")) for v in norm_res.values())
+            passed_vals = [v.get("passed") for v in norm_res.values() if isinstance(v, dict)]
+            if any(v is False for v in passed_vals):
+                normality_state = "failed"
+            elif any(v is None for v in passed_vals):
+                normality_state = "unknown"
+            else:
+                normality_state = "passed"
 
-        homogeneity_ok = True
         homo_res = assumptions.get("homogeneity") if isinstance(assumptions, dict) else None
+        homogeneity_state: str = "unknown"
         if isinstance(homo_res, dict) and ("passed" in homo_res):
-            homogeneity_ok = bool(homo_res.get("passed"))
+            if homo_res.get("passed") is False:
+                homogeneity_state = "failed"
+            elif homo_res.get("passed") is True:
+                homogeneity_state = "passed"
+            else:
+                homogeneity_state = "unknown"
 
-        recommended = _recommend_group_test(len(groups), bool(is_paired), normality_ok, homogeneity_ok)
+        recommended: Optional[str] = None
+        if normality_state != "unknown" and homogeneity_state != "unknown":
+            recommended = _recommend_group_test(
+                len(groups),
+                bool(is_paired),
+                normality_state == "passed",
+                homogeneity_state == "passed",
+            )
+
         method_used = recommended if (auto_fallback and recommended and recommended != requested_method_id) else requested_method_id
 
         if method_used != requested_method_id:
@@ -444,6 +651,9 @@ def run_analysis(
 
     elif method_id == "friedman":
         return _handle_friedman(df, col_a, kwargs)
+
+    elif method_id == "anova_twoway":
+        return _handle_anova_twoway(df, col_a, kwargs)
 
     elif method_id == "clustered_correlation":
         return _handle_clustered_correlation(df, kwargs)
@@ -513,15 +723,28 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
             eff_size_name = "eta2"
 
         alpha = kwargs.get("alpha", 0.05)
-        if p_val < alpha:
-            try:
-                post = pg.pairwise_tukey(data=df, dv=col_a, between=col_b)
-                post_hoc_results = _format_posthoc_results(post, alpha)
-            except Exception:
-                post_hoc_results = None
+        post_hoc = str(kwargs.get('post_hoc', 'tukey') or '').strip().lower()
+        post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if p_val < alpha and post_hoc and post_hoc != 'none':
+            if post_hoc == 'tukey':
+                try:
+                    post = pg.pairwise_tukey(data=df, dv=col_a, between=col_b)
+                    post_hoc_results = _format_posthoc_results(post, alpha)
+                except Exception:
+                    post_hoc_results = None
 
-            if post_hoc_results is None:
-                post_hoc_results = _run_tukey_posthoc(data_groups, groups, alpha=alpha)
+                if post_hoc_results is None:
+                    post_hoc_results = _run_tukey_posthoc(data_groups, groups, alpha=alpha)
+            elif post_hoc == 'games_howell':
+                try:
+                    post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
+                    post_hoc_results = _format_posthoc_results(post, alpha)
+                except Exception:
+                    post_hoc_results = None
+            elif post_hoc == 'dunn':
+                post_hoc_results = _run_dunn_posthoc(data_groups, groups, alpha=alpha)
+
+            post_hoc_results = _apply_posthoc_correction(post_hoc_results, alpha=alpha, correction=post_hoc_correction)
 
     elif method_id == "anova_welch":
         welch = pg.welch_anova(data=df, dv=col_a, between=col_b)
@@ -533,9 +756,22 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
             eff_size_name = "np2"
 
         alpha = kwargs.get("alpha", 0.05)
-        if p_val < alpha:
-            post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
-            post_hoc_results = _format_posthoc_results(post, alpha)
+        post_hoc = str(kwargs.get('post_hoc', 'games_howell') or '').strip().lower()
+        post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if p_val < alpha and post_hoc and post_hoc != 'none':
+            if post_hoc == 'games_howell':
+                post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
+                post_hoc_results = _format_posthoc_results(post, alpha)
+            elif post_hoc == 'tukey':
+                try:
+                    post = pg.pairwise_tukey(data=df, dv=col_a, between=col_b)
+                    post_hoc_results = _format_posthoc_results(post, alpha)
+                except Exception:
+                    post_hoc_results = None
+            elif post_hoc == 'dunn':
+                post_hoc_results = _run_dunn_posthoc(data_groups, groups, alpha=alpha)
+
+            post_hoc_results = _apply_posthoc_correction(post_hoc_results, alpha=alpha, correction=post_hoc_correction)
 
     elif method_id == "kruskal":
         kr = pg.kruskal(data=df, dv=col_a, between=col_b)
@@ -548,7 +784,27 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         elif "eta2" in row:
             eff_size = float(row.get("eta2"))
             eff_size_name = "eta2"
-        
+        alpha = kwargs.get("alpha", 0.05)
+        post_hoc = str(kwargs.get('post_hoc', 'none') or '').strip().lower()
+        post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if p_val < alpha and post_hoc and post_hoc != 'none':
+            if post_hoc == 'dunn':
+                post_hoc_results = _run_dunn_posthoc(data_groups, groups, alpha=alpha)
+            elif post_hoc == 'games_howell':
+                try:
+                    post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
+                    post_hoc_results = _format_posthoc_results(post, alpha)
+                except Exception:
+                    post_hoc_results = None
+            elif post_hoc == 'tukey':
+                try:
+                    post = pg.pairwise_tukey(data=df, dv=col_a, between=col_b)
+                    post_hoc_results = _format_posthoc_results(post, alpha)
+                except Exception:
+                    post_hoc_results = None
+
+            post_hoc_results = _apply_posthoc_correction(post_hoc_results, alpha=alpha, correction=post_hoc_correction)
+
     elif method_id == "t_test_rel" and len(groups) == 2:
          res = pg.ttest(data_groups[0], data_groups[1], paired=True, alternative=alt)
          stat_val = float(res["T"].iloc[0])
@@ -569,6 +825,9 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
          eff_size = float(res["RBC"].iloc[0]) if "RBC" in res.columns else eff_size
          eff_size_name = "rbc" if eff_size is not None else None
          
+    if bf10 is None:
+        bf10 = _bf10_from_p_value_bound(p_val)
+
     # Prepare Plot Data
     plot_data, plot_stats = _prepare_group_plot_data(groups, data_groups)
 
@@ -590,10 +849,12 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
             for r in post_hoc_results:
                 a = r.get("group1")
                 b = r.get("group2")
-                p = r.get("p_value")
+                raw_p = r.get("p_value")
+                adj_p = r.get("p_value_adj")
+                p = adj_p if isinstance(adj_p, (int, float)) else raw_p
                 if a is None or b is None or p is None:
                     continue
-                comparisons.append({"a": str(a), "b": str(b), "p_value": float(p)})
+                comparisons.append({"a": str(a), "b": str(b), "p_value": float(p), "p_value_raw": float(raw_p) if raw_p is not None else None, "p_value_adj": float(adj_p) if adj_p is not None else None})
         elif len(groups) == 2 and isinstance(p_val, (int, float)):
             comparisons.append({"a": str(groups[0]), "b": str(groups[1]), "p_value": float(p_val)})
     except Exception:
@@ -744,14 +1005,40 @@ def _handle_chi_square(df, method_id, col_a, col_b, kwargs):
         p_val = p_val_fisher
         warning = f"Low expected count ({min_expected:.2f} < 5). Auto-switched to Fisher's Exact Test."
         method_id = "fisher_exact" # Or just annotation? Let's keep ID but note switch
-        
-    return {
+
+    n_total = int(ct.to_numpy().sum()) if hasattr(ct, "to_numpy") else None
+    cramers_v = None
+    try:
+        if n_total and n_total > 0:
+            r, c = ct.shape
+            denom = min(r - 1, c - 1)
+            if denom > 0:
+                phi2 = float(stat_val) / float(n_total)
+                cramers_v = float(np.sqrt(phi2 / float(denom))) if phi2 >= 0 else None
+    except Exception:
+        cramers_v = None
+
+    contingency = {
+        "rows": [str(x) for x in ct.index.tolist()],
+        "cols": [str(x) for x in ct.columns.tolist()],
+        "counts": ct.values.tolist(),
+        "n": n_total,
+    }
+
+    out = {
         "method": method_id,
         "stat_value": float(stat_val),
         "p_value": float(p_val),
         "significant": p_val < alpha,
-        "warning": warning
+        "warning": warning,
+        "contingency": contingency,
+        "expected_min": float(min_expected) if min_expected is not None else None,
+        "odds_ratio": float(odds_ratio) if "odds_ratio" in locals() and odds_ratio is not None else None,
+        "effect_size": float(cramers_v) if cramers_v is not None else None,
+        "effect_size_name": "cramers_v" if cramers_v is not None else None,
     }
+
+    return out
 
 def _handle_survival(df, method_id, col_a, col_b, kwargs):
     duration = df[col_a]
@@ -813,9 +1100,23 @@ def _handle_regression(df, method_id, col_a, col_b, kwargs):
         r_squared = model.rsquared
     else:
         # Logistic
-        if outcome.dtype == 'object' or len(outcome.unique()) > 2:
-             unique_vals = sorted(outcome.unique())
-             outcome = (outcome == unique_vals[-1]).astype(int)
+        outcome_non_na = outcome.dropna()
+        unique_vals = list(pd.unique(outcome_non_na))
+        if len(unique_vals) != 2:
+            raise ValueError(f"Logistic regression requires a binary outcome. Found {len(unique_vals)} unique values.")
+
+        if pd.api.types.is_numeric_dtype(outcome_non_na):
+            as_float = outcome_non_na.astype(float)
+            unique_num = sorted(set(float(v) for v in pd.unique(as_float)))
+            if set(unique_num) == {0.0, 1.0}:
+                outcome = outcome.astype(float)
+            else:
+                mapping = {unique_num[0]: 0.0, unique_num[1]: 1.0}
+                outcome = outcome.astype(float).map(mapping)
+        else:
+            unique_str = sorted(str(v) for v in unique_vals)
+            positive = unique_str[-1]
+            outcome = outcome.astype(str).map(lambda v: 1.0 if v == positive else 0.0)
         model = sm.Logit(outcome, X).fit(disp=0)
         r_squared = model.prsquared
         
@@ -950,10 +1251,10 @@ def _check_assumptions(groups, data_groups):
          norm_results = {}
          for i, g in enumerate(groups):
              is_norm, p_norm, _ = check_normality(data_groups[i])
-             norm_results[str(g)] = {"p_value": float(p_norm), "passed": is_norm}
+             norm_results[str(g)] = {"p_value": float(p_norm) if p_norm is not None else None, "passed": is_norm}
          assumptions["normality"] = norm_results
          is_homo, p_homo, _ = check_homogeneity(data_groups)
-         assumptions["homogeneity"] = {"p_value": float(p_homo), "passed": is_homo}
+         assumptions["homogeneity"] = {"p_value": float(p_homo) if p_homo is not None else None, "passed": is_homo}
     return assumptions
 
 def _generate_warnings(method_str, path_type="group", assumptions=None):
@@ -962,14 +1263,14 @@ def _generate_warnings(method_str, path_type="group", assumptions=None):
         parametric_methods = ["t_test_ind", "t_test_welch", "t_test_rel", "anova", "rm_anova"]
         if method_str in parametric_methods:
             norm_res = assumptions.get("normality", {})
-            failed_groups = [g for g, res in norm_res.items() if not res["passed"]]
+            failed_groups = [g for g, res in norm_res.items() if isinstance(res, dict) and res.get("passed") is False]
             if failed_groups:
                 warnings.append(f"Normality assumption failed for groups: {', '.join(failed_groups)}. Consider using a non-parametric test.")
         
         strict_homogeneity = ["t_test_ind", "anova"]
         if method_str in strict_homogeneity:
             homo_res = assumptions.get("homogeneity")
-            if homo_res and not homo_res["passed"]:
+            if isinstance(homo_res, dict) and homo_res.get("passed") is False:
                 warnings.append("Homogeneity of variances assumption failed. Consider using Welch's T-test or Welch's ANOVA.")
     return warnings
 
@@ -1088,13 +1389,25 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
     
     return results
 
-def run_batch_analysis(df: pd.DataFrame, targets: List[str], group_col: str, method_id: str = "t_test_ind", alpha: float = 0.05) -> List[Dict[str, Any]]:
+def run_batch_analysis(
+    df: pd.DataFrame,
+    targets: List[str],
+    group_col: str,
+    method_id: str = "t_test_ind",
+    alpha: float = 0.05,
+    auto_fallback: bool = True,
+    multiplicity_correction: str = "fdr_bh",
+    **kwargs,
+) -> List[Dict[str, Any]]:
     """
     Runs analysis for multiple targets against a group column.
     Applies Benjamini-Hochberg (FDR) correction to p-values.
     """
     results = []
     p_values = []
+    corr = str(multiplicity_correction or "").strip().lower()
+    if not corr:
+        corr = "fdr_bh"
     
     # 1. Run Analysis for each target
     for target in targets:
@@ -1107,12 +1420,20 @@ def run_batch_analysis(df: pd.DataFrame, targets: List[str], group_col: str, met
             if target not in df.columns:
                 continue
                 
-            res = run_analysis(df, method_id, target, group_col, alpha=alpha)
+            res = run_analysis(
+                df,
+                method_id,
+                target,
+                group_col,
+                alpha=alpha,
+                auto_fallback=auto_fallback,
+                **kwargs,
+            )
             
             # Store raw result
             res["target"] = target
             results.append(res)
-            p_values.append(res["p_value"])
+            p_values.append(res.get("p_value") if res.get("p_value") is not None else 1.0)
             
         except Exception as e:
             logger.error(f"Batch Error for {target}: {e}", exc_info=True)
@@ -1121,13 +1442,101 @@ def run_batch_analysis(df: pd.DataFrame, targets: List[str], group_col: str, met
             
     # 2. FDR Correction
     if results:
-        reject, pvals_corrected, _, _ = multipletests(p_values, alpha=alpha, method='fdr_bh')
-        
-        for i, res in enumerate(results):
-            res["p_value_adj"] = float(pvals_corrected[i])
-            res["significant_adj"] = bool(reject[i])
+        if corr in {"none", "off", "no"}:
+            for res in results:
+                res["multiplicity_correction"] = "none"
+        else:
+            reject, pvals_corrected, _, _ = multipletests(p_values, alpha=alpha, method=corr)
+            for i, res in enumerate(results):
+                res["p_value_adj"] = float(pvals_corrected[i])
+                res["significant_adj"] = bool(reject[i])
+                res["multiplicity_correction"] = corr
             
     return results
+
+
+def _compute_wide_delta(
+    df: pd.DataFrame,
+    baseline_col: str,
+    follow_col: str,
+    group_col: Optional[str] = None,
+    subject_col: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    cols = [baseline_col, follow_col]
+    if subject_col:
+        cols.append(subject_col)
+    if group_col:
+        cols.append(group_col)
+    local = df[[c for c in cols if c in df.columns]].copy()
+    if baseline_col not in local.columns or follow_col not in local.columns:
+        return None
+    local[baseline_col] = pd.to_numeric(local[baseline_col], errors='coerce')
+    local[follow_col] = pd.to_numeric(local[follow_col], errors='coerce')
+    local = local.dropna(subset=[baseline_col, follow_col])
+    if local.empty:
+        return None
+
+    if subject_col and subject_col in local.columns:
+        by_cols = [subject_col]
+        if group_col and group_col in local.columns:
+            by_cols.append(group_col)
+        local = local.groupby(by_cols, dropna=True, observed=False)[[baseline_col, follow_col]].mean().reset_index()
+        local = local.dropna(subset=[baseline_col, follow_col])
+        if local.empty:
+            return None
+
+    def summarize(block: pd.DataFrame) -> Dict[str, Any]:
+        base = block[baseline_col]
+        fol = block[follow_col]
+        d = fol - base
+        dp = None
+        try:
+            denom = base.replace(0, np.nan)
+            dp = (d / denom) * 100
+        except Exception:
+            dp = None
+
+        n = int(d.shape[0])
+        mean_d = float(d.mean()) if n else None
+        sd_d = float(d.std(ddof=1)) if n > 1 else None
+        med_d = float(d.median()) if n else None
+
+        mean_dp = float(dp.mean()) if (isinstance(dp, pd.Series) and dp.shape[0] > 0) else None
+        med_dp = float(dp.median()) if (isinstance(dp, pd.Series) and dp.shape[0] > 0) else None
+
+        es = None
+        if sd_d is not None and sd_d != 0 and mean_d is not None:
+            es = float(mean_d / sd_d)
+        es_name = 'cohen_d' if es is not None else None
+        es_interp = interpret_effect_size(es, es_name) if es is not None else None
+
+        return {
+            'n': n,
+            'baseline_mean': float(base.mean()) if n else None,
+            'follow_mean': float(fol.mean()) if n else None,
+            'delta_abs_mean': mean_d,
+            'delta_abs_sd': sd_d,
+            'delta_abs_median': med_d,
+            'delta_pct_mean': mean_dp,
+            'delta_pct_median': med_dp,
+            'effect_size': es,
+            'effect_size_name': es_name,
+            'effect_size_interpretation': es_interp,
+        }
+
+    out: Dict[str, Any] = {
+        'baseline_col': str(baseline_col),
+        'follow_col': str(follow_col),
+        'overall': summarize(local),
+    }
+
+    if group_col and group_col in local.columns:
+        by_group: Dict[str, Any] = {}
+        for g, block in local.groupby(group_col, dropna=True, observed=False):
+            by_group[str(g)] = summarize(block)
+        out['by_group'] = by_group
+
+    return out
 
 
 # ============================================================
@@ -1191,6 +1600,22 @@ def _handle_rm_anova(df: pd.DataFrame, outcome_prefix: str, kwargs: Dict) -> Dic
         group_col=group_col,
         alpha=alpha
     )
+
+    try:
+        if isinstance(outcome_cols, list) and len(outcome_cols) >= 2:
+            baseline_col = outcome_cols[0]
+            follow_col = outcome_cols[-1]
+            delta = _compute_wide_delta(
+                df,
+                baseline_col=baseline_col,
+                follow_col=follow_col,
+                group_col=group_col,
+                subject_col=subject_col,
+            )
+            if delta is not None:
+                result['delta'] = delta
+    except Exception:
+        pass
     
     if "error" not in result:
         result["method"] = "rm_anova"
@@ -1205,6 +1630,76 @@ def _handle_rm_anova(df: pd.DataFrame, outcome_prefix: str, kwargs: Dict) -> Dic
             result["significant"] = False
     
     return result
+
+
+def _handle_anova_twoway(df: pd.DataFrame, outcome: str, kwargs: Dict) -> Dict[str, Any]:
+    group1 = str(kwargs.get("group1") or kwargs.get("factor_a") or "").strip()
+    group2 = str(kwargs.get("group2") or kwargs.get("factor_b") or "").strip()
+    alpha = kwargs.get("alpha", 0.05)
+
+    if not outcome or outcome not in df.columns:
+        return {"error": "outcome column not found"}
+    if not group1 or group1 not in df.columns:
+        return {"error": "group1 column not found"}
+    if not group2 or group2 not in df.columns:
+        return {"error": "group2 column not found"}
+
+    local = df[[outcome, group1, group2]].copy().dropna()
+    if local.empty:
+        return {"error": "No data after filtering missing values"}
+
+    try:
+        aov = pg.anova(data=local, dv=outcome, between=[group1, group2], detailed=True)
+    except Exception as e:
+        return {"error": str(e)}
+
+    def row_for(source: str):
+        if not isinstance(aov, pd.DataFrame) or aov.empty:
+            return None
+        if "Source" not in aov.columns:
+            return None
+        hit = aov[aov["Source"] == source]
+        if hit.empty:
+            return None
+        return hit.iloc[0]
+
+    def to_effect(row: Optional[pd.Series]) -> Dict[str, Any]:
+        if row is None:
+            return {"stat_value": None, "p_value": None, "significant": False, "effect_size": None, "effect_size_name": None}
+        f = row.get("F")
+        p = row.get("p-unc")
+        np2 = row.get("np2") if "np2" in row else None
+        eta2 = row.get("eta2") if "eta2" in row else None
+        es = np2 if np2 is not None else eta2
+        es_name = "np2" if np2 is not None else ("eta2" if eta2 is not None else None)
+        p_num = float(p) if isinstance(p, (int, float, np.floating)) else None
+        sig = bool(p_num is not None and p_num < alpha)
+        return {
+            "stat_value": float(f) if isinstance(f, (int, float, np.floating)) else None,
+            "p_value": p_num,
+            "significant": sig,
+            "effect_size": float(es) if isinstance(es, (int, float, np.floating)) else None,
+            "effect_size_name": es_name,
+        }
+
+    eff_a = to_effect(row_for(group1))
+    eff_b = to_effect(row_for(group2))
+    eff_ab = to_effect(row_for(f"{group1} * {group2}") or row_for(f"{group1}*{group2}"))
+
+    p_vals = [p for p in [eff_a.get("p_value"), eff_b.get("p_value"), eff_ab.get("p_value")] if isinstance(p, (int, float))]
+    primary_p = min(p_vals) if p_vals else 1.0
+
+    return {
+        "method": "anova_twoway",
+        "stat_value": eff_ab.get("stat_value") if eff_ab.get("stat_value") is not None else (eff_a.get("stat_value") or 0.0),
+        "p_value": float(primary_p),
+        "significant": bool(primary_p < alpha),
+        "effects": {
+            "factor_a": eff_a,
+            "factor_b": eff_b,
+            "interaction": eff_ab,
+        },
+    }
 
 
 def _handle_friedman(df: pd.DataFrame, dummy: str, kwargs: Dict) -> Dict[str, Any]:
@@ -1224,15 +1719,27 @@ def _handle_friedman(df: pd.DataFrame, dummy: str, kwargs: Dict) -> Dict[str, An
     
     try:
         stat_val, p_val = stats.friedmanchisquare(*[data[col] for col in outcome_cols])
-        
-        return {
+
+        out: Dict[str, Any] = {
             "method": "friedman",
             "stat_value": float(stat_val),
             "p_value": float(p_val),
             "significant": p_val < alpha,
             "n_subjects": len(data),
             "n_timepoints": len(outcome_cols)
+
         }
+
+        try:
+            baseline_col = outcome_cols[0]
+            follow_col = outcome_cols[-1]
+            delta = _compute_wide_delta(df, baseline_col=baseline_col, follow_col=follow_col, group_col=None)
+            if delta is not None:
+                out['delta'] = delta
+        except Exception:
+            pass
+
+        return out
     except Exception as e:
         return {"error": str(e)}
 
@@ -1248,11 +1755,11 @@ def _handle_clustered_correlation(df: pd.DataFrame, kwargs: Dict) -> Dict[str, A
     alpha = kwargs.get("alpha", 0.05)
     
     if not variables or len(variables) < 2:
-        return {"error": "At least 2 variables are required"}
+        return {"error": "Нужно выбрать минимум 2 переменные"}
     
     available_vars = [v for v in variables if v in df.columns]
     if len(available_vars) < 2:
-        return {"error": f"Only {len(available_vars)} variables found in dataset"}
+        return {"error": f"В файле данных найдено только {len(available_vars)} переменных"}
     
     engine = ClusteredCorrelationEngine()
     result = engine.analyze(

@@ -1,0 +1,2314 @@
+{
+  "protocol_name": "Рабочий прогон: магнитотерапия при БП (V2–V6)",
+  "dataset_id": "84477c43-51ff-43cd-b47d-5f9903fd80ac",
+  "results": {
+    "baseline_age": {
+      "type": "table_1",
+      "data": {
+        "1": {
+          "count": 12,
+          "missing": 0,
+          "mean": 64.5,
+          "median": 67.0,
+          "mode": 56.0,
+          "std": 6.571287406727709,
+          "se": 1.8969672765983205,
+          "variance": 43.18181818181818,
+          "min": 55.0,
+          "max": 73.0,
+          "range": 18.0,
+          "q1": 58.25,
+          "q3": 69.25,
+          "iqr": 11.0,
+          "skewness": -0.3460028560306933,
+          "kurtosis": -1.5423710433979685,
+          "shapiro_w": 0.8935375114518697,
+          "shapiro_p": 0.1308962029254896,
+          "ci_95_low": 60.78194413786729,
+          "ci_95_high": 68.2180558621327
+        },
+        "2": {
+          "count": 10,
+          "missing": 0,
+          "mean": 67.5,
+          "median": 67.5,
+          "mode": 66.0,
+          "std": 3.24037034920393,
+          "se": 1.0246950765959597,
+          "variance": 10.5,
+          "min": 61.0,
+          "max": 74.0,
+          "range": 13.0,
+          "q1": 66.25,
+          "q3": 68.75,
+          "iqr": 2.5,
+          "skewness": 0.0,
+          "kurtosis": 2.7688154626930137,
+          "shapiro_w": 0.9056440640207148,
+          "shapiro_p": 0.2523896926361111,
+          "ci_95_low": 65.49159764987192,
+          "ci_95_high": 69.50840235012808
+        },
+        "3": {
+          "count": 11,
+          "missing": 0,
+          "mean": 68.45454545454545,
+          "median": 69.0,
+          "mode": 74.0,
+          "std": 6.250818128271472,
+          "se": 1.8846925785661914,
+          "variance": 39.07272727272728,
+          "min": 56.0,
+          "max": 75.0,
+          "range": 19.0,
+          "q1": 65.0,
+          "q3": 74.0,
+          "iqr": 9.0,
+          "skewness": -0.7660731346166912,
+          "kurtosis": -0.18177713211991886,
+          "shapiro_w": 0.9139464704510071,
+          "shapiro_p": 0.27139432670505803,
+          "ci_95_low": 64.76054800055572,
+          "ci_95_high": 72.14854290853519
+        },
+        "4": {
+          "count": 11,
+          "missing": 0,
+          "mean": 64.45454545454545,
+          "median": 66.0,
+          "mode": 67.0,
+          "std": 5.391913136608125,
+          "se": 1.6257229796652228,
+          "variance": 29.07272727272727,
+          "min": 55.0,
+          "max": 72.0,
+          "range": 17.0,
+          "q1": 60.5,
+          "q3": 68.0,
+          "iqr": 7.5,
+          "skewness": -0.4369996830765587,
+          "kurtosis": -0.8369169129705449,
+          "shapiro_w": 0.9574778637134305,
+          "shapiro_p": 0.7398794136641543,
+          "ci_95_low": 61.268128414401616,
+          "ci_95_high": 67.64096249468929
+        },
+        "overall": {
+          "count": 44,
+          "missing": 0,
+          "mean": 66.1590909090909,
+          "median": 67.0,
+          "mode": 67.0,
+          "std": 5.689415639336323,
+          "se": 0.8577116796390257,
+          "variance": 32.36945031712474,
+          "min": 55.0,
+          "max": 75.0,
+          "range": 20.0,
+          "q1": 62.0,
+          "q3": 69.25,
+          "iqr": 7.25,
+          "skewness": -0.49258562702917713,
+          "kurtosis": -0.5633454818839456,
+          "shapiro_w": 0.9376927126109245,
+          "shapiro_p": 0.019521217699701193,
+          "ci_95_low": 64.47797601699841,
+          "ci_95_high": 67.8402058011834
+        }
+      }
+    },
+    "baseline_updrs3_v2": {
+      "type": "compare",
+      "method": {
+        "id": "kruskal",
+        "name": "Kruskal-Wallis H-test",
+        "description": "Non-parametric alternative to ANOVA. Compares distributions of three or more independent groups.",
+        "type": "non-parametric",
+        "min_groups": 3,
+        "max_groups": 100
+      },
+      "p_value": 0.7921376524644783,
+      "significant": false,
+      "stats": 1.0376713442433514,
+      "effect_size": null,
+      "effect_size_name": null,
+      "effect_size_ci_lower": null,
+      "effect_size_ci_upper": null,
+      "effect_size_interpretation": null,
+      "power": null,
+      "bf10": null,
+      "groups": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "plot_stats": {
+        "1": {
+          "mean": 12.166666666666666,
+          "sd": 4.260459500043997,
+          "sem": 1.2298887196109503,
+          "ci_lower": 9.756084776229203,
+          "ci_upper": 14.577248557104129,
+          "median": 11.5,
+          "q1": 9.75,
+          "q3": 14.25,
+          "min": 6.0,
+          "max": 21.0,
+          "count": 12
+        },
+        "2": {
+          "mean": 12.2,
+          "sd": 2.936362072739365,
+          "sem": 0.9285592184789412,
+          "ci_lower": 10.380023931781274,
+          "ci_upper": 14.019976068218725,
+          "median": 12.5,
+          "q1": 10.0,
+          "q3": 14.0,
+          "min": 8.0,
+          "max": 16.0,
+          "count": 10
+        },
+        "3": {
+          "mean": 10.545454545454545,
+          "sd": 6.250818128271472,
+          "sem": 1.8846925785661914,
+          "ci_lower": 6.85145709146481,
+          "ci_upper": 14.239451999444281,
+          "median": 9.0,
+          "q1": 6.0,
+          "q3": 14.5,
+          "min": 2.0,
+          "max": 21.0,
+          "count": 11
+        },
+        "4": {
+          "mean": 12.545454545454545,
+          "sd": 6.314485511324519,
+          "sem": 1.903889016836263,
+          "ci_lower": 8.813832072455469,
+          "ci_upper": 16.27707701845362,
+          "median": 10.0,
+          "q1": 8.0,
+          "q3": 15.5,
+          "min": 6.0,
+          "max": 25.0,
+          "count": 11
+        }
+      },
+      "plot_data": [
+        {
+          "group": "1",
+          "value": 18.0
+        },
+        {
+          "group": "1",
+          "value": 14.0
+        },
+        {
+          "group": "1",
+          "value": 9.0
+        },
+        {
+          "group": "1",
+          "value": 6.0
+        },
+        {
+          "group": "1",
+          "value": 8.0
+        },
+        {
+          "group": "1",
+          "value": 12.0
+        },
+        {
+          "group": "1",
+          "value": 21.0
+        },
+        {
+          "group": "1",
+          "value": 11.0
+        },
+        {
+          "group": "1",
+          "value": 15.0
+        },
+        {
+          "group": "1",
+          "value": 10.0
+        },
+        {
+          "group": "1",
+          "value": 10.0
+        },
+        {
+          "group": "1",
+          "value": 12.0
+        },
+        {
+          "group": "2",
+          "value": 10.0
+        },
+        {
+          "group": "2",
+          "value": 14.0
+        },
+        {
+          "group": "2",
+          "value": 8.0
+        },
+        {
+          "group": "2",
+          "value": 16.0
+        },
+        {
+          "group": "2",
+          "value": 9.0
+        },
+        {
+          "group": "2",
+          "value": 14.0
+        },
+        {
+          "group": "2",
+          "value": 10.0
+        },
+        {
+          "group": "2",
+          "value": 16.0
+        },
+        {
+          "group": "2",
+          "value": 14.0
+        },
+        {
+          "group": "2",
+          "value": 11.0
+        },
+        {
+          "group": "3",
+          "value": 9.0
+        },
+        {
+          "group": "3",
+          "value": 13.0
+        },
+        {
+          "group": "3",
+          "value": 3.0
+        },
+        {
+          "group": "3",
+          "value": 2.0
+        },
+        {
+          "group": "3",
+          "value": 4.0
+        },
+        {
+          "group": "3",
+          "value": 8.0
+        },
+        {
+          "group": "3",
+          "value": 9.0
+        },
+        {
+          "group": "3",
+          "value": 13.0
+        },
+        {
+          "group": "3",
+          "value": 18.0
+        },
+        {
+          "group": "3",
+          "value": 21.0
+        },
+        {
+          "group": "3",
+          "value": 16.0
+        },
+        {
+          "group": "4",
+          "value": 12.0
+        },
+        {
+          "group": "4",
+          "value": 22.0
+        },
+        {
+          "group": "4",
+          "value": 8.0
+        },
+        {
+          "group": "4",
+          "value": 8.0
+        },
+        {
+          "group": "4",
+          "value": 6.0
+        },
+        {
+          "group": "4",
+          "value": 8.0
+        },
+        {
+          "group": "4",
+          "value": 8.0
+        },
+        {
+          "group": "4",
+          "value": 25.0
+        },
+        {
+          "group": "4",
+          "value": 14.0
+        },
+        {
+          "group": "4",
+          "value": 17.0
+        },
+        {
+          "group": "4",
+          "value": 10.0
+        }
+      ],
+      "assumptions": {
+        "normality": {
+          "1": {
+            "p_value": 0.6829626404846831,
+            "passed": true
+          },
+          "2": {
+            "p_value": 0.2242808981666342,
+            "passed": true
+          },
+          "3": {
+            "p_value": 0.7128175115484668,
+            "passed": true
+          },
+          "4": {
+            "p_value": 0.048303272202385825,
+            "passed": false
+          }
+        },
+        "homogeneity": {
+          "p_value": 0.29571762297105575,
+          "passed": true
+        }
+      },
+      "warnings": [],
+      "post_hoc": null,
+      "comparisons": [],
+      "conclusion": "Analysis completed.",
+      "ai_interpretation": "Analysis completed."
+    },
+    "baseline_updrs2_v2": {
+      "type": "compare",
+      "method": {
+        "id": "anova",
+        "name": "One-Way ANOVA",
+        "description": "Compares means of three or more independent groups. Assumes normal distribution and homogeneity of variances.",
+        "type": "parametric",
+        "min_groups": 3,
+        "max_groups": 100
+      },
+      "p_value": 0.6143895806780469,
+      "significant": false,
+      "stats": 0.6069286317865348,
+      "effect_size": 0.04353782111879531,
+      "effect_size_name": "np2",
+      "effect_size_ci_lower": null,
+      "effect_size_ci_upper": null,
+      "effect_size_interpretation": {
+        "label": "small",
+        "label_ru": "малый",
+        "thresholds": {
+          "small": 0.01,
+          "medium": 0.06,
+          "large": 0.14
+        },
+        "description": "ε² = 0.044 indicates a small effect",
+        "description_ru": "ε² = 0.044 указывает на малый эффект"
+      },
+      "power": null,
+      "bf10": null,
+      "groups": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "plot_stats": {
+        "1": {
+          "mean": 6.916666666666667,
+          "sd": 3.342789617107607,
+          "sem": 0.9649802426406815,
+          "ci_lower": 5.0253053910909316,
+          "ci_upper": 8.808027942242402,
+          "median": 6.5,
+          "q1": 5.75,
+          "q3": 8.0,
+          "min": 2.0,
+          "max": 15.0,
+          "count": 12
+        },
+        "2": {
+          "mean": 7.1,
+          "sd": 1.8529256146249728,
+          "sem": 0.5859465277082315,
+          "ci_lower": 5.951544805691865,
+          "ci_upper": 8.248455194308134,
+          "median": 7.5,
+          "q1": 6.0,
+          "q3": 8.0,
+          "min": 4.0,
+          "max": 10.0,
+          "count": 10
+        },
+        "3": {
+          "mean": 5.363636363636363,
+          "sd": 3.854159500402838,
+          "sem": 1.1620728131836213,
+          "ci_lower": 3.0859736497964656,
+          "ci_upper": 7.641299077476261,
+          "median": 6.0,
+          "q1": 2.0,
+          "q3": 7.5,
+          "min": 1.0,
+          "max": 13.0,
+          "count": 11
+        },
+        "4": {
+          "mean": 6.363636363636363,
+          "sd": 3.6680438185149122,
+          "sem": 1.1059568236905857,
+          "ci_lower": 4.195960989202815,
+          "ci_upper": 8.531311738069911,
+          "median": 6.0,
+          "q1": 3.5,
+          "q3": 9.0,
+          "min": 1.0,
+          "max": 12.0,
+          "count": 11
+        }
+      },
+      "plot_data": [
+        {
+          "group": "1",
+          "value": 7.0
+        },
+        {
+          "group": "1",
+          "value": 3.0
+        },
+        {
+          "group": "1",
+          "value": 6.0
+        },
+        {
+          "group": "1",
+          "value": 2.0
+        },
+        {
+          "group": "1",
+          "value": 8.0
+        },
+        {
+          "group": "1",
+          "value": 6.0
+        },
+        {
+          "group": "1",
+          "value": 15.0
+        },
+        {
+          "group": "1",
+          "value": 10.0
+        },
+        {
+          "group": "1",
+          "value": 8.0
+        },
+        {
+          "group": "1",
+          "value": 5.0
+        },
+        {
+          "group": "1",
+          "value": 6.0
+        },
+        {
+          "group": "1",
+          "value": 7.0
+        },
+        {
+          "group": "2",
+          "value": 4.0
+        },
+        {
+          "group": "2",
+          "value": 8.0
+        },
+        {
+          "group": "2",
+          "value": 8.0
+        },
+        {
+          "group": "2",
+          "value": 9.0
+        },
+        {
+          "group": "2",
+          "value": 5.0
+        },
+        {
+          "group": "2",
+          "value": 10.0
+        },
+        {
+          "group": "2",
+          "value": 6.0
+        },
+        {
+          "group": "2",
+          "value": 7.0
+        },
+        {
+          "group": "2",
+          "value": 8.0
+        },
+        {
+          "group": "2",
+          "value": 6.0
+        },
+        {
+          "group": "3",
+          "value": 4.0
+        },
+        {
+          "group": "3",
+          "value": 2.0
+        },
+        {
+          "group": "3",
+          "value": 1.0
+        },
+        {
+          "group": "3",
+          "value": 2.0
+        },
+        {
+          "group": "3",
+          "value": 1.0
+        },
+        {
+          "group": "3",
+          "value": 6.0
+        },
+        {
+          "group": "3",
+          "value": 6.0
+        },
+        {
+          "group": "3",
+          "value": 9.0
+        },
+        {
+          "group": "3",
+          "value": 13.0
+        },
+        {
+          "group": "3",
+          "value": 9.0
+        },
+        {
+          "group": "3",
+          "value": 6.0
+        },
+        {
+          "group": "4",
+          "value": 6.0
+        },
+        {
+          "group": "4",
+          "value": 8.0
+        },
+        {
+          "group": "4",
+          "value": 1.0
+        },
+        {
+          "group": "4",
+          "value": 4.0
+        },
+        {
+          "group": "4",
+          "value": 2.0
+        },
+        {
+          "group": "4",
+          "value": 6.0
+        },
+        {
+          "group": "4",
+          "value": 3.0
+        },
+        {
+          "group": "4",
+          "value": 12.0
+        },
+        {
+          "group": "4",
+          "value": 11.0
+        },
+        {
+          "group": "4",
+          "value": 7.0
+        },
+        {
+          "group": "4",
+          "value": 10.0
+        }
+      ],
+      "assumptions": {
+        "normality": {
+          "1": {
+            "p_value": 0.2275432927552204,
+            "passed": true
+          },
+          "2": {
+            "p_value": 0.8834456534794802,
+            "passed": true
+          },
+          "3": {
+            "p_value": 0.28943872974048956,
+            "passed": true
+          },
+          "4": {
+            "p_value": 0.7795796526052463,
+            "passed": true
+          }
+        },
+        "homogeneity": {
+          "p_value": 0.3297886814597363,
+          "passed": true
+        }
+      },
+      "warnings": [],
+      "post_hoc": null,
+      "comparisons": [],
+      "conclusion": "Analysis completed.",
+      "ai_interpretation": "Analysis completed."
+    },
+    "baseline_dass_v2": {
+      "type": "compare",
+      "method": {
+        "id": "anova",
+        "name": "One-Way ANOVA",
+        "description": "Compares means of three or more independent groups. Assumes normal distribution and homogeneity of variances.",
+        "type": "parametric",
+        "min_groups": 3,
+        "max_groups": 100
+      },
+      "p_value": 0.06888225588179595,
+      "significant": false,
+      "stats": 2.5543672571133023,
+      "effect_size": 0.16077639697271595,
+      "effect_size_name": "np2",
+      "effect_size_ci_lower": null,
+      "effect_size_ci_upper": null,
+      "effect_size_interpretation": {
+        "label": "large",
+        "label_ru": "большой",
+        "thresholds": {
+          "small": 0.01,
+          "medium": 0.06,
+          "large": 0.14
+        },
+        "description": "ε² = 0.161 indicates a large effect",
+        "description_ru": "ε² = 0.161 указывает на большой эффект"
+      },
+      "power": null,
+      "bf10": null,
+      "groups": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "plot_stats": {
+        "1": {
+          "mean": 29.666666666666668,
+          "sd": 6.005048381204439,
+          "sem": 1.7335081496925548,
+          "ci_lower": 26.26899069326926,
+          "ci_upper": 33.064342640064076,
+          "median": 28.5,
+          "q1": 25.75,
+          "q3": 36.25,
+          "min": 21.0,
+          "max": 38.0,
+          "count": 12
+        },
+        "2": {
+          "mean": 32.5,
+          "sd": 4.719934086168766,
+          "sem": 1.4925742118158742,
+          "ci_lower": 29.574554544840886,
+          "ci_upper": 35.425445455159114,
+          "median": 31.5,
+          "q1": 30.25,
+          "q3": 36.0,
+          "min": 25.0,
+          "max": 41.0,
+          "count": 10
+        },
+        "3": {
+          "mean": 36.09090909090909,
+          "sd": 6.106628291529548,
+          "sem": 1.8412177070156854,
+          "ci_lower": 32.48212238515835,
+          "ci_upper": 39.69969579665984,
+          "median": 36.0,
+          "q1": 32.5,
+          "q3": 41.5,
+          "min": 24.0,
+          "max": 44.0,
+          "count": 11
+        },
+        "4": {
+          "mean": 34.90909090909091,
+          "sd": 6.963541418768836,
+          "sem": 2.0995867361959393,
+          "ci_lower": 30.793900906146867,
+          "ci_upper": 39.024280912034946,
+          "median": 36.0,
+          "q1": 31.5,
+          "q3": 41.0,
+          "min": 23.0,
+          "max": 44.0,
+          "count": 11
+        }
+      },
+      "plot_data": [
+        {
+          "group": "1",
+          "value": 29.0
+        },
+        {
+          "group": "1",
+          "value": 27.0
+        },
+        {
+          "group": "1",
+          "value": 21.0
+        },
+        {
+          "group": "1",
+          "value": 22.0
+        },
+        {
+          "group": "1",
+          "value": 30.0
+        },
+        {
+          "group": "1",
+          "value": 37.0
+        },
+        {
+          "group": "1",
+          "value": 25.0
+        },
+        {
+          "group": "1",
+          "value": 36.0
+        },
+        {
+          "group": "1",
+          "value": 38.0
+        },
+        {
+          "group": "1",
+          "value": 26.0
+        },
+        {
+          "group": "1",
+          "value": 28.0
+        },
+        {
+          "group": "1",
+          "value": 37.0
+        },
+        {
+          "group": "2",
+          "value": 31.0
+        },
+        {
+          "group": "2",
+          "value": 32.0
+        },
+        {
+          "group": "2",
+          "value": 41.0
+        },
+        {
+          "group": "2",
+          "value": 37.0
+        },
+        {
+          "group": "2",
+          "value": 33.0
+        },
+        {
+          "group": "2",
+          "value": 25.0
+        },
+        {
+          "group": "2",
+          "value": 30.0
+        },
+        {
+          "group": "2",
+          "value": 37.0
+        },
+        {
+          "group": "2",
+          "value": 31.0
+        },
+        {
+          "group": "2",
+          "value": 28.0
+        },
+        {
+          "group": "3",
+          "value": 43.0
+        },
+        {
+          "group": "3",
+          "value": 42.0
+        },
+        {
+          "group": "3",
+          "value": 32.0
+        },
+        {
+          "group": "3",
+          "value": 31.0
+        },
+        {
+          "group": "3",
+          "value": 24.0
+        },
+        {
+          "group": "3",
+          "value": 44.0
+        },
+        {
+          "group": "3",
+          "value": 41.0
+        },
+        {
+          "group": "3",
+          "value": 34.0
+        },
+        {
+          "group": "3",
+          "value": 33.0
+        },
+        {
+          "group": "3",
+          "value": 36.0
+        },
+        {
+          "group": "3",
+          "value": 37.0
+        },
+        {
+          "group": "4",
+          "value": 30.0
+        },
+        {
+          "group": "4",
+          "value": 35.0
+        },
+        {
+          "group": "4",
+          "value": 33.0
+        },
+        {
+          "group": "4",
+          "value": 36.0
+        },
+        {
+          "group": "4",
+          "value": 23.0
+        },
+        {
+          "group": "4",
+          "value": 44.0
+        },
+        {
+          "group": "4",
+          "value": 36.0
+        },
+        {
+          "group": "4",
+          "value": 41.0
+        },
+        {
+          "group": "4",
+          "value": 41.0
+        },
+        {
+          "group": "4",
+          "value": 41.0
+        },
+        {
+          "group": "4",
+          "value": 24.0
+        }
+      ],
+      "assumptions": {
+        "normality": {
+          "1": {
+            "p_value": 0.21737099638099644,
+            "passed": true
+          },
+          "2": {
+            "p_value": 0.8646245781763464,
+            "passed": true
+          },
+          "3": {
+            "p_value": 0.6085178517389788,
+            "passed": true
+          },
+          "4": {
+            "p_value": 0.3021418993119184,
+            "passed": true
+          }
+        },
+        "homogeneity": {
+          "p_value": 0.7135858714813011,
+          "passed": true
+        }
+      },
+      "warnings": [],
+      "post_hoc": null,
+      "comparisons": [],
+      "conclusion": "Analysis completed.",
+      "ai_interpretation": "Analysis completed."
+    },
+    "lmm_updrs3_v2_v6": {
+      "type": "mixed_effects",
+      "method": {
+        "id": "mixed_effects",
+        "name": "Linear Mixed Effects (Time×Group)",
+        "description": "Linear mixed effects model for repeated measures with Time×Group interaction.",
+        "type": "parametric",
+        "min_groups": 2,
+        "max_groups": 100
+      },
+      "p_value": 9.927995191761051e-05,
+      "interaction_p_value": 9.927995191761051e-05,
+      "significant": true,
+      "outcome": "УШОБП часть 3 (V2–V6)",
+      "formula": "УШОБП3 ~ Visit * Group + Age + Sex + (1|Subject)",
+      "n_observations": 220,
+      "n_subjects": 43,
+      "model_statistics": {
+        "log_likelihood": -419.362141824585,
+        "aic": null,
+        "bic": null
+      },
+      "estimated_means": {
+        "1": {
+          "2": {
+            "estimate": 12.166666666666666,
+            "ci_lower": 9.459699846249546,
+            "ci_upper": 14.873633487083787,
+            "n": 12
+          },
+          "3": {
+            "estimate": 11.083333333333334,
+            "ci_lower": 8.623178602242696,
+            "ci_upper": 13.543488064423972,
+            "n": 12
+          },
+          "4": {
+            "estimate": 10.333333333333334,
+            "ci_lower": 8.264128216947096,
+            "ci_upper": 12.402538449719572,
+            "n": 12
+          },
+          "5": {
+            "estimate": 9.416666666666666,
+            "ci_lower": 7.275549950240266,
+            "ci_upper": 11.557783383093067,
+            "n": 12
+          },
+          "6": {
+            "estimate": 9.166666666666666,
+            "ci_lower": 6.9684622849020545,
+            "ci_upper": 11.364871048431278,
+            "n": 12
+          }
+        },
+        "2": {
+          "2": {
+            "estimate": 12.2,
+            "ci_lower": 10.099453112888686,
+            "ci_upper": 14.300546887111313,
+            "n": 10
+          },
+          "3": {
+            "estimate": 10.5,
+            "ci_lower": 8.497852459814723,
+            "ci_upper": 12.502147540185277,
+            "n": 10
+          },
+          "4": {
+            "estimate": 9.5,
+            "ci_lower": 7.676190588682238,
+            "ci_upper": 11.323809411317761,
+            "n": 10
+          },
+          "5": {
+            "estimate": 8.4,
+            "ci_lower": 7.222132516856817,
+            "ci_upper": 9.577867483143184,
+            "n": 10
+          },
+          "6": {
+            "estimate": 7.8,
+            "ci_lower": 6.799636463249759,
+            "ci_upper": 8.80036353675024,
+            "n": 10
+          }
+        },
+        "3": {
+          "2": {
+            "estimate": 10.545454545454545,
+            "ci_lower": 6.346097787141232,
+            "ci_upper": 14.744811303767857,
+            "n": 11
+          },
+          "3": {
+            "estimate": 10.181818181818182,
+            "ci_lower": 5.913654644076109,
+            "ci_upper": 14.449981719560254,
+            "n": 11
+          },
+          "4": {
+            "estimate": 10.181818181818182,
+            "ci_lower": 6.17546723880318,
+            "ci_upper": 14.188169124833184,
+            "n": 11
+          },
+          "5": {
+            "estimate": 10.181818181818182,
+            "ci_lower": 6.17546723880318,
+            "ci_upper": 14.188169124833184,
+            "n": 11
+          },
+          "6": {
+            "estimate": 10.090909090909092,
+            "ci_lower": 6.066166233574721,
+            "ci_upper": 14.115651948243462,
+            "n": 11
+          }
+        },
+        "4": {
+          "2": {
+            "estimate": 12.545454545454545,
+            "ci_lower": 8.303325457212338,
+            "ci_upper": 16.78758363369675,
+            "n": 11
+          },
+          "3": {
+            "estimate": 12.636363636363637,
+            "ci_lower": 8.427247727639658,
+            "ci_upper": 16.845479545087613,
+            "n": 11
+          },
+          "4": {
+            "estimate": 12.272727272727273,
+            "ci_lower": 8.06556138306034,
+            "ci_upper": 16.479893162394205,
+            "n": 11
+          },
+          "5": {
+            "estimate": 12.181818181818182,
+            "ci_lower": 7.77833415862728,
+            "ci_upper": 16.585302205009082,
+            "n": 11
+          },
+          "6": {
+            "estimate": 12.090909090909092,
+            "ci_lower": 7.630030169745312,
+            "ci_upper": 16.551788012072873,
+            "n": 11
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "term": "Intercept",
+          "coefficient": 15.833331270487559,
+          "std_error": 12.04294802288448,
+          "z_value": 1.3147388197973158,
+          "p_value": 0.18859769518619685,
+          "ci_lower": -7.770413122053871,
+          "ci_upper": 39.43707566302899,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]",
+          "coefficient": -1.0833333333333466,
+          "std_error": 0.45225820014123597,
+          "z_value": -2.395386823268283,
+          "p_value": 0.01660283900402632,
+          "ci_lower": -1.9697431173230766,
+          "ci_upper": -0.19692354934361656,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]",
+          "coefficient": -1.8333333333333475,
+          "std_error": 0.4522582001412358,
+          "z_value": -4.053731547069385,
+          "p_value": 5.040705870499206e-05,
+          "ci_lower": -2.7197431173230773,
+          "ci_upper": -0.9469235493436177,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]",
+          "coefficient": -2.750000000000012,
+          "std_error": 0.45225820014123586,
+          "z_value": -6.080597320604057,
+          "p_value": 1.197356506841667e-09,
+          "ci_lower": -3.636409783989742,
+          "ci_upper": -1.863590216010282,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]",
+          "coefficient": -3.000000000000013,
+          "std_error": 0.45225820014123586,
+          "z_value": -6.633378895204425,
+          "p_value": 3.280881765470499e-11,
+          "ci_lower": -3.886409783989743,
+          "ci_upper": -2.113590216010283,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.2]",
+          "coefficient": 5.0400145818566555,
+          "std_error": 2.671425704190452,
+          "z_value": 1.8866384994165428,
+          "p_value": 0.05920896480593837,
+          "ci_lower": -0.19588358573118203,
+          "ci_upper": 10.275912749444494,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.3]",
+          "coefficient": 8.373260374972642,
+          "std_error": 2.7212463589507676,
+          "z_value": 3.0769946085297195,
+          "p_value": 0.002090990828442954,
+          "ci_lower": 3.0397155183683813,
+          "ci_upper": 13.706805231576901,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.4]",
+          "coefficient": 12.102962736826829,
+          "std_error": 0.8346536984313222,
+          "z_value": 14.500580012493286,
+          "p_value": 1.201304944001648e-47,
+          "ci_lower": 10.467071548338282,
+          "ci_upper": 13.738853925315375,
+          "significant": "True"
+        },
+        {
+          "term": "Q(\"Пол\")[T.женский ]",
+          "coefficient": -9.897451965831527,
+          "std_error": 3.6328076342061997,
+          "z_value": -2.7244635451208543,
+          "p_value": 0.006440604012408266,
+          "ci_lower": -17.01762409163784,
+          "ci_upper": -2.7772798400252166,
+          "significant": "True"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской]",
+          "coefficient": 1.4162823075819075,
+          "std_error": 2.8532770320959133,
+          "z_value": 0.4963704160691183,
+          "p_value": 0.6196330935748018,
+          "ci_lower": -4.1760379132414185,
+          "ci_upper": 7.008602528405233,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской ]",
+          "coefficient": -5.620268776671081,
+          "std_error": 2.812316000201748,
+          "z_value": -1.998448530061308,
+          "p_value": 0.045668054739931505,
+          "ci_lower": -11.132306850212245,
+          "ci_upper": -0.108230703129915,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -0.6166666666666525,
+          "std_error": 0.6708073159328076,
+          "z_value": -0.9192903118671738,
+          "p_value": 0.35794374386932426,
+          "ci_lower": -1.931424846460937,
+          "ci_upper": 0.698091513127632,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -0.8666666666666518,
+          "std_error": 0.6708073159328075,
+          "z_value": -1.2919755734349547,
+          "p_value": 0.1963656038681032,
+          "ci_lower": -2.181424846460936,
+          "ci_upper": 0.4480915131276324,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -1.0499999999999876,
+          "std_error": 0.6708073159328075,
+          "z_value": -1.565278098584665,
+          "p_value": 0.11751771617319937,
+          "ci_lower": -2.364758179794272,
+          "ci_upper": 0.2647581797942966,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -1.399999999999987,
+          "std_error": 0.6708073159328076,
+          "z_value": -2.0870374647795584,
+          "p_value": 0.03688474808245334,
+          "ci_lower": -2.7147581797942717,
+          "ci_upper": -0.08524182020570259,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 0.7196969696969816,
+          "std_error": 0.6539642769424007,
+          "z_value": 1.1005141948454937,
+          "p_value": 0.27110814831692,
+          "ci_lower": -0.5620494602859013,
+          "ci_upper": 2.0014433996798644,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 1.4696969696969824,
+          "std_error": 0.6539642769424006,
+          "z_value": 2.2473658294739383,
+          "p_value": 0.024616656939882735,
+          "ci_lower": 0.1879505397140997,
+          "ci_upper": 2.7514433996798653,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 2.386363636363646,
+          "std_error": 0.6539642769424004,
+          "z_value": 3.649073382908698,
+          "p_value": 0.00026318792142672855,
+          "ci_lower": 1.1046172063807635,
+          "ci_upper": 3.6681100663465287,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 2.5454545454545556,
+          "std_error": 0.6539642769424006,
+          "z_value": 3.8923449417692773,
+          "p_value": 9.927995191761107e-05,
+          "ci_lower": 1.263708115471673,
+          "ci_upper": 3.8272009754374383,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 1.1742424242424374,
+          "std_error": 0.6539642769424009,
+          "z_value": 1.7955757915900061,
+          "p_value": 0.07256200885319224,
+          "ci_lower": -0.10750400574044594,
+          "ci_upper": 2.4559888542253208,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 1.5606060606060743,
+          "std_error": 0.6539642769424006,
+          "z_value": 2.386378148822842,
+          "p_value": 0.017015244996956076,
+          "ci_lower": 0.27885963062319163,
+          "ci_upper": 2.842352490588957,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.386363636363648,
+          "std_error": 0.6539642769424007,
+          "z_value": 3.6490733829087,
+          "p_value": 0.00026318792142672654,
+          "ci_lower": 1.1046172063807649,
+          "ci_upper": 3.6681100663465305,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.5454545454545574,
+          "std_error": 0.6539642769424008,
+          "z_value": 3.8923449417692786,
+          "p_value": 9.927995191761051e-05,
+          "ci_lower": 1.2637081154716743,
+          "ci_upper": 3.8272009754374405,
+          "significant": "True"
+        },
+        {
+          "term": "Q(\"Возраст\")",
+          "coefficient": -0.1284940126273235,
+          "std_error": 0.18425933480167492,
+          "z_value": -0.6973541544889778,
+          "p_value": 0.48558118494970914,
+          "ci_lower": -0.48963567265391406,
+          "ci_upper": 0.2326476473992671,
+          "significant": "False"
+        },
+        {
+          "term": "Group Var",
+          "coefficient": 28.310089442674403,
+          "std_error": 7.6417591066716595,
+          "z_value": 3.704656093903588,
+          "p_value": 0.00021167772551637014,
+          "ci_lower": 13.332516815066974,
+          "ci_upper": 43.28766207028183,
+          "significant": "True"
+        }
+      ],
+      "conclusion": "Статистически значимое взаимодействие Время×Группа (p=0.0001). Траектории изменения показателя различаются между группами."
+    },
+    "lmm_updrs2_v2_v6": {
+      "type": "mixed_effects",
+      "method": {
+        "id": "mixed_effects",
+        "name": "Linear Mixed Effects (Time×Group)",
+        "description": "Linear mixed effects model for repeated measures with Time×Group interaction.",
+        "type": "parametric",
+        "min_groups": 2,
+        "max_groups": 100
+      },
+      "p_value": 0.0011227315807218494,
+      "interaction_p_value": 0.0011227315807218494,
+      "significant": true,
+      "outcome": "УШОБП часть 2 (V2–V6)",
+      "formula": "УШОБП2 ~ Visit * Group + Age + Sex + (1|Subject)",
+      "n_observations": 220,
+      "n_subjects": 43,
+      "model_statistics": {
+        "log_likelihood": -354.8564838715879,
+        "aic": null,
+        "bic": null
+      },
+      "estimated_means": {
+        "1": {
+          "2": {
+            "estimate": 6.916666666666667,
+            "ci_lower": 4.792759472841285,
+            "ci_upper": 9.04057386049205,
+            "n": 12
+          },
+          "3": {
+            "estimate": 5.833333333333333,
+            "ci_lower": 3.940103534129306,
+            "ci_upper": 7.72656313253736,
+            "n": 12
+          },
+          "4": {
+            "estimate": 5.416666666666667,
+            "ci_lower": 3.9214703647433238,
+            "ci_upper": 6.91186296859001,
+            "n": 12
+          },
+          "5": {
+            "estimate": 5.083333333333333,
+            "ci_lower": 3.8882506156378813,
+            "ci_upper": 6.278416051028785,
+            "n": 12
+          },
+          "6": {
+            "estimate": 5.083333333333333,
+            "ci_lower": 3.8579265733096664,
+            "ci_upper": 6.308740093357,
+            "n": 12
+          }
+        },
+        "2": {
+          "2": {
+            "estimate": 7.1,
+            "ci_lower": 5.774496865361611,
+            "ci_upper": 8.425503134638388,
+            "n": 10
+          },
+          "3": {
+            "estimate": 6.4,
+            "ci_lower": 5.322997768544644,
+            "ci_upper": 7.477002231455357,
+            "n": 10
+          },
+          "4": {
+            "estimate": 5.8,
+            "ci_lower": 4.744326657387537,
+            "ci_upper": 6.855673342612462,
+            "n": 10
+          },
+          "5": {
+            "estimate": 5.4,
+            "ci_lower": 4.4951371349036044,
+            "ci_upper": 6.304862865096396,
+            "n": 10
+          },
+          "6": {
+            "estimate": 5.1,
+            "ci_lower": 4.388628400298493,
+            "ci_upper": 5.8113715997015065,
+            "n": 10
+          }
+        },
+        "3": {
+          "2": {
+            "estimate": 5.363636363636363,
+            "ci_lower": 2.7743767797697427,
+            "ci_upper": 7.952895947502984,
+            "n": 11
+          },
+          "3": {
+            "estimate": 5.454545454545454,
+            "ci_lower": 2.7780181018471866,
+            "ci_upper": 8.131072807243722,
+            "n": 11
+          },
+          "4": {
+            "estimate": 5.0,
+            "ci_lower": 2.5407747567999186,
+            "ci_upper": 7.459225243200081,
+            "n": 11
+          },
+          "5": {
+            "estimate": 5.090909090909091,
+            "ci_lower": 2.551247580145846,
+            "ci_upper": 7.630570601672336,
+            "n": 11
+          },
+          "6": {
+            "estimate": 5.0,
+            "ci_lower": 2.5407747567999186,
+            "ci_upper": 7.459225243200081,
+            "n": 11
+          }
+        },
+        "4": {
+          "2": {
+            "estimate": 6.363636363636363,
+            "ci_lower": 3.899410996175632,
+            "ci_upper": 8.827861731097094,
+            "n": 11
+          },
+          "3": {
+            "estimate": 5.909090909090909,
+            "ci_lower": 3.4233145563264396,
+            "ci_upper": 8.394867261855378,
+            "n": 11
+          },
+          "4": {
+            "estimate": 5.818181818181818,
+            "ci_lower": 3.38074230458021,
+            "ci_upper": 8.255621331783427,
+            "n": 11
+          },
+          "5": {
+            "estimate": 5.636363636363637,
+            "ci_lower": 3.2465216658731153,
+            "ci_upper": 8.026205606854159,
+            "n": 11
+          },
+          "6": {
+            "estimate": 5.454545454545454,
+            "ci_lower": 3.062987259797482,
+            "ci_upper": 7.846103649293426,
+            "n": 11
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "term": "Intercept",
+          "coefficient": 6.857313018537097,
+          "std_error": 8.004951926501302,
+          "z_value": 0.8566338788163341,
+          "p_value": 0.39164725617813545,
+          "ci_lower": -8.832104455379978,
+          "ci_upper": 22.546730492454174,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]",
+          "coefficient": -1.0833333333333384,
+          "std_error": 0.3312830035226793,
+          "z_value": -3.2701144393578114,
+          "p_value": 0.0010750398324157375,
+          "ci_lower": -1.7326360889280457,
+          "ci_upper": -0.4340305777386311,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]",
+          "coefficient": -1.500000000000006,
+          "std_error": 0.3312830035226793,
+          "z_value": -4.527850762187736,
+          "p_value": 5.9586639170287505e-06,
+          "ci_lower": -2.1493027555947135,
+          "ci_upper": -0.8506972444052987,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]",
+          "coefficient": -1.8333333333333397,
+          "std_error": 0.33128300352267925,
+          "z_value": -5.534039820451675,
+          "p_value": 3.1293787856371694e-08,
+          "ci_lower": -2.482636088928047,
+          "ci_upper": -1.1840305777386324,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]",
+          "coefficient": -1.8333333333333397,
+          "std_error": 0.33128300352267925,
+          "z_value": -5.534039820451675,
+          "p_value": 3.1293787856371694e-08,
+          "ci_lower": -2.482636088928047,
+          "ci_upper": -1.1840305777386324,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.2]",
+          "coefficient": 4.50627700711787,
+          "std_error": 1.7841333135245991,
+          "z_value": 2.525751283807155,
+          "p_value": 0.011545118357024955,
+          "ci_lower": 1.009439968991547,
+          "ci_upper": 8.003114045244192,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.3]",
+          "coefficient": 5.37878065376402,
+          "std_error": 1.8209759631594387,
+          "z_value": 2.9537900348951895,
+          "p_value": 0.0031389749190495367,
+          "ci_lower": 1.8097333492583836,
+          "ci_upper": 8.947827958269656,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.4]",
+          "coefficient": 7.693838868076451,
+          "std_error": 0.6095279650017602,
+          "z_value": 12.622618337214819,
+          "p_value": 1.5846350641055604e-36,
+          "ci_lower": 6.499186009103011,
+          "ci_upper": 8.888491727049892,
+          "significant": "True"
+        },
+        {
+          "term": "Q(\"Пол\")[T.женский ]",
+          "coefficient": -4.707039038382373,
+          "std_error": 2.4157228519968474,
+          "z_value": -1.9485012672258795,
+          "p_value": 0.051355013339198126,
+          "ci_lower": -9.441768824926577,
+          "ci_upper": 0.027690748161831813,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской]",
+          "coefficient": 3.1230700867448564,
+          "std_error": 1.8982634605252295,
+          "z_value": 1.6452247813276328,
+          "p_value": 0.09992346487774796,
+          "ci_lower": -0.5974579290529642,
+          "ci_upper": 6.843598102542677,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской ]",
+          "coefficient": -3.1033728202069013,
+          "std_error": 1.870533064992368,
+          "z_value": -1.6590847166978915,
+          "p_value": 0.09709872250632166,
+          "ci_lower": -6.769550259483262,
+          "ci_upper": 0.56280461906946,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": 0.3833333333333374,
+          "std_error": 0.49137210190508,
+          "z_value": 0.7801284033976092,
+          "p_value": 0.4353152994248518,
+          "ci_lower": -0.5797382894083647,
+          "ci_upper": 1.3464049560750395,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": 0.2000000000000048,
+          "std_error": 0.49137210190507996,
+          "z_value": 0.40702351481614946,
+          "p_value": 0.6839907175181776,
+          "ci_lower": -0.7630716227416972,
+          "ci_upper": 1.1630716227417068,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": 0.13333333333333877,
+          "std_error": 0.4913721019050798,
+          "z_value": 0.2713490098774376,
+          "p_value": 0.7861226154418522,
+          "ci_lower": -0.8297382894083629,
+          "ci_upper": 1.0964049560750404,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -0.16666666666666177,
+          "std_error": 0.4913721019050799,
+          "z_value": -0.3391862623467731,
+          "p_value": 0.7344694175735803,
+          "ci_lower": -1.1297382894083636,
+          "ci_upper": 0.7964049560750401,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 1.1742424242424276,
+          "std_error": 0.4790344316462565,
+          "z_value": 2.451269359087633,
+          "p_value": 0.014235338261064765,
+          "ci_lower": 0.23535219086115067,
+          "ci_upper": 2.1131326576237046,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 1.1363636363636405,
+          "std_error": 0.4790344316462564,
+          "z_value": 2.372196153955776,
+          "p_value": 0.017682700352627374,
+          "ci_lower": 0.1974734029823636,
+          "ci_upper": 2.0752538697449174,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 1.5606060606060652,
+          "std_error": 0.47903443164625636,
+          "z_value": 3.257816051432597,
+          "p_value": 0.0011227315807218494,
+          "ci_lower": 0.6217158272247885,
+          "ci_upper": 2.4994962939873417,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 1.4696969696969742,
+          "std_error": 0.47903443164625636,
+          "z_value": 3.0680403591161354,
+          "p_value": 0.002154675155779378,
+          "ci_lower": 0.5308067363156974,
+          "ci_upper": 2.408587203078251,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 0.6287878787878841,
+          "std_error": 0.4790344316462564,
+          "z_value": 1.312615205188869,
+          "p_value": 0.18931264336075526,
+          "ci_lower": -0.31010235459339275,
+          "ci_upper": 1.567678112169161,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 0.9545454545454606,
+          "std_error": 0.4790344316462563,
+          "z_value": 1.9926447693228575,
+          "p_value": 0.046300359192480656,
+          "ci_lower": 0.01565522116418394,
+          "ci_upper": 1.893435687926737,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 1.1060606060606124,
+          "std_error": 0.4790344316462563,
+          "z_value": 2.3089375898502937,
+          "p_value": 0.02094704470273972,
+          "ci_lower": 0.16717037267933577,
+          "ci_upper": 2.044950839441889,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 0.9242424242424303,
+          "std_error": 0.47903443164625636,
+          "z_value": 1.9293862052173703,
+          "p_value": 0.053682934963737765,
+          "ci_lower": -0.014647809138846446,
+          "ci_upper": 1.863132657623707,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Возраст\")",
+          "coefficient": -0.06316429667636904,
+          "std_error": 0.12246745196887272,
+          "z_value": -0.5157639492036086,
+          "p_value": 0.6060192843755101,
+          "ci_lower": -0.3031960918137485,
+          "ci_upper": 0.1768674984610104,
+          "significant": "False"
+        },
+        {
+          "term": "Group Var",
+          "coefficient": 23.27295356273769,
+          "std_error": 6.33431781546239,
+          "z_value": 3.674105758622852,
+          "p_value": 0.0002386838628359518,
+          "ci_lower": 10.857918777800975,
+          "ci_upper": 35.687988347674406,
+          "significant": "True"
+        }
+      ],
+      "conclusion": "Статистически значимое взаимодействие Время×Группа (p=0.0011). Траектории изменения показателя различаются между группами."
+    },
+    "lmm_dass_v2_v6": {
+      "type": "mixed_effects",
+      "method": {
+        "id": "mixed_effects",
+        "name": "Linear Mixed Effects (Time×Group)",
+        "description": "Linear mixed effects model for repeated measures with Time×Group interaction.",
+        "type": "parametric",
+        "min_groups": 2,
+        "max_groups": 100
+      },
+      "p_value": 0.0002648540086976424,
+      "interaction_p_value": 0.0002648540086976424,
+      "significant": true,
+      "outcome": "DASS-21 (V2–V6)",
+      "formula": "DASS ~ Visit * Group + Age + Sex + (1|Subject)",
+      "n_observations": 220,
+      "n_subjects": 43,
+      "model_statistics": {
+        "log_likelihood": -570.6859206009701,
+        "aic": null,
+        "bic": null
+      },
+      "estimated_means": {
+        "1": {
+          "2": {
+            "estimate": 29.666666666666668,
+            "ci_lower": 25.851240954310505,
+            "ci_upper": 33.48209237902283,
+            "n": 12
+          },
+          "3": {
+            "estimate": 25.5,
+            "ci_lower": 21.431648955339114,
+            "ci_upper": 29.568351044660886,
+            "n": 12
+          },
+          "4": {
+            "estimate": 24.416666666666668,
+            "ci_lower": 20.848519723189302,
+            "ci_upper": 27.984813610144034,
+            "n": 12
+          },
+          "5": {
+            "estimate": 23.416666666666668,
+            "ci_lower": 20.082466005046992,
+            "ci_upper": 26.750867328286343,
+            "n": 12
+          },
+          "6": {
+            "estimate": 23.583333333333332,
+            "ci_lower": 21.797332406348453,
+            "ci_upper": 25.36933426031821,
+            "n": 12
+          }
+        },
+        "2": {
+          "2": {
+            "estimate": 32.5,
+            "ci_lower": 29.123562555818232,
+            "ci_upper": 35.87643744418177,
+            "n": 10
+          },
+          "3": {
+            "estimate": 30.5,
+            "ci_lower": 27.04038660863843,
+            "ci_upper": 33.95961339136157,
+            "n": 10
+          },
+          "4": {
+            "estimate": 27.6,
+            "ci_lower": 25.117346211237447,
+            "ci_upper": 30.082653788762556,
+            "n": 10
+          },
+          "5": {
+            "estimate": 25.6,
+            "ci_lower": 23.777750066873626,
+            "ci_upper": 27.422249933126377,
+            "n": 10
+          },
+          "6": {
+            "estimate": 24.3,
+            "ci_lower": 22.612202332591334,
+            "ci_upper": 25.987797667408667,
+            "n": 10
+          }
+        },
+        "3": {
+          "2": {
+            "estimate": 36.09090909090909,
+            "ci_lower": 31.988420382981648,
+            "ci_upper": 40.19339779883654,
+            "n": 11
+          },
+          "3": {
+            "estimate": 36.0,
+            "ci_lower": 31.57421030083293,
+            "ci_upper": 40.42578969916707,
+            "n": 11
+          },
+          "4": {
+            "estimate": 36.18181818181818,
+            "ci_lower": 30.466951543508138,
+            "ci_upper": 41.89668482012822,
+            "n": 11
+          },
+          "5": {
+            "estimate": 35.90909090909091,
+            "ci_lower": 31.014053784755525,
+            "ci_upper": 40.80412803342629,
+            "n": 11
+          },
+          "6": {
+            "estimate": 34.45454545454545,
+            "ci_lower": 29.370378060891117,
+            "ci_upper": 39.53871284819979,
+            "n": 11
+          }
+        },
+        "4": {
+          "2": {
+            "estimate": 34.90909090909091,
+            "ci_lower": 30.230920129102472,
+            "ci_upper": 39.58726168907934,
+            "n": 11
+          },
+          "3": {
+            "estimate": 33.45454545454545,
+            "ci_lower": 28.195831906985298,
+            "ci_upper": 38.71325900210561,
+            "n": 11
+          },
+          "4": {
+            "estimate": 31.727272727272727,
+            "ci_lower": 26.75324476507784,
+            "ci_upper": 36.70130068946761,
+            "n": 11
+          },
+          "5": {
+            "estimate": 30.90909090909091,
+            "ci_lower": 25.78873681397551,
+            "ci_upper": 36.02944500420631,
+            "n": 11
+          },
+          "6": {
+            "estimate": 31.181818181818183,
+            "ci_lower": 26.558344094083747,
+            "ci_upper": 35.80529226955262,
+            "n": 11
+          }
+        }
+      },
+      "coefficients": [
+        {
+          "term": "Intercept",
+          "coefficient": 22.975233134707484,
+          "std_error": 12.688525815457542,
+          "z_value": 1.8107094132809634,
+          "p_value": 0.07018584495668724,
+          "ci_lower": -1.893820480496018,
+          "ci_upper": 47.844286749910985,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]",
+          "coefficient": -4.166666666666641,
+          "std_error": 1.1505392838281523,
+          "z_value": -3.6214901353068325,
+          "p_value": 0.0002929109764096949,
+          "ci_lower": -6.421682225768327,
+          "ci_upper": -1.9116511075649556,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]",
+          "coefficient": -5.249999999999975,
+          "std_error": 1.1505392838281527,
+          "z_value": -4.563077570486613,
+          "p_value": 5.0409179080238716e-06,
+          "ci_lower": -7.505015559101661,
+          "ci_upper": -2.9949844408982886,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]",
+          "coefficient": -6.249999999999974,
+          "std_error": 1.1505392838281525,
+          "z_value": -5.432235202960258,
+          "p_value": 5.5652501196445746e-08,
+          "ci_lower": -8.505015559101661,
+          "ci_upper": -3.994984440898288,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]",
+          "coefficient": -6.083333333333307,
+          "std_error": 1.1505392838281527,
+          "z_value": -5.287375597547983,
+          "p_value": 1.24083691585436e-07,
+          "ci_lower": -8.338348892434993,
+          "ci_upper": -3.828317774231621,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.2]",
+          "coefficient": 5.026236805691608,
+          "std_error": 3.078898444232172,
+          "z_value": 1.632478919565361,
+          "p_value": 0.10257863576277634,
+          "ci_lower": -1.0082932570598535,
+          "ci_upper": 11.060766868443068,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.3]",
+          "coefficient": 10.251294717724361,
+          "std_error": 3.2270902552268974,
+          "z_value": 3.1766371272450176,
+          "p_value": 0.0014899333313721718,
+          "ci_lower": 3.926314042619471,
+          "ci_upper": 16.576275392829253,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Группа\"))[T.4]",
+          "coefficient": 11.19207833972789,
+          "std_error": 1.9657759458125936,
+          "z_value": 5.6934659128212175,
+          "p_value": 1.2448607853647166e-08,
+          "ci_lower": 7.339228284260047,
+          "ci_upper": 15.044928395195734,
+          "significant": "True"
+        },
+        {
+          "term": "Q(\"Пол\")[T.женский ]",
+          "coefficient": -3.810508686383147,
+          "std_error": 3.8556620744236434,
+          "z_value": -0.9882890701599554,
+          "p_value": 0.3230110967463836,
+          "ci_lower": -11.367467488810481,
+          "ci_upper": 3.746450116044187,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской]",
+          "coefficient": -0.28133464649535944,
+          "std_error": 3.0542952635361287,
+          "z_value": -0.09211114912631026,
+          "p_value": 0.9266097303911418,
+          "ci_lower": -6.267643361177445,
+          "ci_upper": 5.704974068186726,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Пол\")[T.мужской ]",
+          "coefficient": -1.8423985003664545,
+          "std_error": 2.9965310670008347,
+          "z_value": -0.6148437840861342,
+          "p_value": 0.5386578909601829,
+          "ci_lower": -7.71549147024347,
+          "ci_upper": 4.0306944695105615,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": 2.1666666666666456,
+          "std_error": 1.7065255392140932,
+          "z_value": 1.2696362385906403,
+          "p_value": 0.20421423468865973,
+          "ci_lower": -1.1780619288907728,
+          "ci_upper": 5.511395262224064,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": 0.34999999999997966,
+          "std_error": 1.7065255392140934,
+          "z_value": 0.2050950846954012,
+          "p_value": 0.8374978366541554,
+          "ci_lower": -2.994728595557439,
+          "ci_upper": 3.6947285955573985,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -0.65000000000002,
+          "std_error": 1.7065255392140932,
+          "z_value": -0.3808908715772075,
+          "p_value": 0.7032842262782033,
+          "ci_lower": -3.9947285955574383,
+          "ci_upper": 2.6947285955573985,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.2]",
+          "coefficient": -2.116666666666689,
+          "std_error": 1.7065255392140932,
+          "z_value": -1.2403369407770353,
+          "p_value": 0.21485079436034793,
+          "ci_lower": -5.461395262224107,
+          "ci_upper": 1.2280619288907295,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 4.075757575757547,
+          "std_error": 1.6636770557339475,
+          "z_value": 2.4498490026716673,
+          "p_value": 0.01429161335380942,
+          "ci_lower": 0.8150104646133736,
+          "ci_upper": 7.33650468690172,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 5.340909090909062,
+          "std_error": 1.6636770557339473,
+          "z_value": 3.21030399048983,
+          "p_value": 0.0013259466465781777,
+          "ci_lower": 2.0801619797648896,
+          "ci_upper": 8.601656202053235,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 6.06818181818179,
+          "std_error": 1.6636770557339473,
+          "z_value": 3.647451767918235,
+          "p_value": 0.0002648540086976424,
+          "ci_lower": 2.807434707037617,
+          "ci_upper": 9.328928929325963,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.3]",
+          "coefficient": 4.446969696969667,
+          "std_error": 1.6636770557339473,
+          "z_value": 2.672976514067415,
+          "p_value": 0.007518151378943426,
+          "ci_lower": 1.1862225858254942,
+          "ci_upper": 7.70771680811384,
+          "significant": "True"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.3]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.712121212121189,
+          "std_error": 1.6636770557339473,
+          "z_value": 1.6301969199934119,
+          "p_value": 0.10305988468516454,
+          "ci_lower": -0.548625899022984,
+          "ci_upper": 5.972868323265361,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.4]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.0681818181817944,
+          "std_error": 1.6636770557339473,
+          "z_value": 1.2431389920620115,
+          "p_value": 0.21381661938171526,
+          "ci_lower": -1.1925652929623785,
+          "ci_upper": 5.328928929325967,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.5]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.2499999999999765,
+          "std_error": 1.6636770557339473,
+          "z_value": 1.352425936419113,
+          "p_value": 0.1762390969783567,
+          "ci_lower": -1.0107471111441964,
+          "ci_upper": 5.510747111144149,
+          "significant": "False"
+        },
+        {
+          "term": "C(Q(\"Time\"))[T.6]:C(Q(\"Группа\"))[T.4]",
+          "coefficient": 2.3560606060605815,
+          "std_error": 1.6636770557339473,
+          "z_value": 1.4161766539607548,
+          "p_value": 0.156723789436827,
+          "ci_lower": -0.9046865050835913,
+          "ci_upper": 5.616807717204754,
+          "significant": "False"
+        },
+        {
+          "term": "Q(\"Возраст\")",
+          "coefficient": 0.06664488977186502,
+          "std_error": 0.19380409656248127,
+          "z_value": 0.3438776112267529,
+          "p_value": 0.7309383298723376,
+          "ci_lower": -0.31320415954692116,
+          "ci_upper": 0.44649393909065116,
+          "significant": "False"
+        },
+        {
+          "term": "Group Var",
+          "coefficient": 4.677288248374043,
+          "std_error": 1.3367850812927788,
+          "z_value": 3.498908174417034,
+          "p_value": 0.0004671674380043479,
+          "ci_lower": 2.057237633969748,
+          "ci_upper": 7.2973388627783375,
+          "significant": "True"
+        }
+      ],
+      "conclusion": "Статистически значимое взаимодействие Время×Группа (p=0.0003). Траектории изменения показателя различаются между группами."
+    },
+    "endpoint_updrs3_v6_adjusted": {
+      "type": "regression",
+      "method": {
+        "id": "linear_regression",
+        "name": "Linear Regression",
+        "description": "Predicts a continuous outcome based on one or more predictors.",
+        "type": "parametric",
+        "min_groups": 1,
+        "max_groups": 20
+      },
+      "r_squared": 0.8001942164317899,
+      "coefficients": [
+        {
+          "variable": "const",
+          "coefficient": -1.3486281885485851,
+          "p_value": 0.7869374972272337,
+          "std_err": 4.953498813781478,
+          "ci_lower": -11.385370150656248,
+          "ci_upper": 8.68811377355908
+        },
+        {
+          "variable": "Группа",
+          "coefficient": 0.8841975621013785,
+          "p_value": 0.029805671470467317,
+          "std_err": 0.39125996627734805,
+          "ci_lower": 0.09142956734519236,
+          "ci_upper": 1.6769655568575645
+        },
+        {
+          "variable": "УШОБП часть 3 «Двигательные функции» баллы V2",
+          "coefficient": 0.8302093727857202,
+          "p_value": 1.0802988572328054e-12,
+          "std_err": 0.07878649628065426,
+          "ci_lower": 0.6705727678333875,
+          "ci_upper": 0.9898459777380528
+        },
+        {
+          "variable": "Возраст",
+          "coefficient": -0.014980933496635783,
+          "p_value": 0.8285743895359332,
+          "std_err": 0.06869844909359651,
+          "ci_lower": -0.15417721327186998,
+          "ci_upper": 0.1242153462785984
+        },
+        {
+          "variable": "Пол_женский ",
+          "coefficient": -0.19019925311907304,
+          "p_value": 0.9001581172675812,
+          "std_err": 1.5056262572740826,
+          "ci_lower": -3.240887827746546,
+          "ci_upper": 2.8604893215083997
+        },
+        {
+          "variable": "Пол_мужской",
+          "coefficient": -0.6623175844899014,
+          "p_value": 0.5470226670823267,
+          "std_err": 1.089668610498176,
+          "ci_lower": -2.8701959102807075,
+          "ci_upper": 1.545560741300905
+        },
+        {
+          "variable": "Пол_мужской ",
+          "coefficient": 1.1777034383947966,
+          "p_value": 0.26196730238413324,
+          "std_err": 1.0338551936127556,
+          "ci_lower": -0.9170861627668692,
+          "ci_upper": 3.2724930395564624
+        }
+      ],
+      "p_value": 1.5118635293437416e-11,
+      "significant": true,
+      "roc": null
+    }
+  },
+  "log": [
+    "Starting step baseline_age...",
+    "Step baseline_age completed.",
+    "Starting step baseline_updrs3_v2...",
+    "Step baseline_updrs3_v2 completed.",
+    "Starting step baseline_updrs2_v2...",
+    "Step baseline_updrs2_v2 completed.",
+    "Starting step baseline_dass_v2...",
+    "Step baseline_dass_v2 completed.",
+    "Starting step lmm_updrs3_v2_v6...",
+    "Step lmm_updrs3_v2_v6 completed.",
+    "Starting step lmm_updrs2_v2_v6...",
+    "Step lmm_updrs2_v2_v6 completed.",
+    "Starting step lmm_dass_v2_v6...",
+    "Step lmm_dass_v2_v6 completed.",
+    "Starting step endpoint_updrs3_v6_adjusted...",
+    "Step endpoint_updrs3_v6_adjusted completed."
+  ]
+}

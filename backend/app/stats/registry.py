@@ -129,6 +129,22 @@ METHODS = {
         min_groups=2,
         max_groups=100
     ),
+    "mixed_effects": StatMethod(
+        id="mixed_effects",
+        name="Linear Mixed Effects (Time×Group)",
+        description="Linear mixed effects model for repeated measures with Time×Group interaction.",
+        type="parametric",
+        min_groups=2,
+        max_groups=100,
+    ),
+    "clustered_correlation": StatMethod(
+        id="clustered_correlation",
+        name="Clustered Correlation (Heatmap)",
+        description="Correlation matrix with hierarchical clustering and visualization.",
+        type="correlation",
+        min_groups=0,
+        max_groups=0,
+    ),
     "survival_km": StatMethod(
         id="survival_km",
         name="Kaplan-Meier Survival Analysis",
@@ -300,4 +316,3 @@ METHODS = {
 
 def get_method(method_id: str) -> StatMethod:
     return METHODS.get(method_id)
-
