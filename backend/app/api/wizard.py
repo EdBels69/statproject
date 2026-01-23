@@ -182,6 +182,7 @@ class WizardApplyRequest(BaseModel):
     dataset_id: str
     recommendation: Dict[str, Any]
     variables: Dict[str, Any]
+    test_config: Optional[Dict[str, Any]] = None
     alpha: float = 0.05
 
 
@@ -193,6 +194,21 @@ async def apply(payload: WizardApplyRequest):
 
     target = str(payload.variables.get("target") or "").strip()
     group = str(payload.variables.get("group") or "").strip() or None
+
+    test_config = payload.test_config if isinstance(payload.test_config, dict) else {}
+    multiplicity_correction = str(
+        test_config.get("multiplicity_correction")
+        or payload.variables.get("multiplicity_correction")
+        or "fdr_bh"
+    ).strip().lower()
+    post_hoc = str(test_config.get("post_hoc") or payload.variables.get("post_hoc") or "none").strip().lower()
+    post_hoc_correction = str(
+        test_config.get("post_hoc_correction")
+        or payload.variables.get("post_hoc_correction")
+        or "none"
+    ).strip().lower()
+    alternative = str(test_config.get("alternative") or payload.variables.get("alternative") or "").strip().lower() or None
+    auto_fallback = test_config.get("auto_fallback", payload.variables.get("auto_fallback", None))
 
     try:
         df = get_dataframe(payload.dataset_id, DATA_DIR)
@@ -271,10 +287,6 @@ async def apply(payload: WizardApplyRequest):
                     detail="Не найдено числовых колонок для сравнения (кроме timepoint/group)",
                 )
 
-            multiplicity_correction = str(payload.variables.get("multiplicity_correction") or "fdr_bh").strip().lower()
-            post_hoc = str(payload.variables.get("post_hoc") or "none").strip().lower()
-            post_hoc_correction = str(payload.variables.get("post_hoc_correction") or "none").strip().lower()
-
             slices: Dict[str, Any] = {}
             for s in sorted(df[timepoint].dropna().unique()):
                 sub_df = df[df[timepoint] == s]
@@ -341,20 +353,17 @@ async def apply(payload: WizardApplyRequest):
                     detail="Не найдено числовых колонок для сравнения (кроме исключённых)",
                 )
 
-            multiplicity_correction = str(payload.variables.get("multiplicity_correction") or "fdr_bh").strip().lower()
-            post_hoc = str(payload.variables.get("post_hoc") or "none").strip().lower()
-            post_hoc_correction = str(payload.variables.get("post_hoc_correction") or "none").strip().lower()
-
             items = run_batch_analysis(
                 df,
                 numeric_targets,
                 group_col=group,
                 method_id=method_id,
                 alpha=payload.alpha,
-                auto_fallback=False,
+                auto_fallback=(bool(auto_fallback) if auto_fallback is not None else False),
                 multiplicity_correction=multiplicity_correction,
                 post_hoc=post_hoc,
                 post_hoc_correction=post_hoc_correction,
+                **({"alternative": alternative} if alternative else {}),
             )
             return {
                 "results": {
@@ -418,8 +427,14 @@ async def apply(payload: WizardApplyRequest):
         if not group:
             raise HTTPException(status_code=400, detail="variables.group is required")
 
-        post_hoc = str(payload.variables.get("post_hoc") or "none").strip().lower()
-        post_hoc_correction = str(payload.variables.get("post_hoc_correction") or "none").strip().lower()
+        analysis_kwargs: Dict[str, Any] = {
+            "post_hoc": post_hoc,
+            "post_hoc_correction": post_hoc_correction,
+        }
+        if alternative:
+            analysis_kwargs["alternative"] = alternative
+        if auto_fallback is not None:
+            analysis_kwargs["auto_fallback"] = bool(auto_fallback)
 
         out = run_analysis(
             df,
@@ -428,8 +443,7 @@ async def apply(payload: WizardApplyRequest):
             group,
             is_paired=is_paired,
             alpha=payload.alpha,
-            post_hoc=post_hoc,
-            post_hoc_correction=post_hoc_correction,
+            **analysis_kwargs,
         )
         return {"results": out}
     except HTTPException:

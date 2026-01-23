@@ -198,6 +198,12 @@ const BatchAnalysisView = ({ data, datasetId, wizardContext, localKey }) => {
                 vars.timepoint_value = String(row.slice);
             }
 
+            const test_config = {
+                multiplicity_correction: vars.multiplicity_correction,
+                post_hoc: vars.post_hoc,
+                post_hoc_correction: vars.post_hoc_correction,
+            };
+
             const res = await applyStrategy({
                 recommendation: {
                     method_id: methodId,
@@ -206,6 +212,7 @@ const BatchAnalysisView = ({ data, datasetId, wizardContext, localKey }) => {
                     assumptions: wizardContext.recommendation?.assumptions || [],
                 },
                 variables: vars,
+                test_config,
                 dataset_id: String(datasetId),
                 alpha: vars.alpha,
             });

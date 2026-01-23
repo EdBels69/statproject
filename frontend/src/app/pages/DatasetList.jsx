@@ -148,6 +148,7 @@ export default function DatasetList() {
                                         <div className="table-actions">
                                             <Link to={`/prep/${ds.id}`} className="action-chip action-chip--neutral">Переменные</Link>
                                             <Link to={`/tests/${ds.id}`} className="action-chip action-chip--neutral">Тесты</Link>
+                                            <Link to={`/study-setup/${ds.id}`} className="action-chip action-chip--dark">Настройки</Link>
                                             <Link to={`/design/${ds.id}`} className="action-chip action-chip--dark">Конструктор</Link>
                                             <Link to={`/protocol?dataset=${encodeURIComponent(ds.id)}`} className="action-chip action-chip--accent">Авто‑отчёт</Link>
                                             <Link to={`/results/${ds.id}`} className="action-chip action-chip--accent">Результаты</Link>

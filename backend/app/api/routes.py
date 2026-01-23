@@ -13,3 +13,7 @@ api_router.include_router(wizard.router, prefix="/wizard", tags=["wizard"])
 api_router.include_router(v2_router, prefix="/v2", tags=["v2"])
 api_router.include_router(ai_router, prefix="/v2", tags=["ai"])
 api_router.include_router(knowledge.router, prefix="/v2", tags=["knowledge"])
+
+# New Study Setup Module
+from app.api import study
+api_router.include_router(study.router, prefix="/v1", tags=["study"])

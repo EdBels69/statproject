@@ -566,9 +566,15 @@ export default function ProtocolWizard() {
     }
     setLoading(true);
     try {
+      const test_config = {
+        multiplicity_correction: variables.multiplicity_correction,
+        post_hoc: variables.post_hoc,
+        post_hoc_correction: variables.post_hoc_correction,
+      };
       const res = await applyStrategy({
         recommendation: recommendation,
         variables: variables,
+        test_config,
         dataset_id: selectedDataset.id,
         alpha: variables.alpha
       });
@@ -800,6 +806,11 @@ export default function ProtocolWizard() {
         vars.timepoint_value = '';
       }
 
+      const test_config = {
+        multiplicity_correction: vars.multiplicity_correction,
+        post_hoc: vars.post_hoc,
+        post_hoc_correction: vars.post_hoc_correction,
+      };
       const res = await applyStrategy({
         recommendation: {
           method_id: recMethodId,
@@ -808,6 +819,7 @@ export default function ProtocolWizard() {
           assumptions: recommendation?.assumptions || [],
         },
         variables: vars,
+        test_config,
         dataset_id: selectedDataset.id,
         alpha: variables.alpha
       });

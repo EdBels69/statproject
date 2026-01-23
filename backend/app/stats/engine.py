@@ -1296,6 +1296,15 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
         except Exception:
             return None
 
+    def _safe_float3(v):
+        out = _safe_float(v)
+        if out is None:
+            return None
+        try:
+            return float(round(out, 3))
+        except Exception:
+            return out
+
     def _compute(series_raw: pd.Series) -> Dict[str, Any]:
         series_num = pd.to_numeric(series_raw, errors="coerce")
         missing = int(series_num.isna().sum())
@@ -1312,6 +1321,8 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
                 "std": None,
                 "se": None,
                 "variance": None,
+                "cv": None,
+                "geometric_mean": None,
                 "min": None,
                 "max": None,
                 "range": None,
@@ -1333,6 +1344,23 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
         std = valid.std(ddof=1) if n > 1 else 0.0
         se = (std / np.sqrt(n)) if n > 1 else None
 
+        cv = None
+        try:
+            mean_f = _safe_float(mean)
+            std_f = _safe_float(std)
+            if mean_f is not None and std_f is not None and mean_f != 0:
+                cv = (std_f / mean_f) * 100
+        except Exception:
+            cv = None
+
+        geometric_mean = None
+        try:
+            positives = valid[valid > 0]
+            if int(len(positives)) > 0:
+                geometric_mean = stats.gmean(positives.to_numpy(dtype=float))
+        except Exception:
+            geometric_mean = None
+
         q1 = valid.quantile(0.25)
         q3 = valid.quantile(0.75)
         iqr = q3 - q1
@@ -1345,8 +1373,8 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
                 shapiro_sample = valid.sample(5000, random_state=0)
             try:
                 w, p = stats.shapiro(shapiro_sample)
-                shapiro_w = _safe_float(w)
-                shapiro_p = _safe_float(p)
+                shapiro_w = _safe_float3(w)
+                shapiro_p = _safe_float3(p)
             except Exception:
                 shapiro_w = None
                 shapiro_p = None
@@ -1354,26 +1382,28 @@ def compute_descriptive_compare(df: pd.DataFrame, target: str, group: str) -> Di
         ci_95_low = None
         ci_95_high = None
         if se is not None:
-            ci_95_low = _safe_float(mean - 1.96 * se)
-            ci_95_high = _safe_float(mean + 1.96 * se)
+            ci_95_low = _safe_float3(mean - 1.96 * se)
+            ci_95_high = _safe_float3(mean + 1.96 * se)
 
         return {
             "count": n,
             "missing": missing,
-            "mean": _safe_float(mean),
-            "median": _safe_float(valid.median()),
-            "mode": _safe_float(mode_val),
-            "std": _safe_float(std),
-            "se": _safe_float(se),
-            "variance": _safe_float(valid.var(ddof=1) if n > 1 else 0.0),
-            "min": _safe_float(valid.min()),
-            "max": _safe_float(valid.max()),
-            "range": _safe_float(valid.max() - valid.min()),
-            "q1": _safe_float(q1),
-            "q3": _safe_float(q3),
-            "iqr": _safe_float(iqr),
-            "skewness": _safe_float(valid.skew()),
-            "kurtosis": _safe_float(valid.kurt()),
+            "mean": _safe_float3(mean),
+            "median": _safe_float3(valid.median()),
+            "mode": _safe_float3(mode_val),
+            "std": _safe_float3(std),
+            "se": _safe_float3(se),
+            "variance": _safe_float3(valid.var(ddof=1) if n > 1 else 0.0),
+            "cv": _safe_float3(cv),
+            "geometric_mean": _safe_float3(geometric_mean),
+            "min": _safe_float3(valid.min()),
+            "max": _safe_float3(valid.max()),
+            "range": _safe_float3(valid.max() - valid.min()),
+            "q1": _safe_float3(q1),
+            "q3": _safe_float3(q3),
+            "iqr": _safe_float3(iqr),
+            "skewness": _safe_float3(valid.skew()),
+            "kurtosis": _safe_float3(valid.kurt()),
             "shapiro_w": shapiro_w,
             "shapiro_p": shapiro_p,
             "ci_95_low": ci_95_low,

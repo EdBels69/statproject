@@ -1397,7 +1397,7 @@ class ProtocolReport:
                     ip_s = "< 0.001" if (np.isfinite(ip) and ip < 0.001) else (f"{ip:.4f}" if np.isfinite(ip) else "-")
                 except Exception:
                     ip_s = "-"
-                section_html += f"""<div style=\"margin-top: 6px; color: #111; font-size: 12px;\"><strong>{'Время×Группа' if is_ru else 'Time×Group'}:</strong> p = <span class=\"stat-val\">{ip_s}</span></div>"""
+                section_html += f"""<div style=\"margin-top: 6px; color: #111; font-size: 12px;\"><strong>{'Визит×Группа' if is_ru else 'Time×Group'}:</strong> p = <span class=\"stat-val\">{ip_s}</span></div>"""
 
             est = res.get("estimated_means")
             if isinstance(est, dict) and est:
@@ -2534,10 +2534,10 @@ def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = N
             if not path.exists():
                 return
             try:
-                pdf.add_font(family, style=style_name, fname=str(path), uni=True)
+                pdf.add_font(family, style=style_name, fname=str(path))
             except TypeError:
                 try:
-                    pdf.add_font(family, style_name, str(path), uni=True)
+                    pdf.add_font(family, style_name, str(path))
                 except TypeError:
                     pdf.add_font(family, style_name, str(path))
 
@@ -2701,10 +2701,10 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
             if not path.exists():
                 return
             try:
-                pdf.add_font(family, style=style_name, fname=str(path), uni=True)
+                pdf.add_font(family, style=style_name, fname=str(path))
             except TypeError:
                 try:
-                    pdf.add_font(family, style_name, str(path), uni=True)
+                    pdf.add_font(family, style_name, str(path))
                 except TypeError:
                     pdf.add_font(family, style_name, str(path))
 
@@ -3118,7 +3118,7 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
 
         p_key = "p_value" if "p_value" in res else ("interaction_p_value" if "interaction_p_value" in res else None)
         if p_key:
-            label = "p-value" if p_key == "p_value" else ("p (Time×Group)" if not is_ru else "p (Время×Группа)")
+            label = "p-value" if p_key == "p_value" else ("p (Time×Group)" if not is_ru else "p (Визит×Группа)")
             pdf.cell(0, 6, _safe_text(f"{label}: {_fmt_p(res.get(p_key))}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
         if "stat_value" in res or "stats" in res:
             pdf.cell(0, 6, _safe_text(("Статистика" if is_ru else "Statistic") + f": {_fmt_num(res.get('stat_value', res.get('stats')))}", allow_unicode), new_x="LMARGIN", new_y="NEXT")

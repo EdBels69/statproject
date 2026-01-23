@@ -395,6 +395,193 @@ def llm_chat_completion_sync(
         return None
 
 
+def _doc_add_heading(doc: Document, text: str, level: int = 1):
+    t = str(text or "")
+    is_numbered_level1 = (level == 1) and bool(__import__("re").match(r"^\s*\d+\.", t))
+    if is_numbered_level1:
+        def _has_trailing_page_break() -> bool:
+            try:
+                if not getattr(doc, "paragraphs", None):
+                    return False
+                p = doc.paragraphs[-1]
+                for br in p._p.xpath(".//w:br"):
+                    if br.get(qn("w:type")) == "page":
+                        return True
+            except Exception:
+                return False
+            return False
+
+        started = bool(getattr(doc, "_statproject_numbered_sections_started", False))
+        if started:
+            if not _has_trailing_page_break():
+                doc.add_page_break()
+        else:
+            setattr(doc, "_statproject_numbered_sections_started", True)
+    return doc.add_heading(t, level=level)
+
+
+def _try_parse_json(text: str):
+    if not text:
+        return None
+    s = str(text).strip()
+    try:
+        return json.loads(s)
+    except Exception:
+        pass
+    try:
+        start = s.find("[")
+        end = s.rfind("]")
+        if start != -1 and end != -1 and end > start:
+            return json.loads(s[start : end + 1])
+    except Exception:
+        pass
+    try:
+        start = s.find("{")
+        end = s.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            return json.loads(s[start : end + 1])
+    except Exception:
+        return None
+    return None
+
+
+def generate_ai_artifact_explanations(
+    *,
+    artifacts: List[Dict[str, Any]],
+    preferred_model: str = "glm-4.7",
+    chunk_size: int = 6,
+) -> Dict[str, Dict[str, Any]]:
+    if not artifacts:
+        return {}
+
+    model_candidates = [preferred_model]
+    if app_settings is not None:
+        model_candidates.append(getattr(app_settings, "GLM_MODEL", ""))
+    model_candidates = [m for m in model_candidates if m]
+    if not model_candidates:
+        return {}
+
+    out: Dict[str, Dict[str, Any]] = {}
+    chunks = _chunk_list(artifacts, chunk_size=chunk_size)
+    for part_idx, chunk in enumerate(chunks, start=1):
+        prompt = (
+            "Ты — научный редактор статистического отчёта. Сформулируй интерпретацию каждого артефакта в официально-академическом стиле.\n"
+            "Строго используй только предоставленные данные (не придумывай чисел).\n"
+            "Нельзя: списки с маркерами, многоточия, разговорные формулировки, упоминания AI/LLM/модели.\n\n"
+            "Верни ТОЛЬКО валидный JSON-массив, без пояснений и без Markdown.\n"
+            "Формат каждого элемента массива:\n"
+            "{\"id\": string, \"title\": string, \"plain\": string, \"takeaways\": [string, ...], \"caveats\": [string, ...]}\n\n"
+            "Правила текста:\n"
+            "- title: коротко и официально (как подпись к блоку интерпретации).\n"
+            "- plain: 3–6 предложений; опиши, что показано, где различия, и как это подтверждается (p_adj/ES/Δ/BF₁₀).\n"
+            "- takeaways: 2–4 коротких факта-утверждения, без маркеров.\n"
+            "- caveats: 0–2 формулировки об ограничениях (коррекция, мощность, вариабельность).\n\n"
+            f"Данные (chunk {part_idx}/{len(chunks)}): {json.dumps(chunk, ensure_ascii=False, default=str)}"
+        )
+
+        content = None
+        for m in model_candidates:
+            content = llm_chat_completion_sync(model=m, prompt=prompt, temperature=0.2, max_tokens=1800, timeout_s=90.0)
+            if content:
+                break
+        parsed = _try_parse_json(content or "")
+        if not isinstance(parsed, list):
+            continue
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id") or "").strip()
+            if not item_id:
+                continue
+            out[item_id] = item
+    return out
+
+
+def generate_ai_rewrites(
+    *,
+    items: List[Dict[str, Any]],
+    preferred_model: str = "glm-4.7",
+    chunk_size: int = 8,
+) -> Dict[str, str]:
+    if not items:
+        return {}
+    model_candidates = [preferred_model]
+    if app_settings is not None:
+        model_candidates.append(getattr(app_settings, "GLM_MODEL", ""))
+    model_candidates = [m for m in model_candidates if m]
+    if not model_candidates:
+        return {}
+
+    out: Dict[str, str] = {}
+    chunks = _chunk_list(items, chunk_size=chunk_size)
+    for part_idx, chunk in enumerate(chunks, start=1):
+        prompt = (
+            "Ты — научный редактор официального отчёта. Сформулируй краткое резюме к каждому абзацу.\n"
+            "Стиль: нейтральный, академический, без разговорных формулировок.\n"
+            "Нельзя: списки, маркеры, многоточия, обрыв слов, упоминания AI/LLM/модели.\n\n"
+            "Верни ТОЛЬКО валидный JSON-массив, без пояснений и без Markdown.\n"
+            "Формат элемента: {\"id\": string, \"rewritten\": string}\n"
+            "rewritten: 1–2 предложения, до 240 символов, завершать точкой.\n\n"
+            f"Тексты (chunk {part_idx}/{len(chunks)}): {json.dumps(chunk, ensure_ascii=False, default=str)}"
+        )
+        content = None
+        for m in model_candidates:
+            content = llm_chat_completion_sync(model=m, prompt=prompt, temperature=0.2, max_tokens=1600, timeout_s=90.0)
+            if content:
+                break
+        parsed = _try_parse_json(content or "")
+        if not isinstance(parsed, list):
+            continue
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id") or "").strip()
+            rewritten = str(item.get("rewritten") or "").strip()
+            if item_id and rewritten:
+                out[item_id] = rewritten
+    return out
+
+
+def _doc_add_ai_block(doc: Document, payload: Optional[Dict[str, Any]]):
+    if not isinstance(payload, dict):
+        return
+    title = str(payload.get("title") or "").strip()
+    plain = str(payload.get("plain") or "").strip()
+    takeaways = payload.get("takeaways")
+    caveats = payload.get("caveats")
+
+    def _clean_text(v: Any) -> str:
+        s = str(v or "").strip()
+        if not s:
+            return ""
+        s = s.replace("\u2022", "").replace("•", " ")
+        s = " ".join(s.split())
+        return s.strip()
+
+    head = doc.add_paragraph()
+    head_run = head.add_run("Интерпретация результатов")
+    head_run.bold = True
+
+    if title:
+        doc.add_paragraph(_clean_text(title))
+    if plain:
+        doc.add_paragraph(_clean_text(plain))
+
+    if isinstance(takeaways, list) and takeaways:
+        items = [_clean_text(x) for x in takeaways[:6]]
+        items = [x for x in items if x]
+        if items:
+            doc.add_paragraph("Ключевые выводы: " + "; ".join(items) + ".")
+
+    if isinstance(caveats, list) and caveats:
+        items = [_clean_text(x) for x in caveats[:4]]
+        items = [x for x in items if x]
+        if items:
+            doc.add_paragraph("Ограничения интерпретации: " + "; ".join(items) + ".")
+
+    doc.add_paragraph()
+
+
 def _chunk_list(items: List[Any], chunk_size: int) -> List[List[Any]]:
     if chunk_size <= 0:
         return [items]
@@ -1854,11 +2041,11 @@ def generate_executive_summary(all_results, responders, active_vs_placebo, df):
     primary_avp_sig = sum(1 for f in summary["primary_findings"] if f.get("avp_p_adj", 1) < 0.05)
     
     if primary_sig >= 1 or primary_avp_sig >= 1:
-        summary["recommendation"] = "РЕКОМЕНДУЕТСЯ продолжение исследований с увеличенной выборкой"
+        summary["recommendation"] = "Получены статистические сигналы эффективности; целесообразно продолжение исследований с увеличением выборки и заранее заданными первичными конечными точками."
     elif primary_sig == 0 and any(f.get("avp_p_adj", 1) < 0.1 for f in summary["primary_findings"]):
-        summary["recommendation"] = "УСЛОВНО РЕКОМЕНДУЕТСЯ — есть тренды, требуется большая выборка"
+        summary["recommendation"] = "Убедительных доказательств эффективности не получено; наблюдаются тенденции, требующие подтверждения на большей выборке и с контролем множественных сравнений."
     else:
-        summary["recommendation"] = "НЕ РЕКОМЕНДУЕТСЯ — нет доказательств эффективности"
+        summary["recommendation"] = "Убедительных статистических и клинически значимых доказательств эффективности по ключевым конечным точкам не получено."
     
     return summary
 
@@ -1877,11 +2064,9 @@ def generate_discussion_text(exec_summary, all_results, active_vs_placebo, respo
     )
 
     discussion.append(
-        "Аналитическая стратегия была построена от общего к частному: на каждом визите выполнялся глобальный тест Kruskal–Wallis для 4 групп, "
-        "после чего при наличии сигналов выполнялись post-hoc попарные сравнения Mann–Whitney U с коррекцией Холма. "
-        "Дополнительно оценивались внутригрупповые изменения (Wilcoxon) и модели смешанных эффектов для повторных измерений. "
-        "Для интерпретации силы доказательств наряду с p-value приводился Bayes Factor (BF₁₀), рассчитанный по верхней границе Sellke, "
-        "и размеры эффекта (ε² для Kruskal–Wallis и r для Mann–Whitney/Wilcoxon)."
+        "Для оценки различий между группами на каждом визите применялся глобальный тест Kruskal–Wallis с оценкой размера эффекта (ε²) и силы доказательств (BF₁₀). "
+        "При наличии статистических сигналов выполнялись post-hoc сравнения с коррекцией Холма для контроля семейной ошибки I рода. "
+        "Дополнительно анализ включал укрупнение Active vs Placebo, оценку внутригрупповой динамики и модели смешанных эффектов для повторных измерений."
     )
 
     lines: List[str] = []
@@ -1981,14 +2166,27 @@ def generate_discussion_text(exec_summary, all_results, active_vs_placebo, respo
             p = mmp.get("interaction_p_value")
             p_txt = f"p={float(p):.4f}" if p is not None and np.isfinite(p) else "p=—"
             parts.append(f"укрупнение ({p_txt})")
-        mixed_lines.append(f"{short}: значимое взаимодействие Визит×Группа в модели {', '.join(parts)}.")
+        direction = str((ENDPOINTS.get(ep_key, {}) or {}).get("direction") or "").strip()
+        if direction == "lower_is_better":
+            dir_txt = " (ниже — лучше)"
+        elif direction == "higher_is_better":
+            dir_txt = " (выше — лучше)"
+        else:
+            dir_txt = ""
+        mixed_lines.append(
+            f"{short}: значимое взаимодействие Визит×Группа{dir_txt} в модели {', '.join(parts)}; это означает различие траекторий во времени, поэтому практический вывод формируется по follow-up оценкам по визитам (p_adj, Δ, ES)."
+        )
     if mixed_lines:
         discussion.append("Подтверждение результатов моделями повторных измерений (Mixed Effects):")
         discussion.extend(mixed_lines)
 
     discussion.append(
-        "Ограничения исследования включают ограниченный размер выборки при дроблении на 4 группы, что снижает мощность для вторичных конечных точек, "
-        "и потенциальную гетерогенность пациентов. В таких условиях интерпретация должна опираться не только на p-value, но и на ES, Δ и BF₁₀."
+        "Ограничения исследования включают ограниченный размер выборки при разделении на 4 группы, что снижает статистическую мощность и повышает риск ложнонегативных результатов, "
+        "а также возможную клиническую гетерогенность пациентов. В этих условиях интерпретация должна учитывать согласованность направлений эффектов, величину ES и Δ, а также p_adj и BF₁₀, а не только номинальные p-value."
+    )
+
+    discussion.append(
+        "Сопоставление результатов с опубликованными исследованиями не выполнено в рамках автоматической генерации, поскольку список источников не включён в входные данные; данный раздел следует дополнить при наличии заранее отобранной библиографии."
     )
 
     rec = exec_summary.get("recommendation", "—")
@@ -1998,109 +2196,47 @@ def generate_discussion_text(exec_summary, all_results, active_vs_placebo, respo
 
 
 def generate_conclusions_text(exec_summary, all_results, active_vs_placebo, responders) -> List[str]:
-    bullets: List[str] = []
-    bullets.append(f"• Итоговая рекомендация: {exec_summary.get('recommendation', '—')}")
+    out: List[str] = []
 
-    posthoc_counts: Dict[str, int] = {}
-    mixed_sig: List[str] = []
+    rec = str((exec_summary or {}).get("recommendation") or "—").strip()
+    out.append("Итоговая рекомендация: " + rec)
 
-    for ep_key, r in all_results.items():
+    sig_kw = 0
+    sig_avp = 0
+    any_data = 0
+    for ep_key, r in (all_results or {}).items():
         if not isinstance(r, dict):
             continue
-        short = r.get("short", ep_key)
-
-        kw_best = None
-        kw_sig = False
+        any_data += 1
+        kw_any = False
         for v in VISITS:
-            vdata = (r.get("by_visit", {}) or {}).get(v, {})
-            kw = (vdata.get("kruskal", {}) or {})
+            kw = ((r.get("by_visit", {}) or {}).get(v, {}) or {}).get("kruskal", {})
             p = kw.get("p")
-            if p is None or not np.isfinite(p):
-                continue
-            if kw_best is None or float(p) < float(kw_best[1]):
-                kw_best = (v, float(p), kw.get("epsilon_sq"), vdata.get("bf10"))
-            if float(p) < 0.05:
-                kw_sig = True
+            if p is not None and np.isfinite(p) and float(p) < 0.05:
+                kw_any = True
+                break
+        if kw_any:
+            sig_kw += 1
 
-        avp_visits = (active_vs_placebo.get(ep_key, {}) or {}).get("visits", {})
-        avp_best = None
-        avp_sig = False
+        avp_visits = ((active_vs_placebo or {}).get(ep_key, {}) or {}).get("visits", {})
+        avp_any = False
         if isinstance(avp_visits, dict):
             for v in VISITS:
                 d = avp_visits.get(v, {})
                 if not isinstance(d, dict):
                     continue
                 p = d.get("p_adj", d.get("p_value"))
-                if p is None or not np.isfinite(p):
-                    continue
-                if avp_best is None or float(p) < float(avp_best[1]):
-                    avp_best = (v, float(p), d.get("effect_size"), d.get("diff_median"), d.get("diff_pct"), d.get("bf10"))
-                if float(p) < 0.05:
-                    avp_sig = True
+                if p is not None and np.isfinite(p) and float(p) < 0.05:
+                    avp_any = True
+                    break
+        if avp_any:
+            sig_avp += 1
 
-        sig_posthoc = 0
-        for v in VISITS:
-            pv = (r.get("pairwise", {}) or {}).get(v, {})
-            if not isinstance(pv, dict):
-                continue
-            for _, st in pv.items():
-                if not isinstance(st, dict) or st.get("error"):
-                    continue
-                p_adj = st.get("p_adj")
-                if p_adj is not None and np.isfinite(p_adj) and float(p_adj) < 0.05:
-                    sig_posthoc += 1
-        posthoc_counts[short] = sig_posthoc
+    out.append(
+        f"По совокупности анализируемых показателей (n={any_data}) статистические сигналы различий между 4 группами (Kruskal–Wallis, p<0.05 на отдельных визитах) зарегистрированы для {sig_kw} показателей, а в укрупнённом сравнении Active vs Placebo (p_adj<0.05 на отдельных визитах) — для {sig_avp} показателей."
+    )
 
-        mm4 = r.get("mixed_effects_4g", {})
-        mmp = r.get("mixed_effects_pooled", {})
-        sig4 = isinstance(mm4, dict) and (mm4.get("interaction", {}) or {}).get("significant") is True
-        sigp = isinstance(mmp, dict) and (mmp.get("interaction", {}) or {}).get("significant") is True
-        if sig4 or sigp:
-            mixed_sig.append(short)
-
-        if kw_best is None and avp_best is None:
-            bullets.append(f"• {short}: данных для итогового сравнения недостаточно (пропуски по визитам/группам).")
-            continue
-
-        kw_fragment = None
-        if kw_best is not None:
-            v, p, es, bf = kw_best
-            p_txt = "p < 0.001" if p < 0.001 else f"p={p:.3f}"
-            es_txt = f"ε²={float(es):.3f}" if es is not None and np.isfinite(es) else "ε²=—"
-            bf_txt = f"BF₁₀={float(bf):.2f}" if bf is not None and np.isfinite(bf) else "BF₁₀=—"
-            kw_fragment = f"4 группы: {v}, {p_txt}, {es_txt}, {bf_txt}"
-
-        avp_fragment = None
-        if avp_best is not None:
-            v, p, es, diff, diff_pct, bf = avp_best
-            p_txt = "p < 0.001" if p < 0.001 else f"p_adj={p:.3f}"
-            es_txt = f"ES={float(es):.2f}" if es is not None and np.isfinite(es) else "ES=—"
-            d_txt = f"Δ={float(diff):+.1f}" if diff is not None and np.isfinite(diff) else "Δ=—"
-            dp_txt = f" ({float(diff_pct):+.1f}%)" if diff_pct is not None and np.isfinite(diff_pct) else ""
-            bf_txt = f"BF₁₀={float(bf):.2f}" if bf is not None and np.isfinite(bf) else "BF₁₀=—"
-            avp_fragment = f"укрупнение: {v}, {p_txt}, {es_txt}, {d_txt}{dp_txt}, {bf_txt}"
-
-        if kw_sig or avp_sig or sig_posthoc > 0:
-            parts = [p for p in [kw_fragment, avp_fragment] if p]
-            bullets.append(f"• {short}: выявлены статистические сигналы ({'; '.join(parts)}).")
-        else:
-            parts = [p for p in [kw_fragment, avp_fragment] if p]
-            bullets.append(f"• {short}: значимых различий после коррекции не выявлено; лучший сигнал: {'; '.join(parts)}.")
-
-    ph_sig = [(k, v) for k, v in posthoc_counts.items() if int(v) > 0]
-    ph_sig = sorted(ph_sig, key=lambda x: x[1], reverse=True)
-    if ph_sig:
-        ph_txt = "; ".join([f"{k}: {v}" for k, v in ph_sig[:4]])
-        bullets.append(f"• Post-hoc: устойчивые парные различия после коррекции Холма обнаружены для: {ph_txt}.")
-    else:
-        bullets.append("• Post-hoc: после коррекции Холма устойчивых парных различий между 4 группами не выявлено.")
-
-    if mixed_sig:
-        bullets.append("• Mixed Effects: значимое взаимодействие Визит×Группа выявлено для: " + "; ".join(mixed_sig) + ".")
-    else:
-        bullets.append("• Mixed Effects: значимых взаимодействий Визит×Группа не выявлено.")
-
-    resp_findings = exec_summary.get("responder_findings", []) if isinstance(exec_summary, dict) else []
+    resp_findings = (exec_summary or {}).get("responder_findings", [])
     resp_rows = [r for r in resp_findings if isinstance(r, dict) and r.get("nnt") is not None]
     resp_rows_sorted = sorted(resp_rows, key=lambda r: float(r.get("nnt")) if r.get("nnt") is not None else 1e9)
     if resp_rows_sorted:
@@ -2108,17 +2244,21 @@ def generate_conclusions_text(exec_summary, all_results, active_vs_placebo, resp
         parts = []
         for r in top:
             parts.append(
-                f"{r.get('name','—')}: NNT≈{float(r.get('nnt')):.1f}, {float(r.get('active_pct',0)):.0f}% vs {float(r.get('placebo_pct',0)):.0f}%"
+                f"{r.get('name','—')}: NNT≈{float(r.get('nnt')):.1f} при долях респондеров {float(r.get('active_pct',0)):.0f}% (Active) и {float(r.get('placebo_pct',0)):.0f}% (Placebo)"
             )
-        bullets.append("• Клиническая значимость (респондеры ≥20%): " + "; ".join(parts) + ".")
+        out.append("Клиническая интерпретация по респондерам (улучшение ≥20% от baseline): " + "; ".join(parts) + ".")
     else:
-        bullets.append("• Клиническая значимость (респондеры ≥20%): недостаточно данных для устойчивых оценок NNT.")
+        out.append("Клиническая интерпретация по респондерам (улучшение ≥20% от baseline): данных недостаточно для устойчивых оценок клинического выигрыша (NNT).")
 
-    bullets.append(
-        "• Интерпретация и ограничения: выводы опираются на p_adj (Холм), BF₁₀, ES и Δ; дробление на 4 группы снижает мощность и может приводить к трендам без достижения p_adj<0.05."
+    out.append(
+        "При интерпретации следует учитывать множественные сравнения (ориентир — p_adj), согласованность направления эффектов, величину ES и Δ, а также ограничения мощности при разделении выборки на 4 группы."
     )
 
-    return bullets[:12]
+    out.append(
+        "Результаты настоящего отчёта не заменяют заранее зарегистрированный протокол статистического анализа и должны рассматриваться в контексте дизайна исследования и качества исходных данных."
+    )
+
+    return out
 
 
 # ============================================================
@@ -3284,8 +3424,194 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
 
     doc = Document()
     enable_word_update_fields_on_open(doc)
+    try:
+        doc.styles["Normal"].paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    except Exception:
+        pass
     num = Numbering()
     groups = sorted(df[GROUP_COL].dropna().unique())
+
+    rewrite_items = [
+        {
+            "id": "s1_1",
+            "text": "Пациенты рандомизированы в 4 группы: Г1 (ДИАМАГ 30 дней), Г2 (Плацебо 30 дней), Г3 (ДИАМАГ 20 дней), Г4 (Плацебо 20 дней). "
+            "Основное сравнение эффективности терапии проводится как на уровне 4 групп (с учётом длительности), так и в укрупнённом анализе (укрупнение, pooled): Active (Г1+Г3) vs Placebo (Г2+Г4), "
+            "который повышает статистическую мощность ценой потери детализации по длительности.",
+        },
+        {
+            "id": "s1_2",
+            "text": "В отчёте приводятся p-value и скорректированные p-value (p_adj, коррекция Холма для множественных сравнений), Bayes Factor (BF₁₀) "
+            "как оценка силы доказательств в пользу H₁, размеры эффекта (ES) как величина различий, а также клинически интерпретируемые разницы: Δ (абсолютная) и Δ% (процентная), "
+            "обычно по медианам. Для респондеров дополнительно приводятся 95% доверительные интервалы и NNT.",
+        },
+        {
+            "id": "s2_intro",
+            "text": "Цель раздела — проверить наличие различий между 4 рандомизированными группами на каждом визите и описать их величину (ES).",
+        },
+        {
+            "id": "s3_intro",
+            "text": "Цель раздела — проверить основную гипотезу эффективности укрупнённым сравнением Active (Г1+Г3) vs Placebo (Г2+Г4) на каждом визите с оценкой Δ и ES.",
+        },
+        {
+            "id": "s4_intro",
+            "text": "В разделе собраны post-hoc сравнения между 4 группами по всем визитам. "
+            "Таблица 16 включает только статистически значимые различия после коррекции Холма (p_adj < 0.05). "
+            "Если значимых строк немного, это обычно означает, что после учёта множественных сравнений сигнал устойчиво проявился лишь для части показателей, "
+            "а для остальных наблюдаются тренды без достижения порога p_adj<0.05.",
+        },
+        {
+            "id": "s5_intro",
+            "text": "Модели Mixed Effects оценивают взаимодействие Визит×Группа с учётом повторных измерений у пациентов.",
+        },
+        {
+            "id": "s6_intro",
+            "text": "Респондер определяется как пациент с улучшением не менее чем на 20% относительно baseline (V2). Раздел отражает клиническую значимость эффекта по визитам.",
+        },
+        {
+            "id": "s7_intro",
+            "text": "Раздел агрегирует результаты по каждой временной точке (V2–V6): глобальный тест 4 групп (Kruskal–Wallis), "
+            "наиболее выраженные post-hoc различия (p_adj), объединённый анализ Active vs Placebo (p_adj, ES, Δ) и сравнительные графики размеров эффекта (ε²).",
+        },
+    ]
+    rewrites = generate_ai_rewrites(items=rewrite_items)
+
+    def fallback_rewrite_text(text_value: str) -> str:
+        s = str(text_value or "").strip()
+        if not s:
+            return ""
+        re = __import__("re")
+        parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", s) if p and p.strip()]
+        if not parts:
+            return ""
+        out = parts[0].strip()
+        out = " ".join(out.split()).replace("…", "").replace("...", "").strip()
+        if not out:
+            return ""
+        if len(out) > 240:
+            cut = out[:240]
+            if " " in cut:
+                cut = cut[: cut.rfind(" ")].rstrip()
+            out = cut
+        if out and out[-1] not in ".!?":
+            out += "."
+        return out
+
+    def add_text_with_rewrite(text_id: str, text_value: str):
+        doc.add_paragraph(text_value)
+        rw = rewrites.get(text_id)
+        short = str(rw).strip() if rw else ""
+        short = " ".join(short.split()).replace("…", "").replace("...", "").strip()
+        if short and short[-1] not in ".!?":
+            short += "."
+        if short and short != str(text_value or "").strip():
+            p = doc.add_paragraph()
+            r = p.add_run("Резюме: ")
+            r.bold = True
+            p.add_run(short)
+
+    def fallback_artifact_explanation(payload: Dict[str, Any]) -> Dict[str, Any]:
+        artifact_id = str(payload.get("id") or "").strip()
+        label = str(payload.get("label") or payload.get("title") or "").strip()
+        kind = str(payload.get("kind") or "").strip() or "artifact"
+
+        title = label or ("Таблица" if kind == "table" else "График" if kind == "chart" else "Материал")
+        plain = ""
+        takeaways: List[str] = []
+        caveats: List[str] = []
+
+        if kind == "table":
+            rows = payload.get("rows")
+            if not isinstance(rows, list):
+                rows = []
+
+            p_candidates: List[tuple] = []
+            p_adj_present = False
+            for r in rows:
+                if not isinstance(r, dict):
+                    continue
+                for k in [
+                    "p_adj",
+                    "p",
+                    "p_value",
+                    "kw_p",
+                    "kw_min_p",
+                    "min_p",
+                    "min_p_adj",
+                    "pooled_p_adj",
+                    "avp_p_adj",
+                ]:
+                    v = r.get(k)
+                    if v is None or not np.isfinite(v):
+                        continue
+                    is_adj = "adj" in str(k)
+                    if is_adj:
+                        p_adj_present = True
+                    p_candidates.append((float(v), bool(is_adj)))
+
+            pvals = [p for p, _ in p_candidates]
+            sig_count = sum(1 for p in pvals if p < 0.05)
+            best = min(p_candidates, key=lambda x: x[0]) if p_candidates else None
+            best_p = best[0] if best is not None else None
+            best_is_adj = bool(best[1]) if best is not None else False
+            if best_p is not None and np.isfinite(best_p):
+                key_txt = "p_adj" if best_is_adj else "p"
+                p_txt = f"{key_txt} < 0.001" if best_p < 0.001 else f"{key_txt}≈{best_p:.3f}"
+            else:
+                p_txt = ""
+
+            plain = f"Таблица суммирует результаты: {title}. По ней удобно быстро увидеть, где есть статистические сигналы и насколько они устойчивы после коррекций."
+            if p_txt:
+                plain += f" Наиболее выраженный статистический сигнал в таблице: {p_txt}."
+            if pvals:
+                takeaways.append(f"Статистически значимые строки: {sig_count} из {len(pvals)} (по доступным p-значениям).")
+            if p_adj_present:
+                takeaways.append("Для итоговой интерпретации ориентируйтесь на p_adj (после коррекции множественных сравнений).")
+            caveats.append("Оценивайте вместе p, размер эффекта (ES) и Δ, а не только значимость.")
+
+        elif kind == "chart":
+            caption = str(payload.get("caption") or "").strip()
+            kw_by_visit = payload.get("kw_by_visit")
+            sig_visits = []
+            if isinstance(kw_by_visit, list):
+                for r in kw_by_visit:
+                    if not isinstance(r, dict):
+                        continue
+                    p = r.get("p")
+                    if p is not None and np.isfinite(p) and float(p) < 0.05:
+                        sig_visits.append(str(r.get("visit") or "").strip())
+
+            if caption:
+                plain = f"График иллюстрирует результаты: {caption}"
+            else:
+                plain = f"График иллюстрирует результаты: {title}."
+            if sig_visits:
+                takeaways.append("Сигналы различий между группами заметны на визитах: " + ", ".join([v for v in sig_visits if v]) + ".")
+            takeaways.append("Подписи под рисунками объясняют критерии, p-value и величину эффекта.")
+            caveats.append("Визуальные различия нужно читать вместе со статистикой (p_adj, ES, Δ).")
+
+        else:
+            plain = f"Материал помогает интерпретировать результаты: {title}."
+            takeaways.append("Смотрите подписи и значения в таблицах/графиках для конкретных выводов.")
+
+        return {
+            "id": artifact_id,
+            "title": title,
+            "plain": plain,
+            "takeaways": takeaways,
+            "caveats": caveats,
+        }
+
+    def add_ai_for_artifact(payload: Dict[str, Any]):
+        if not isinstance(payload, dict):
+            return
+        artifact_id = str(payload.get("id") or "").strip()
+        if not artifact_id:
+            return
+        expl = generate_ai_artifact_explanations(artifacts=[payload])
+        got = expl.get(artifact_id) if isinstance(expl, dict) else None
+        if not isinstance(got, dict):
+            got = fallback_artifact_explanation(payload)
+        _doc_add_ai_block(doc, got)
 
     title = doc.add_paragraph()
     title.add_run("ПОЛНЫЙ АНАЛИТИЧЕСКИЙ ОТЧЁТ ПО ИССЛЕДОВАНИЮ ДИАМАГ").bold = True
@@ -3316,18 +3642,20 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
     doc.add_paragraph("9. Выводы")
     doc.add_page_break()
 
-    doc.add_heading("1. ДИЗАЙН И МЕТОДОЛОГИЯ", level=1)
+    _doc_add_heading(doc, "1. ДИЗАЙН И МЕТОДОЛОГИЯ", level=1)
     doc.add_heading("1.1 Группы и сравнения", level=2)
-    doc.add_paragraph(
+    add_text_with_rewrite(
+        "s1_1",
         "Пациенты рандомизированы в 4 группы: Г1 (ДИАМАГ 30 дней), Г2 (Плацебо 30 дней), Г3 (ДИАМАГ 20 дней), Г4 (Плацебо 20 дней). "
         "Основное сравнение эффективности терапии проводится как на уровне 4 групп (с учётом длительности), так и в укрупнённом анализе (укрупнение, pooled): Active (Г1+Г3) vs Placebo (Г2+Г4), "
-        "который повышает статистическую мощность ценой потери детализации по длительности."
+        "который повышает статистическую мощность ценой потери детализации по длительности.",
     )
     doc.add_heading("1.2 Метрики значимости и интерпретации", level=2)
-    doc.add_paragraph(
+    add_text_with_rewrite(
+        "s1_2",
         "В отчёте приводятся p-value и скорректированные p-value (p_adj, коррекция Холма для множественных сравнений), Bayes Factor (BF₁₀) "
         "как оценка силы доказательств в пользу H₁, размеры эффекта (ES) как величина различий, а также клинически интерпретируемые разницы: Δ (абсолютная) и Δ% (процентная), "
-        "обычно по медианам. Для респондеров дополнительно приводятся 95% доверительные интервалы и NNT." 
+        "обычно по медианам. Для респондеров дополнительно приводятся 95% доверительные интервалы и NNT.",
     )
 
     doc.add_heading("1.3 Глоссарий ключевых статистических терминов", level=2)
@@ -3349,7 +3677,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         ("ES (размер эффекта)", "Величина различий, не сводимая к значимости: r≈0.1 малый, 0.3 средний, 0.5 большой; ε²≈0.01 малый, 0.06 средний, 0.14 большой."),
         ("ε² (epsilon-squared)", "Размер эффекта для Kruskal–Wallis (4 группы): доля вариативности, объясняемая группой."),
         ("r (rank-biserial)", "Размер эффекта для Mann–Whitney/Wilcoxon; знак отражает направление различий, модуль — величину."),
-        ("Δ (дельта)", "Абсолютная разница между группами; в pooled-анализе рассчитывается как Med(Active) − Med(Placebo) с учётом направления шкалы."),
+        ("Δ (дельта)", "Абсолютная разница между группами; в pooled-анализе рассчитывается как Med(Active) − Med(Placebo), знак интерпретируется с учётом направления шкалы."),
         ("Δ (%)", "Процентная разница, обычно относительно Med(Placebo): 100%·Δ/Med(Placebo)."),
         ("Медиана (Med)", "Центральное значение распределения, устойчивое к выбросам; обычно интерпретируется вместе с IQR (Q1–Q3)."),
         ("Доверительный интервал (95% ДИ)", "Диапазон значений параметра, совместимых с данными; для долей респондеров используется интервал Вилсона."),
@@ -3366,15 +3694,91 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         row[0].text = term
         row[1].text = desc
 
+    glossary_payload = {
+        "id": "s1_glossary",
+        "kind": "table",
+        "label": "Глоссарий ключевых терминов",
+        "terms": [t for t, _ in terms],
+    }
+    add_ai_for_artifact(glossary_payload)
+
     doc.add_page_break()
 
-    doc.add_heading("2. СРАВНЕНИЕ 4 ГРУПП", level=1)
-    doc.add_paragraph(
-        "Цель раздела — проверить наличие различий между 4 рандомизированными группами на каждом визите и описать их величину (ES)."
+    _doc_add_heading(doc, "2. СРАВНЕНИЕ 4 ГРУПП", level=1)
+    add_text_with_rewrite(
+        "s2_intro",
+        "Цель раздела — проверить наличие различий между 4 рандомизированными группами на каждом визите и описать их величину (ES).",
     )
 
     for idx, (key, result) in enumerate(all_results.items(), start=1):
         doc.add_heading(f"2.{idx} {result.get('name', key)}", level=2)
+
+        doc.add_paragraph(num.tab() + f". Описательная статистика по визитам: {result.get('short', key)}")
+        doc.add_paragraph("Показаны медиана и межквартильный размах (Q1–Q3) с указанием n.")
+        desc_table = doc.add_table(rows=1, cols=5, style="Table Grid")
+        dh = desc_table.rows[0].cells
+        dh[0].text = "Визит"
+        dh[0].paragraphs[0].runs[0].bold = True
+        group_order = [g for g in ["1", "2", "3", "4"] if g in groups] + [str(g) for g in groups if str(g) not in {"1", "2", "3", "4"}]
+        while len(group_order) < 4:
+            group_order.append("")
+        for j, g in enumerate(group_order[:4], start=1):
+            dh[j].text = f"Г{g}" if g else "—"
+            if dh[j].paragraphs and dh[j].paragraphs[0].runs:
+                dh[j].paragraphs[0].runs[0].bold = True
+
+        cfg = ENDPOINTS.get(key, {})
+        for v in VISITS:
+            row = desc_table.add_row().cells
+            row[0].text = v
+            col = (cfg.get("cols") or {}).get(v)
+            for j, g in enumerate(group_order[:4], start=1):
+                if not col or not g or col not in df.columns:
+                    row[j].text = "—"
+                    continue
+                s = df[df[GROUP_COL].astype(str) == str(g)][col].dropna()
+                if len(s) == 0:
+                    row[j].text = "—"
+                    continue
+                med = float(s.median())
+                q1 = float(s.quantile(0.25))
+                q3 = float(s.quantile(0.75))
+                row[j].text = f"n={len(s)}; {med:.1f} [{q1:.1f}; {q3:.1f}]"
+
+        doc.add_paragraph(num.tab() + f". Изменение от baseline (Δ к V2) по визитам: {result.get('short', key)}")
+        direction = str(cfg.get("direction") or "").strip()
+        if direction == "lower_is_better":
+            doc.add_paragraph("Для данного показателя снижение значения соответствует улучшению, поэтому отрицательная Δ означает улучшение относительно baseline.")
+        elif direction == "higher_is_better":
+            doc.add_paragraph("Для данного показателя повышение значения соответствует улучшению, поэтому положительная Δ означает улучшение относительно baseline.")
+        doc.add_paragraph("Показаны Med(Δ) и IQR (Q1–Q3) по пациентам с доступными значениями на V2 и соответствующем визите; n может отличаться от n в уровнях показателя.")
+        delta_table = doc.add_table(rows=1, cols=5, style="Table Grid")
+        dth = delta_table.rows[0].cells
+        dth[0].text = "Визит"
+        dth[0].paragraphs[0].runs[0].bold = True
+        for j, g in enumerate(group_order[:4], start=1):
+            dth[j].text = f"Г{g}" if g else "—"
+            if dth[j].paragraphs and dth[j].paragraphs[0].runs:
+                dth[j].paragraphs[0].runs[0].bold = True
+
+        baseline_col = (cfg.get("cols") or {}).get("V2")
+        for v in VISITS[1:]:
+            row = delta_table.add_row().cells
+            row[0].text = v
+            visit_col = (cfg.get("cols") or {}).get(v)
+            for j, g in enumerate(group_order[:4], start=1):
+                if not baseline_col or not visit_col or not g or baseline_col not in df.columns or visit_col not in df.columns:
+                    row[j].text = "—"
+                    continue
+                gdf = df[df[GROUP_COL].astype(str) == str(g)][[baseline_col, visit_col]].dropna()
+                if len(gdf) == 0:
+                    row[j].text = "—"
+                    continue
+                delta = (gdf[visit_col] - gdf[baseline_col]).astype(float)
+                med = float(delta.median())
+                q1 = float(delta.quantile(0.25))
+                q3 = float(delta.quantile(0.75))
+                row[j].text = f"n={len(delta)}; {med:+.1f} [{q1:+.1f}; {q3:+.1f}]"
 
         doc.add_paragraph(num.tab() + f". Глобальный тест 4 групп по визитам: {result.get('short', key)}")
         table = doc.add_table(rows=1, cols=6, style="Table Grid")
@@ -3383,6 +3787,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
 
+        kw_rows = []
         for v in VISITS:
             vdata = result.get("by_visit", {}).get(v, {})
             kw = vdata.get("kruskal", {})
@@ -3397,32 +3802,80 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             row[4].text = f"{float(es):.3f}" if es is not None and np.isfinite(es) else "—"
             row[5].text = "значимо" if kw.get("significant") else "незначимо"
 
+            kw_rows.append(
+                {
+                    "visit": v,
+                    "H": kw.get("H"),
+                    "p": p,
+                    "bf10": bf,
+                    "epsilon_sq": es,
+                    "significant": bool(kw.get("significant")),
+                }
+            )
+
         doc.add_paragraph(
             "Интерпретация: p<0.05 означает различия между группами на данном визите; ε² показывает их величину; BF₁₀ отражает силу доказательств в пользу H₁."
+        )
+
+        add_ai_for_artifact(
+            {
+                "id": f"s2_{key}_kw_table",
+                "kind": "table",
+                "label": f"Глобальный тест 4 групп по визитам ({result.get('short', key)})",
+                "rows": kw_rows,
+            }
         )
 
         fig_key = f"{key}_spaghetti"
         if fig_key in figures and figures[fig_key] and os.path.exists(figures[fig_key]):
             doc.add_picture(figures[fig_key], width=Inches(6))
             caption = generate_figure_caption_text(all_results, key, visit_key=None, active_vs_placebo=None)
-            p = doc.add_paragraph(num.fig() + ". " + caption)
+            fig_label = num.fig()
+            p = doc.add_paragraph(fig_label + ". " + caption)
             p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
 
+            add_ai_for_artifact(
+                {
+                    "id": f"s2_{key}_spaghetti_fig",
+                    "kind": "chart",
+                    "label": f"{fig_label}. {result.get('short', key)} — динамика по визитам (4 группы)",
+                    "caption": caption,
+                    "kw_by_visit": kw_rows,
+                }
+            )
+
         doc.add_heading("Boxplot по визитам (4 группы)", level=3)
+
+        boxplot_rows = []
         for v in VISITS:
             fig_key = f"{key}_boxplot_{v}"
             if fig_key in figures and figures[fig_key] and os.path.exists(figures[fig_key]):
                 doc.add_picture(figures[fig_key], width=Inches(6))
                 caption = generate_figure_caption_text(all_results, key, visit_key=v, active_vs_placebo=None)
                 caption = "В контексте цели оценки эффективности терапии сравнение групп позволяет выявить, существует ли эффект вмешательства. " + caption
-                p = doc.add_paragraph(num.fig() + ". " + caption)
+                fig_label = num.fig()
+                p = doc.add_paragraph(fig_label + ". " + caption)
                 p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
+
+                boxplot_rows.append({"visit": v, "caption": caption})
+
+        if boxplot_rows:
+            add_ai_for_artifact(
+                {
+                    "id": f"s2_{key}_boxplots_figset",
+                    "kind": "chart",
+                    "label": f"Boxplot по визитам (4 группы): {result.get('short', key)}",
+                    "by_visit": boxplot_rows,
+                    "kw_by_visit": kw_rows,
+                }
+            )
 
         doc.add_page_break()
 
-    doc.add_heading("3. УКРУПНЕНИЕ: ACTIVE (Г1+Г3) VS PLACEBO (Г2+Г4)", level=1)
-    doc.add_paragraph(
-        "Цель раздела — проверить основную гипотезу эффективности укрупнённым сравнением Active (Г1+Г3) vs Placebo (Г2+Г4) на каждом визите с оценкой Δ и ES."
+    _doc_add_heading(doc, "3. УКРУПНЕНИЕ: ACTIVE (Г1+Г3) VS PLACEBO (Г2+Г4)", level=1)
+    add_text_with_rewrite(
+        "s3_intro",
+        "Цель раздела — проверить основную гипотезу эффективности укрупнённым сравнением Active (Г1+Г3) vs Placebo (Г2+Г4) на каждом визите с оценкой Δ и ES.",
     )
 
     doc.add_heading("3.1 Сводка выигрыша от укрупнения", level=2)
@@ -3436,6 +3889,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         wh[i].text = h
         wh[i].paragraphs[0].runs[0].bold = True
 
+    win_rows = []
     for ep_key, result in all_results.items():
         short = result.get("short", ep_key)
         kw_sig = []
@@ -3467,6 +3921,25 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         row[3].text = ", ".join(avp_sig) if avp_sig else "—"
         row[4].text = f"{min(avp_ps):.4f}" if avp_ps else "—"
 
+        win_rows.append(
+            {
+                "endpoint": short,
+                "kw_significant_visits": kw_sig,
+                "kw_min_p": (min(kw_ps) if kw_ps else None),
+                "pooled_significant_visits": avp_sig,
+                "pooled_min_p_adj": (min(avp_ps) if avp_ps else None),
+            }
+        )
+
+    add_ai_for_artifact(
+        {
+            "id": "s3_win_table",
+            "kind": "table",
+            "label": "Сравнение чувствительности 4-группового и укрупнённого анализа",
+            "rows": win_rows,
+        }
+    )
+
     doc.add_page_break()
 
     pooled_idx = 1
@@ -3476,8 +3949,28 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         fig_key = f"{key}_pooled_spaghetti"
         if fig_key in figures and figures[fig_key] and os.path.exists(figures[fig_key]):
             doc.add_picture(figures[fig_key], width=Inches(6))
-            p = doc.add_paragraph(num.fig() + f". Динамика {res.get('short', key)} (Active vs Placebo); подписи p= приведены только для визитов со значимыми различиями.")
+            fig_label = num.fig()
+            p = doc.add_paragraph(fig_label + f". Динамика {res.get('short', key)} (Active vs Placebo); подписи p= приведены только для визитов со значимыми различиями.")
             p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
+
+            add_ai_for_artifact(
+                {
+                    "id": f"s3_{key}_pooled_spaghetti_fig",
+                    "kind": "chart",
+                    "label": f"{fig_label}. {res.get('short', key)} — динамика Active vs Placebo",
+                    "by_visit": [
+                        {
+                            "visit": v,
+                            "p_adj": (res.get("visits", {}).get(v, {}) or {}).get("p_adj"),
+                            "effect_size": (res.get("visits", {}).get(v, {}) or {}).get("effect_size"),
+                            "diff_median": (res.get("visits", {}).get(v, {}) or {}).get("diff_median"),
+                            "diff_pct": (res.get("visits", {}).get(v, {}) or {}).get("diff_pct"),
+                            "significant": bool((res.get("visits", {}).get(v, {}) or {}).get("significant")),
+                        }
+                        for v in VISITS
+                    ],
+                }
+            )
 
         doc.add_paragraph(num.tab() + f". Active vs Placebo по визитам: {res.get('short', key)}")
         table = doc.add_table(rows=1, cols=9, style="Table Grid")
@@ -3486,6 +3979,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
 
+        pooled_rows = []
         visits_sorted = sorted(res.get("visits", {}).keys(), key=lambda v: VISITS.index(v) if v in VISITS else 99)
         for v in visits_sorted:
             d = res["visits"][v]
@@ -3505,7 +3999,31 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             row[7].text = f"{float(es):.2f}" if es is not None and np.isfinite(es) else "—"
             row[8].text = "значимо" if d.get('significant') else "незначимо"
 
+            pooled_rows.append(
+                {
+                    "visit": v,
+                    "active_median": d.get("active_median"),
+                    "placebo_median": d.get("placebo_median"),
+                    "diff_median": diff,
+                    "diff_pct": diff_pct,
+                    "p_adj": p_val,
+                    "bf10": bf,
+                    "effect_size": es,
+                    "significant": bool(d.get("significant")),
+                }
+            )
+
+        add_ai_for_artifact(
+            {
+                "id": f"s3_{key}_avp_table",
+                "kind": "table",
+                "label": f"Active vs Placebo по визитам ({res.get('short', key)})",
+                "rows": pooled_rows,
+            }
+        )
+
         doc.add_heading("Boxplot по визитам (Active vs Placebo)", level=3)
+        pooled_box_rows = []
         for v in VISITS:
             fig_key = f"{key}_pooled_boxplot_{v}"
             if fig_key in figures and figures[fig_key] and os.path.exists(figures[fig_key]):
@@ -3521,18 +4039,43 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                 es_txt = f"ES={float(es):.2f}" if es is not None and np.isfinite(es) else "ES=—"
                 verdict = "значимо" if vstats.get("significant") else "незначимо"
                 caption = f"В контексте основной цели исследования сравнение Active vs Placebo на визите {v} даёт: {p_txt} ({verdict}), {diff_txt}{diffp_txt}, {es_txt}."
-                p = doc.add_paragraph(num.fig() + ". " + caption)
+                fig_label = num.fig()
+                p = doc.add_paragraph(fig_label + ". " + caption)
                 p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
+
+                pooled_box_rows.append({"visit": v, "caption": caption})
+
+        if pooled_box_rows:
+            add_ai_for_artifact(
+                {
+                    "id": f"s3_{key}_pooled_boxplots_figset",
+                    "kind": "chart",
+                    "label": f"Boxplot по визитам (Active vs Placebo): {res.get('short', key)}",
+                    "by_visit": pooled_box_rows,
+                    "by_visit_stats": [
+                        {
+                            "visit": v,
+                            "p_adj": (res.get("visits", {}).get(v, {}) or {}).get("p_adj"),
+                            "effect_size": (res.get("visits", {}).get(v, {}) or {}).get("effect_size"),
+                            "diff_median": (res.get("visits", {}).get(v, {}) or {}).get("diff_median"),
+                            "diff_pct": (res.get("visits", {}).get(v, {}) or {}).get("diff_pct"),
+                            "significant": bool((res.get("visits", {}).get(v, {}) or {}).get("significant")),
+                        }
+                        for v in VISITS
+                    ],
+                }
+            )
 
         pooled_idx += 1
         doc.add_page_break()
 
-    doc.add_heading("4. ПОПАРНЫЕ СРАВНЕНИЯ (POST-HOC)", level=1)
-    doc.add_paragraph(
+    _doc_add_heading(doc, "4. ПОПАРНЫЕ СРАВНЕНИЯ (POST-HOC)", level=1)
+    add_text_with_rewrite(
+        "s4_intro",
         "В разделе собраны post-hoc сравнения между 4 группами по всем визитам. "
         "Таблица 16 включает только статистически значимые различия после коррекции Холма (p_adj < 0.05). "
         "Если значимых строк немного, это обычно означает, что после учёта множественных сравнений сигнал устойчиво проявился лишь для части показателей, "
-        "а для остальных наблюдаются тренды без достижения порога p_adj<0.05."
+        "а для остальных наблюдаются тренды без достижения порога p_adj<0.05.",
     )
 
     doc.add_paragraph(num.tab() + ". Значимые попарные сравнения (4 группы, p_adj<0.05)")
@@ -3544,6 +4087,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
 
     any_rows = False
     sig_by_endpoint: Dict[str, int] = {}
+    sig_payload_rows = []
     for ep_key, result in all_results.items():
         short = result.get("short", ep_key)
         sig_by_endpoint[short] = 0
@@ -3559,6 +4103,18 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                     continue
                 any_rows = True
                 sig_by_endpoint[short] = int(sig_by_endpoint.get(short, 0)) + 1
+                sig_payload_rows.append(
+                    {
+                        "endpoint": short,
+                        "visit": v,
+                        "pair": str(pair_key).replace("_vs_", " vs "),
+                        "p_adj": float(p_adj),
+                        "bf10": st.get("bf10"),
+                        "diff_median": st.get("diff_median"),
+                        "diff_pct": st.get("diff_pct"),
+                        "effect_size_r": st.get("r"),
+                    }
+                )
                 row = table.add_row().cells
                 row[0].text = short
                 row[1].text = v
@@ -3584,6 +4140,18 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             "Пояснение по охвату показателей: значимые post-hoc после коррекции Холма обнаружены для следующих показателей (число значимых сравнений): "
             + summary_txt
             + "."
+        )
+
+    if sig_payload_rows:
+        sig_payload_rows_sorted = sorted(sig_payload_rows, key=lambda r: float(r.get("p_adj", 1e9)))
+        add_ai_for_artifact(
+            {
+                "id": "s4_sig_posthoc_table",
+                "kind": "table",
+                "label": "Значимые попарные сравнения (4 группы, p_adj<0.05)",
+                "rows": sig_payload_rows_sorted[:40],
+                "total_rows": len(sig_payload_rows_sorted),
+            }
         )
 
     doc.add_paragraph(num.tab() + ". Наиболее выраженные post-hoc различия (топ-3 по p_adj на визит для каждого показателя)")
@@ -3626,10 +4194,57 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                 row[8].text = f"{float(es):.2f}" if es is not None and np.isfinite(es) else "—"
                 row[9].text = "значимо" if (np.isfinite(p_adj) and float(p_adj) < 0.05) else "незначимо"
 
+    top3_payload_rows = []
+    for ep_key, result in all_results.items():
+        short = result.get("short", ep_key)
+        for v in VISITS:
+            pv = result.get("pairwise", {}).get(v, {})
+            if not isinstance(pv, dict) or not pv:
+                continue
+            tmp = []
+            for pair_key, st in pv.items():
+                if not isinstance(st, dict) or st.get("error"):
+                    continue
+                p_adj = st.get("p_adj")
+                if p_adj is None or not np.isfinite(p_adj):
+                    continue
+                tmp.append((float(p_adj), pair_key, st))
+            tmp.sort(key=lambda x: x[0])
+            for p_adj, pair_key, st in tmp[:3]:
+                top3_payload_rows.append(
+                    {
+                        "endpoint": short,
+                        "visit": v,
+                        "pair": str(pair_key).replace("_vs_", " vs "),
+                        "p": st.get("p"),
+                        "p_adj": float(p_adj),
+                        "bf10": st.get("bf10"),
+                        "diff_median": st.get("diff_median"),
+                        "diff_pct": st.get("diff_pct"),
+                        "effect_size_r": st.get("r"),
+                        "significant": bool(np.isfinite(p_adj) and float(p_adj) < 0.05),
+                    }
+                )
+
+    if top3_payload_rows:
+        top3_payload_rows_sorted = sorted(top3_payload_rows, key=lambda r: float(r.get("p_adj", 1e9)))
+        add_ai_for_artifact(
+            {
+                "id": "s4_top3_posthoc_table",
+                "kind": "table",
+                "label": "Наиболее выраженные post-hoc различия (топ-3 по p_adj на визит)",
+                "rows": top3_payload_rows_sorted[:40],
+                "total_rows": len(top3_payload_rows_sorted),
+            }
+        )
+
     doc.add_page_break()
 
-    doc.add_heading("5. СМЕШАННЫЕ ЭФФЕКТЫ (ПОВТОРНЫЕ ИЗМЕРЕНИЯ)", level=1)
-    doc.add_paragraph("Модели Mixed Effects оценивают взаимодействие Визит×Группа с учётом повторных измерений у пациентов.")
+    _doc_add_heading(doc, "5. СМЕШАННЫЕ ЭФФЕКТЫ (ПОВТОРНЫЕ ИЗМЕРЕНИЯ)", level=1)
+    add_text_with_rewrite(
+        "s5_intro",
+        "Модели Mixed Effects оценивают взаимодействие Визит×Группа с учётом повторных измерений у пациентов.",
+    )
 
     doc.add_paragraph(num.tab() + ". Mixed Effects: взаимодействие Визит×Группа (4 группы и укрупнение)")
     table = doc.add_table(rows=1, cols=7, style="Table Grid")
@@ -3638,6 +4253,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         hdr[i].text = h
         hdr[i].paragraphs[0].runs[0].bold = True
 
+    mixed_rows = []
     for ep_key, result in all_results.items():
         short = result.get("short", ep_key)
         for label, mm in [("4 группы", result.get("mixed_effects_4g", {})), ("Укрупнение (Active vs Placebo)", result.get("mixed_effects_pooled", {}))]:
@@ -3653,7 +4269,33 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             interp = mm.get("interaction", {}).get("interpretation") if isinstance(mm, dict) else None
             row[6].text = str(interp) if interp else (str(mm.get("error")) if isinstance(mm, dict) and mm.get("error") else "—")
 
-    doc.add_paragraph("Детализация: интерпретация и follow-up анализ для показателей с значимым взаимодействием Визит×Группа.")
+            mixed_rows.append(
+                {
+                    "endpoint": short,
+                    "model": label,
+                    "n_observations": (mm.get("n_observations") if isinstance(mm, dict) else None),
+                    "n_subjects": (mm.get("n_subjects") if isinstance(mm, dict) else None),
+                    "interaction_p": p_int,
+                    "interaction_significant": sig,
+                    "interpretation": interp,
+                    "error": (mm.get("error") if isinstance(mm, dict) else None),
+                }
+            )
+
+    add_ai_for_artifact(
+        {
+            "id": "s5_mixed_overview_table",
+            "kind": "table",
+            "label": "Mixed Effects: взаимодействие Визит×Группа (4 группы и укрупнение)",
+            "rows": mixed_rows,
+        }
+    )
+
+    doc.add_paragraph(
+        "Интерпретация: значимое взаимодействие Визит×Группа означает, что динамика показателя по визитам различается между группами. "
+        "Это указывает на различия траекторий во времени, но само по себе не определяет, на каких визитах и между какими группами различия наиболее выражены; "
+        "для этого приводится follow-up анализ."
+    )
     any_mixed_sig = False
     detail_idx = 0
     for ep_key, result in all_results.items():
@@ -3673,14 +4315,18 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             p_txt = f"{float(p_int):.4f}" if p_int is not None and np.isfinite(p_int) else "—"
             interp = (mm4.get("interaction", {}) or {}).get("interpretation")
             doc.add_paragraph(f"4 группы: взаимодействие Визит×Группа: p={p_txt}. {interp}")
+            direction = str((ENDPOINTS.get(ep_key, {}) or {}).get("direction") or "").strip()
+            if direction == "lower_is_better":
+                doc.add_paragraph("Направление шкалы: ниже — лучше; снижение по визитам интерпретируется как улучшение.")
+            elif direction == "higher_is_better":
+                doc.add_paragraph("Направление шкалы: выше — лучше; повышение по визитам интерпретируется как улучшение.")
+            doc.add_paragraph(
+                "Практический смысл: динамика по визитам неодинакова между группами; ожидается, что в отдельных временных точках будут различия уровней или темпов изменения. "
+                "Если при этом post-hoc сравнения на отдельных визитах не достигают значимости после коррекции, это обычно означает, что эффект распределён по времени и/или недостаточно крупен для выявления на уровне отдельных визитов при множественных сравнениях."
+            )
 
-            doc.add_paragraph(num.tab() + f". Follow-up (4 группы): значимые post-hoc сравнения для {short}")
-            t4 = doc.add_table(rows=1, cols=5, style="Table Grid")
-            h4 = t4.rows[0].cells
-            for i, h in enumerate(["Визит", "Пара", "p_adj", "BF₁₀", "ES (r)"]):
-                h4[i].text = h
-                h4[i].paragraphs[0].runs[0].bold = True
-            any4 = False
+            doc.add_paragraph(num.tab() + f". Follow-up (4 группы): post-hoc сравнения для {short} (после коррекции Холма)")
+            follow4_rows = []
             for v in VISITS:
                 pv = result.get("pairwise", {}).get(v, {})
                 if not isinstance(pv, dict):
@@ -3691,23 +4337,65 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                     p_adj = st.get("p_adj")
                     if p_adj is None or not np.isfinite(p_adj) or float(p_adj) >= 0.05:
                         continue
-                    any4 = True
+                    follow4_rows.append(
+                        {
+                            "visit": v,
+                            "pair": str(pair_key).replace("_vs_", " vs "),
+                            "p_adj": float(p_adj),
+                            "bf10": st.get("bf10"),
+                            "effect_size_r": st.get("r"),
+                            "diff_median": st.get("diff_median"),
+                            "diff_pct": st.get("diff_pct"),
+                        }
+                    )
+            if not follow4_rows:
+                doc.add_paragraph(
+                    "Значимых post-hoc различий на отдельных визитах после коррекции Холма не выявлено. "
+                    "В этом случае значимое взаимодействие Визит×Группа следует интерпретировать как различие траекторий во времени без устойчивых парных различий в отдельных временных точках при текущей мощности исследования."
+                )
+            else:
+                t4 = doc.add_table(rows=1, cols=7, style="Table Grid")
+                h4 = t4.rows[0].cells
+                for i, h in enumerate(["Визит", "Пара", "p_adj", "BF₁₀", "ES (r)", "Δ (Med1−Med2)", "Δ (%)"]):
+                    h4[i].text = h
+                    h4[i].paragraphs[0].runs[0].bold = True
+                for r in follow4_rows:
                     row = t4.add_row().cells
-                    row[0].text = v
-                    row[1].text = str(pair_key).replace("_vs_", " vs ")
-                    row[2].text = f"{float(p_adj):.4f}"
-                    bf = st.get("bf10", np.nan)
+                    row[0].text = str(r.get("visit") or "—")
+                    row[1].text = str(r.get("pair") or "—")
+                    p_adj = r.get("p_adj")
+                    row[2].text = f"{float(p_adj):.4f}" if p_adj is not None and np.isfinite(p_adj) else "—"
+                    bf = r.get("bf10", np.nan)
                     row[3].text = f"{float(bf):.2f}" if bf is not None and np.isfinite(bf) else "—"
-                    es = st.get("r", np.nan)
+                    es = r.get("effect_size_r", np.nan)
                     row[4].text = f"{float(es):.2f}" if es is not None and np.isfinite(es) else "—"
-            if not any4:
-                doc.add_paragraph("Значимых post-hoc сравнений после коррекции Холма не выявлено; взаимодействие может отражать различия траекторий без устойчивых парных различий на отдельных визитах.")
+                    diff = r.get("diff_median", np.nan)
+                    row[5].text = f"{float(diff):+.1f}" if diff is not None and np.isfinite(diff) else "—"
+                    diff_pct = r.get("diff_pct", np.nan)
+                    row[6].text = f"{float(diff_pct):+.1f}%" if diff_pct is not None and np.isfinite(diff_pct) else "—"
+                add_ai_for_artifact(
+                    {
+                        "id": f"s5_{ep_key}_followup_4g_table",
+                        "kind": "table",
+                        "label": f"Follow-up (4 группы): значимые post-hoc сравнения для {short}",
+                        "rows": follow4_rows,
+                    }
+                )
 
         if sigp:
             p_int = mmp.get("interaction_p_value")
             p_txt = f"{float(p_int):.4f}" if p_int is not None and np.isfinite(p_int) else "—"
             interp = (mmp.get("interaction", {}) or {}).get("interpretation")
             doc.add_paragraph(f"Укрупнение (Active vs Placebo): взаимодействие Визит×Группа: p={p_txt}. {interp}")
+            direction = str((ENDPOINTS.get(ep_key, {}) or {}).get("direction") or "").strip()
+            if direction == "lower_is_better":
+                doc.add_paragraph("Интерпретация Δ: Δ=Med(Active)−Med(Placebo); отрицательная Δ означает преимущество Active (ниже — лучше).")
+            elif direction == "higher_is_better":
+                doc.add_paragraph("Интерпретация Δ: Δ=Med(Active)−Med(Placebo); положительная Δ означает преимущество Active (выше — лучше).")
+            doc.add_paragraph(
+                "Практический смысл: различие между Active и Placebo изменяется во времени. Для интерпретации приводятся оценки по визитам (p_adj, Δ и ES), "
+                "которые показывают, на каких временных точках наблюдается наибольший разрыв и является ли он статистически устойчивым после коррекции."
+            )
 
             doc.add_paragraph(num.tab() + f". Follow-up (укрупнение): контрасты Active vs Placebo по визитам для {short}")
             tp = doc.add_table(rows=1, cols=7, style="Table Grid")
@@ -3716,6 +4404,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                 hp[i].text = h
                 hp[i].paragraphs[0].runs[0].bold = True
             avp_visits = (active_vs_placebo.get(ep_key, {}) or {}).get("visits", {})
+            followp_rows = []
             for v in VISITS:
                 d = avp_visits.get(v, {}) if isinstance(avp_visits, dict) else {}
                 row = tp.add_row().cells
@@ -3732,26 +4421,71 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                 row[5].text = f"{float(es):.2f}" if es is not None and np.isfinite(es) else "—"
                 row[6].text = "значимо" if d.get("significant") else "незначимо"
 
+                followp_rows.append(
+                    {
+                        "visit": v,
+                        "p_adj": p_val,
+                        "bf10": bf,
+                        "diff_median": diff,
+                        "diff_pct": diff_pct,
+                        "effect_size": es,
+                        "significant": bool(d.get("significant")),
+                    }
+                )
+
+            add_ai_for_artifact(
+                {
+                    "id": f"s5_{ep_key}_followup_pooled_table",
+                    "kind": "table",
+                    "label": f"Follow-up (укрупнение): контрасты Active vs Placebo по визитам для {short}",
+                    "rows": followp_rows,
+                }
+            )
+
     if not any_mixed_sig:
         doc.add_paragraph("Значимых взаимодействий Визит×Группа по Mixed Effects моделям не выявлено.")
 
     doc.add_page_break()
 
-    doc.add_heading("6. АНАЛИЗ РЕСПОНДЕРОВ (УЛУЧШЕНИЕ ≥20%)", level=1)
-    doc.add_paragraph(
-        "Респондер определяется как пациент с улучшением не менее чем на 20% относительно baseline (V2). Раздел отражает клиническую значимость эффекта по визитам."
+    _doc_add_heading(doc, "6. АНАЛИЗ РЕСПОНДЕРОВ (УЛУЧШЕНИЕ ≥20%)", level=1)
+    add_text_with_rewrite(
+        "s6_intro",
+        "Респондер определяется как пациент с улучшением не менее чем на 20% относительно baseline (V2). Раздел отражает клиническую значимость эффекта по визитам.",
     )
 
     for idx, (ep_key, resp) in enumerate(responders.items(), start=1):
         short = resp.get("short", ep_key) if isinstance(resp, dict) else ep_key
         doc.add_heading(f"6.{idx} Показатель: {short}", level=2)
 
+        resp_fig_rows = []
+
         for v in VISITS:
             chart_key = f"{ep_key}_resp_barplot_{v}"
             if chart_key in figures and figures[chart_key] and os.path.exists(figures[chart_key]):
                 doc.add_picture(figures[chart_key], width=Inches(5))
-                p = doc.add_paragraph(num.fig() + f". Доля респондеров на визите {v} (Active vs Placebo показаны агрегированно; 95% ДИ).")
+                fig_label = num.fig()
+                p = doc.add_paragraph(fig_label + f". Доля респондеров на визите {v} (Active vs Placebo показаны агрегированно; 95% ДИ).")
                 p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
+
+                resp_fig_rows.append({"visit": v, "label": fig_label})
+
+        if resp_fig_rows:
+            add_ai_for_artifact(
+                {
+                    "id": f"s6_{ep_key}_resp_barplots_figset",
+                    "kind": "chart",
+                    "label": f"Доля респондеров по визитам: {short}",
+                    "visits": resp_fig_rows,
+                    "by_visit": [
+                        {
+                            "visit": v,
+                            "chi2_p": ((resp.get("visits", {}).get(v, {}) or {}).get("test", {}) or {}).get("p") if isinstance(resp, dict) else None,
+                            "groups": (resp.get("visits", {}).get(v, {}) or {}).get("groups") if isinstance(resp, dict) else None,
+                        }
+                        for v in VISITS
+                    ],
+                }
+            )
 
         if isinstance(resp, dict) and resp.get("visits"):
             doc.add_paragraph(num.tab() + f". Респондеры по визитам: {short} (4 группы + укрупнение)")
@@ -3761,6 +4495,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
                 hdr[i].text = h
                 hdr[i].paragraphs[0].runs[0].bold = True
 
+            resp_rows = []
             for v in VISITS:
                 vres = resp.get("visits", {}).get(v, {})
                 groups_list = vres.get("groups", []) if isinstance(vres, dict) else []
@@ -3786,21 +4521,48 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
 
                 if v == "V2":
                     row[8].text = "baseline"
+                    interp_txt = "baseline"
                 else:
                     if np.isfinite(active_pct) and np.isfinite(placebo_pct):
                         arr = active_pct - placebo_pct
                         nnt, _ = calculate_nnt(float(active_pct), float(placebo_pct))
                         nnt_txt = f"NNT≈{nnt:.1f}" if nnt is not None else "NNT=—"
                         row[8].text = f"Δ={arr:+.1f} п.п.; {nnt_txt}"
+                        interp_txt = f"Δ={arr:+.1f} п.п.; {nnt_txt}"
                     else:
                         row[8].text = "—"
+                        interp_txt = "—"
+
+                resp_rows.append(
+                    {
+                        "visit": v,
+                        "g1_pct": by_g.get("1", {}).get("pct"),
+                        "g2_pct": by_g.get("2", {}).get("pct"),
+                        "g3_pct": by_g.get("3", {}).get("pct"),
+                        "g4_pct": by_g.get("4", {}).get("pct"),
+                        "chi2_p": p_val,
+                        "active_pct": (float(active_pct) if np.isfinite(active_pct) else None),
+                        "placebo_pct": (float(placebo_pct) if np.isfinite(placebo_pct) else None),
+                        "interpretation": interp_txt,
+                    }
+                )
+
+            add_ai_for_artifact(
+                {
+                    "id": f"s6_{ep_key}_resp_table",
+                    "kind": "table",
+                    "label": f"Респондеры по визитам ({short})",
+                    "rows": resp_rows,
+                }
+            )
 
         doc.add_page_break()
 
-    doc.add_heading("7. ИТОГОВАЯ СВОДКА ПО ВИЗИТАМ И ОБСУЖДЕНИЕ", level=1)
-    doc.add_paragraph(
+    _doc_add_heading(doc, "7. ИТОГОВАЯ СВОДКА ПО ВИЗИТАМ И ОБСУЖДЕНИЕ", level=1)
+    add_text_with_rewrite(
+        "s7_intro",
         "Раздел агрегирует результаты по каждой временной точке (V2–V6): глобальный тест 4 групп (Kruskal–Wallis), "
-        "наиболее выраженные post-hoc различия (p_adj), объединённый анализ Active vs Placebo (p_adj, ES, Δ) и сравнительные графики размеров эффекта (ε²)."
+        "наиболее выраженные post-hoc различия (p_adj), объединённый анализ Active vs Placebo (p_adj, ES, Δ) и сравнительные графики размеров эффекта (ε²).",
     )
 
     for idx, v in enumerate(VISITS, start=1):
@@ -3809,8 +4571,29 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         fig_key = f"forest_{v}"
         if fig_key in figures and figures[fig_key] and os.path.exists(figures[fig_key]):
             doc.add_picture(figures[fig_key], width=Inches(6))
-            p = doc.add_paragraph(num.fig() + f". Сравнение размеров эффекта (ε²) на визите {v} по всем показателям.")
+            fig_label = num.fig()
+            p = doc.add_paragraph(fig_label + f". Сравнение размеров эффекта (ε²) на визите {v} по всем показателям.")
             p.style = doc.styles['Caption'] if 'Caption' in doc.styles else None
+
+            eps_rows = []
+            for ep_key, result in all_results.items():
+                vdata = result.get("by_visit", {}).get(v, {})
+                kw = vdata.get("kruskal", {})
+                eps_rows.append(
+                    {
+                        "endpoint": result.get("short", ep_key),
+                        "epsilon_sq": kw.get("epsilon_sq"),
+                        "p": kw.get("p"),
+                    }
+                )
+            add_ai_for_artifact(
+                {
+                    "id": f"s7_{v}_forest_fig",
+                    "kind": "chart",
+                    "label": f"{fig_label}. Сравнение размеров эффекта (ε²) на визите {v}",
+                    "rows": eps_rows,
+                }
+            )
 
         doc.add_paragraph(num.tab() + f". Сводка по визиту {v} (все показатели)")
         table = doc.add_table(rows=1, cols=10, style="Table Grid")
@@ -3832,6 +4615,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             hdr[i].paragraphs[0].runs[0].bold = True
 
         newbie_hits = []
+        visit_rows = []
 
         for ep_key, result in all_results.items():
             row = table.add_row().cells
@@ -3882,14 +4666,39 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             if avp.get("significant"):
                 newbie_hits.append(f"{result.get('short', ep_key)}: значимо (p_adj={float(p_avp):.3f}, ES={float(es_avp):.2f})")
 
+            visit_rows.append(
+                {
+                    "endpoint": result.get("short", ep_key),
+                    "kw_p": kw.get("p"),
+                    "bf10": bf,
+                    "epsilon_sq": kw.get("epsilon_sq"),
+                    "best_pair": best_pair_txt,
+                    "best_pair_es": (best.get("es") if (best is not None and best.get("es") is not None and np.isfinite(best.get("es")) and best.get("p_adj") is not None and np.isfinite(best.get("p_adj")) and float(best.get("p_adj")) < 0.05) else None),
+                    "pooled_p_adj": p_avp,
+                    "pooled_effect_size": es_avp,
+                    "diff_median": diff,
+                    "diff_pct": diff_pct,
+                    "pooled_significant": bool(avp.get("significant")),
+                }
+            )
+
         if newbie_hits:
             doc.add_paragraph("Интерпретация: на этом визите укрупнение выявило значимые различия по: " + "; ".join(newbie_hits) + ".")
         else:
             doc.add_paragraph("Интерпретация: на этом визите укрупнение не выявило значимых различий (p_adj ≥ 0.05) ни по одному показателю.")
 
+        add_ai_for_artifact(
+            {
+                "id": f"s7_{v}_summary_table",
+                "kind": "table",
+                "label": f"Сводка по визиту {v} (все показатели)",
+                "rows": visit_rows,
+            }
+        )
+
         doc.add_page_break()
 
-    doc.add_heading("8. ОБСУЖДЕНИЕ", level=1)
+    _doc_add_heading(doc, "8. ОБСУЖДЕНИЕ", level=1)
 
     doc.add_heading("8.1 Цели и задачи", level=2)
     doc.add_paragraph("Цель: оценить эффективность аппарата ДИАМАГ по ключевым клиническим шкалам в сравнении с плацебо.")
@@ -3902,8 +4711,7 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
     doc.add_heading("8.2 Проверка гипотез", level=2)
     doc.add_paragraph("H₀: терапия не приводит к различиям между группами. H₁: терапия приводит к различиям (эффект есть).")
     for ep_key, result in all_results.items():
-        if not result.get("primary"):
-            continue
+        short = result.get("short", ep_key)
         kw_any = None
         for v in VISITS:
             kw = result.get("by_visit", {}).get(v, {}).get("kruskal", {})
@@ -3919,12 +4727,17 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
             if p is not None and np.isfinite(p) and float(p) < 0.05:
                 avp_any = (v, float(p), float(d.get("effect_size", 0.0)))
                 break
-        if kw_any is not None:
-            doc.add_paragraph(f"{result.get('short', ep_key)}: H₀ отвергается на уровне 4 групп ({kw_any[0]}, p={kw_any[1]:.4f}).")
+        if kw_any is not None and avp_any is not None:
+            doc.add_paragraph(
+                f"{short}: зарегистрированы статистические сигналы как на уровне 4 групп ({kw_any[0]}, p={kw_any[1]:.4f}), "
+                f"так и в укрупнённом сравнении Active vs Placebo ({avp_any[0]}, p_adj={avp_any[1]:.4f}, ES={avp_any[2]:.2f})."
+            )
+        elif kw_any is not None:
+            doc.add_paragraph(f"{short}: H₀ отклоняется на уровне 4 групп на отдельных визитах ({kw_any[0]}, p={kw_any[1]:.4f}).")
         elif avp_any is not None:
-            doc.add_paragraph(f"{result.get('short', ep_key)}: H₀ отвергается в укрупнении ({avp_any[0]}, p_adj={avp_any[1]:.4f}, ES={avp_any[2]:.2f}).")
+            doc.add_paragraph(f"{short}: H₀ отклоняется в укрупнённом сравнении Active vs Placebo на отдельных визитах ({avp_any[0]}, p_adj={avp_any[1]:.4f}, ES={avp_any[2]:.2f}).")
         else:
-            doc.add_paragraph(f"{result.get('short', ep_key)}: статистических оснований отвергать H₀ не получено (p_adj≥0.05 по визитам).")
+            doc.add_paragraph(f"{short}: статистических оснований отклонять H₀ не получено (p_adj≥0.05 по визитам).")
 
     doc.add_heading("8.3 Обсуждение результатов", level=2)
     ai_block = generate_ai_discussion_chunked(
@@ -3940,7 +4753,9 @@ def generate_comprehensive_report_v2(all_results, responders, active_vs_placebo,
         for paragraph in generate_discussion_text(exec_summary, all_results, active_vs_placebo, responders):
             doc.add_paragraph(paragraph)
 
-    doc.add_heading("9. ВЫВОДЫ", level=1)
+    doc.add_page_break()
+
+    _doc_add_heading(doc, "9. ВЫВОДЫ", level=1)
     if isinstance(ai_block, dict) and ai_block.get("conclusions"):
         for line in ai_block.get("conclusions", []):
             doc.add_paragraph(str(line))

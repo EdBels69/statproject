@@ -1130,6 +1130,8 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                     sd=stats.get("std"),
                     se=stats.get("se"),
                     variance=stats.get("variance"),
+                    cv=stats.get("cv"),
+                    geometric_mean=stats.get("geometric_mean"),
                     range=stats.get("range"),
                     iqr=stats.get("iqr"),
                     skewness=stats.get("skewness"),

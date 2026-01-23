@@ -1,11 +1,6 @@
-import { useCallback, useMemo, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-quartz.css';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+let agGridRegistered = false;
 
 function HeaderRenderer(props) {
     const { displayName, column } = props;
@@ -68,6 +63,45 @@ export default function EditableDataGrid({
     onGridReady,
 }) {
     const gridRef = useRef(null);
+    const [AgGridComponent, setAgGridComponent] = useState(null);
+    const [agGridLoadState, setAgGridLoadState] = useState({ status: 'loading', error: null });
+
+    const loadAgGrid = useCallback(async () => {
+        setAgGridLoadState({ status: 'loading', error: null });
+
+        const [{ AgGridReact }, agGridCommunity] = await Promise.all([
+            import('ag-grid-react'),
+            import('ag-grid-community'),
+            import('ag-grid-community/styles/ag-grid.css'),
+            import('ag-grid-community/styles/ag-theme-quartz.css'),
+        ]);
+
+        if (!agGridRegistered) {
+            const { ModuleRegistry, AllCommunityModule } = agGridCommunity;
+            ModuleRegistry.registerModules([AllCommunityModule]);
+            agGridRegistered = true;
+        }
+
+        setAgGridComponent(() => AgGridReact);
+        setAgGridLoadState({ status: 'ready', error: null });
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+
+        loadAgGrid().catch((err) => {
+            if (!mounted) return;
+            setAgGridComponent(null);
+            setAgGridLoadState({
+                status: 'error',
+                error: err instanceof Error ? err.message : String(err || 'Неизвестная ошибка'),
+            });
+        });
+
+        return () => {
+            mounted = false;
+        };
+    }, [loadAgGrid]);
 
     const columnDefs = useMemo(() => {
         if (Array.isArray(columnDefsOverride) && columnDefsOverride.length > 0) {
@@ -184,23 +218,69 @@ export default function EditableDataGrid({
     return (
         <div className="h-full w-full">
             <div className="h-full w-full ag-theme-quartz" style={gridStyle}>
-                <AgGridReact
-                    ref={gridRef}
-                    rowData={rows || []}
-                    columnDefs={columnDefs}
-                    defaultColDef={defaultColDef}
-                    quickFilterText={quickFilterText || ''}
-                    context={{ onHeaderMenu }}
-                    singleClickEdit={false}
-                    stopEditingWhenCellsLoseFocus
-                    suppressRowClickSelection
-                    rowSelection={{ mode: 'singleRow', enableClickSelection: false }}
-                    onCellValueChanged={onCellValueChanged}
-                    onColumnHeaderClicked={onColumnHeaderClicked}
-                    onGridReady={onGridReady}
-                    loading={Boolean(loading)}
-                    animateRows
-                />
+                {AgGridComponent ? (
+                    <AgGridComponent
+                        ref={gridRef}
+                        rowData={rows || []}
+                        columnDefs={columnDefs}
+                        defaultColDef={defaultColDef}
+                        quickFilterText={quickFilterText || ''}
+                        context={{ onHeaderMenu }}
+                        singleClickEdit={false}
+                        stopEditingWhenCellsLoseFocus
+                        suppressRowClickSelection
+                        rowSelection={{ mode: 'singleRow', enableClickSelection: false }}
+                        onCellValueChanged={onCellValueChanged}
+                        onColumnHeaderClicked={onColumnHeaderClicked}
+                        onGridReady={onGridReady}
+                        loading={Boolean(loading)}
+                        animateRows
+                    />
+                ) : agGridLoadState.status === 'error' ? (
+                    <div className="h-full w-full flex items-center justify-center">
+                        <div className="w-full max-w-[520px] px-6 py-5 border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] rounded-[2px]">
+                            <div className="text-[13px] text-[color:var(--text-primary)] font-semibold">
+                                Таблица не загрузилась
+                            </div>
+                            <div className="mt-1 text-xs text-[color:var(--text-muted)] leading-relaxed">
+                                Похоже, не удалось загрузить модуль ag-grid (часто это сеть/кэш/блокировка ресурсов).
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        loadAgGrid().catch((err) => {
+                                            setAgGridComponent(null);
+                                            setAgGridLoadState({
+                                                status: 'error',
+                                                error: err instanceof Error ? err.message : String(err || 'Неизвестная ошибка'),
+                                            });
+                                        });
+                                    }}
+                                    className="h-9 px-3 rounded-[2px] bg-[color:var(--text-primary)] text-[color:var(--white)] text-xs font-semibold"
+                                >
+                                    Повторить
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.reload()}
+                                    className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--text-primary)] text-xs font-semibold"
+                                >
+                                    Обновить страницу
+                                </button>
+                            </div>
+                            {agGridLoadState.error ? (
+                                <div className="mt-3 text-[11px] font-mono text-[color:var(--text-muted)] break-words">
+                                    {agGridLoadState.error}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="h-full w-full flex items-center justify-center text-sm text-zinc-500">
+                        Загрузка таблицы…
+                    </div>
+                )}
             </div>
         </div>
     );

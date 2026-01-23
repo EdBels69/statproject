@@ -226,6 +226,12 @@ def test_mixed_effects_basic():
     # Check that interaction exists
     assert result["interaction"]["significant"], "Interaction should be significant in synthetic data"
 
+    assert "min_p_value" in result["interaction"], "interaction.min_p_value missing"
+    assert isinstance(result["interaction"]["min_p_value"], (int, float)), "interaction.min_p_value must be numeric"
+    assert 0.0 <= float(result["interaction"]["min_p_value"]) <= 1.0
+    assert isinstance(result["interaction"].get("p_values"), dict), "interaction.p_values must be a dict"
+    assert isinstance(result["interaction"].get("interpretation"), str) and result["interaction"]["interpretation"].strip()
+
 def test_mixed_effects_random_slope():
     """Test mixed effects model with random slopes."""
     payload = {
@@ -317,6 +323,10 @@ def test_clustered_correlation_basic():
     assert isinstance(heatmap_data, list)
     assert len(heatmap_data) == n_vars * n_vars
     assert all("row" in item and "col" in item and "r" in item for item in heatmap_data)
+    assert all("p" in item and "significant" in item for item in heatmap_data)
+    non_null_p = [item["p"] for item in heatmap_data if item.get("p") is not None]
+    assert len(non_null_p) > 0, "Expected p-values when show_p_values=True"
+    assert all(0.0 <= float(p) <= 1.0 for p in non_null_p)
 
 def test_clustered_correlation_auto_clusters():
     """Test clustered correlation with automatic cluster detection."""
