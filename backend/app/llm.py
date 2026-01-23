@@ -18,6 +18,18 @@ def _resolve_llm_target(model: str) -> Tuple[str, Optional[str]]:
     return settings.GLM_API_URL, settings.GLM_API_KEY
 
 
+def _normalize_chat_completions_url(url: str) -> str:
+    u = str(url or "").strip()
+    if not u:
+        return u
+    if "/chat/completions" in u:
+        return u
+    u = u.rstrip("/")
+    if u.endswith("/paas/v4") or u.endswith("/coding/paas/v4"):
+        return u + "/chat/completions"
+    return u
+
+
 async def _chat_completion(
     *,
     model: str,
@@ -30,12 +42,14 @@ async def _chat_completion(
         return None
 
     url, api_key = _resolve_llm_target(model)
+    url = _normalize_chat_completions_url(url)
     if not api_key:
         return None
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
+        "Accept-Language": "ru-RU,ru",
     }
 
     payload = {
@@ -44,14 +58,19 @@ async def _chat_completion(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    if "api.z.ai" in str(url):
+        payload["thinking"] = {"type": "disabled"}
 
     try:
         async with httpx.AsyncClient(timeout=timeout_s) as client:
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
-            content = data["choices"][0]["message"]["content"].strip()
-            return content
+            msg = (data.get("choices") or [{}])[0].get("message") or {}
+            content = str(msg.get("content") or "").strip()
+            if not content:
+                content = str(msg.get("reasoning_content") or "").strip()
+            return content or None
     except Exception as e:
         logger.error(f"LLM Error: {e}", exc_info=True)
         return None
