@@ -60,8 +60,8 @@ class Settings:
 
         self.GLM_ENABLED: bool = _env_bool("GLM_ENABLED", True)
         self.GLM_API_KEY: Optional[str] = os.getenv("GLM_API_KEY")
-        self.GLM_API_URL: str = os.getenv("GLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-        self.GLM_MODEL: str = os.getenv("GLM_MODEL", "xiaomi/mimo-v2-flash:free")
+        self.GLM_API_URL: str = os.getenv("GLM_API_URL", "https://api.z.ai/api/coding/paas/v4")
+        self.GLM_MODEL: str = os.getenv("GLM_MODEL", "glm-4.7")
 
         self.OPENROUTER_API_KEY: Optional[str] = os.getenv("OPENROUTER_API_KEY")
         self.OPENROUTER_API_URL: str = os.getenv(

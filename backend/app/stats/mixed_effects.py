@@ -67,6 +67,10 @@ class MixedEffectsEngine:
         Dict with model results, coefficients, and interpretation
         """
         smf, _ = _get_statsmodels()
+
+        def _q(name: str) -> str:
+            safe = str(name).replace("\\", "\\\\").replace('"', '\\"')
+            return f'Q("{safe}")'
         
         # Prepare data
         required_cols = [outcome, time_col, group_col, subject_col]
@@ -87,13 +91,13 @@ class MixedEffectsEngine:
         analysis_df[group_col] = analysis_df[group_col].astype('category')
         
         # Build formula: outcome ~ Time * Group + covariates
-        fixed_effects = f"{outcome} ~ C({time_col}) * C({group_col})"
+        fixed_effects = f"{_q(outcome)} ~ C({_q(time_col)}) * C({_q(group_col)})"
         if covariates:
-            cov_terms = " + ".join(covariates)
+            cov_terms = " + ".join([_q(c) for c in covariates])
             fixed_effects += f" + {cov_terms}"
         
         # Random effects
-        re_formula = "~1" if not random_slope else f"~1 + C({time_col})"
+        re_formula = "~1" if not random_slope else f"~1 + C({_q(time_col)})"
         
         try:
             with warnings.catch_warnings():
@@ -129,6 +133,13 @@ class MixedEffectsEngine:
         alpha: float
     ) -> Dict[str, Any]:
         """Extract and format model results"""
+
+        def _q(name: str) -> str:
+            safe = str(name).replace("\\", "\\\\").replace('"', '\\"')
+            return f'Q("{safe}")'
+
+        time_key = f"C({_q(time_col)})"
+        group_key = f"C({_q(group_col)})"
         
         params = result.params
         pvalues = result.pvalues
@@ -136,17 +147,17 @@ class MixedEffectsEngine:
         # Identify term types
         interaction_terms = [
             p for p in params.index 
-            if f"C({time_col})" in p and f"C({group_col})" in p
+            if time_key in p and group_key in p
         ]
         
         time_terms = [
             p for p in params.index 
-            if f"C({time_col})" in p and f"C({group_col})" not in p
+            if time_key in p and group_key not in p
         ]
         
         group_terms = [
             p for p in params.index 
-            if f"C({group_col})" in p and f"C({time_col})" not in p
+            if group_key in p and time_key not in p
         ]
         
         # Interaction analysis
@@ -271,12 +282,12 @@ class MixedEffectsEngine:
         """Generate human-readable interpretation"""
         if significant:
             return (
-                f"Статистически значимое взаимодействие Время×Группа (p={p_value:.4f}). "
+                f"Статистически значимое взаимодействие Визит×Группа (p={p_value:.4f}). "
                 f"Траектории изменения показателя различаются между группами."
             )
         else:
             return (
-                f"Взаимодействие Время×Группа не достигло статистической значимости "
+                f"Взаимодействие Визит×Группа не достигло статистической значимости "
                 f"(p={p_value:.4f}). Траектории изменения не различаются значимо."
             )
 

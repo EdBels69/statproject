@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import {
   ArrowLeftIcon,
-  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -10,20 +9,22 @@ import ProtocolBuilder from '../components/analysis/ProtocolBuilder';
 import TestConfigModal from '../components/TestConfigModal';
 import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
 import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
-import VariableWorkspace from '../components/VariableWorkspace';
 import ResearchFlowNav from '../components/ResearchFlowNav';
+import VariableWorkspace from '../components/VariableWorkspace';
 import SaveProtocolModal, { ProtocolLibraryModal, exportProtocolAsJsonFile } from '../components/SaveProtocolModal';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { useTranslation } from '../../hooks/useTranslation';
-import { API_URL, getAlphaSetting, getDataset, getDatasets, getScanReport } from '../../lib/api';
+import { API_URL, getAlphaSetting, getDataset, getDatasets, getScanReport, getVariableMapping } from '../../lib/api';
+import { parseError } from '../utils/errorMessages';
 
 const ClusteredHeatmap = lazy(() => import('../components/ClusteredHeatmap'));
 const InteractionPlot = lazy(() => import('../components/InteractionPlot'));
 const VisualizePlot = lazy(() => import('../components/VisualizePlot'));
 
 const PROTOCOL_STORAGE_KEY = 'statwizard_protocols_v1';
+const GLOBAL_SETTINGS_STORAGE_KEY = 'statwizard_global_settings_v1';
 
 function safeString(value) {
   return String(value ?? '').trim();
@@ -35,6 +36,44 @@ function safeJsonParse(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeWorkspaceRoles(next) {
+  if (!next || typeof next !== 'object') {
+    return { target: '', group: '', covariates: [] };
+  }
+
+  return {
+    target: safeString(next?.target || ''),
+    group: safeString(next?.group || ''),
+    covariates: Array.isArray(next?.covariates) ? next.covariates.filter(Boolean) : [],
+  };
+}
+
+function buildRoleByName(roles) {
+  const out = {};
+  if (roles?.target) out[String(roles.target)] = 'target';
+  if (roles?.group) out[String(roles.group)] = 'group';
+
+  const covs = Array.isArray(roles?.covariates) ? roles.covariates : [];
+  covs.forEach((n) => {
+    const name = safeString(n || '');
+    if (!name) return;
+    out[name] = 'covariate';
+  });
+
+  return out;
+}
+
+function mergeTemplateVarsFromRoles(prev, roles, templateSecondaryKey) {
+  const base = prev && typeof prev === 'object' ? prev : { target: '', group: '', predictor: '' };
+  const mapped = {
+    ...base,
+    target: roles.target,
+  };
+  if (templateSecondaryKey === 'predictor') mapped.predictor = roles.group;
+  else mapped.group = roles.group;
+  return mapped;
 }
 
 function makeId() {
@@ -176,10 +215,179 @@ function StepPreviewPanel({ title, steps }) {
                 <div className="text-xs text-[color:var(--text-secondary)]">{step.label}</div>
                 <div className="mt-1 text-sm text-[color:var(--text-primary)] font-mono">{step.summary}</div>
                 {step.warning ? (
-                  <div className="mt-1 text-xs text-amber-700">⚠️ {step.warning}</div>
+                  <div className="mt-1 text-xs text-amber-700"><span className="font-semibold">!</span> {step.warning}</div>
                 ) : null}
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GlobalSettingsPanel({ value, onChange }) {
+  const v = value && typeof value === 'object' ? value : normalizeGlobalSettings(null);
+
+  return (
+    <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden">
+      <div className="px-3 py-2 bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)]">
+        <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Глобальные настройки</div>
+      </div>
+      <div className="p-3 grid grid-cols-1 gap-3">
+        <label className="grid gap-1">
+          <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Альтернатива</div>
+          <select
+            value={v.alternative}
+            onChange={(e) => onChange?.({ ...v, alternative: e.target.value })}
+            className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-sm"
+          >
+            <option value="two-sided">Двусторонняя</option>
+            <option value="less">Односторонняя: меньше</option>
+            <option value="greater">Односторонняя: больше</option>
+          </select>
+        </label>
+
+        <label className="grid gap-1">
+          <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Пост-хок</div>
+          <select
+            value={v.post_hoc}
+            onChange={(e) => onChange?.({ ...v, post_hoc: e.target.value })}
+            className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-sm"
+          >
+            <option value="none">Нет</option>
+            <option value="tukey">Tukey</option>
+            <option value="dunn">Dunn</option>
+          </select>
+        </label>
+
+        <label className="grid gap-1">
+          <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Поправка</div>
+          <select
+            value={v.post_hoc_correction}
+            onChange={(e) => onChange?.({ ...v, post_hoc_correction: e.target.value })}
+            className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-sm"
+          >
+            <option value="none">Нет</option>
+            <option value="bh">BH (FDR)</option>
+            <option value="bky">BKY</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function VibeDesignModal({
+  isOpen,
+  onClose,
+  value,
+  onValueChange,
+  globalSettings,
+  onGlobalSettingsChange,
+  onGenerate,
+  onGenerateAndRun,
+  isLoading,
+  error,
+  preview,
+  onApply,
+}) {
+  if (!isOpen) return null;
+
+  const steps = Array.isArray(preview?.protocol) ? preview.protocol : [];
+  const notes = Array.isArray(preview?.notes) ? preview.notes : [];
+
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 p-4 md:p-8 flex items-start justify-center overflow-y-auto">
+        <div className="w-full max-w-4xl bg-[color:var(--white)] border border-black rounded-[2px] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+          <div className="px-4 py-3 border-b border-[color:var(--border-color)] flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Vibe</div>
+              <div className="text-sm font-semibold text-[color:var(--text-primary)] truncate">Текст → протокол</div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold hover:border-black"
+            >
+              Закрыть
+            </button>
+          </div>
+
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-[1.2fr,0.8fr] gap-4">
+            <div className="space-y-3">
+              <div className="bg-[color:var(--bg-secondary)] border border-[color:var(--border-color)] rounded-[2px] p-3">
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Описание</div>
+                <textarea
+                  value={value}
+                  onChange={(e) => onValueChange?.(e.target.value)}
+                  className="mt-2 w-full min-h-[180px] p-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-sm leading-relaxed"
+                  placeholder="Вставь сюда абзац из протокола/статьи: дизайн, группы, исходы, ковариаты, время…"
+                />
+                {error ? (
+                  <div className="mt-2 text-xs text-[color:var(--accent)] font-semibold">{error}</div>
+                ) : null}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="text-xs text-[color:var(--text-secondary)]">ИИ вернёт черновик шагов; ты редактируешь как обычно.</div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={onGenerateAndRun}
+                      disabled={isLoading || String(value || '').trim().length < 12}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      {isLoading ? 'Собираю…' : 'Сразу отчёт'}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={onGenerate}
+                      disabled={isLoading || String(value || '').trim().length < 12}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {isLoading ? 'Собираю…' : 'Собрать протокол'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {steps.length > 0 ? (
+                <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden">
+                  <div className="px-3 py-2 bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)] flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Превью</div>
+                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{steps.length} шаг(ов)</div>
+                  </div>
+                  <div className="divide-y divide-[color:var(--border-color)]">
+                    {steps.slice(0, 20).map((s, idx) => (
+                      <div key={`${s?.id || idx}`} className="px-3 py-2">
+                        <div className="text-xs text-[color:var(--text-secondary)]">{String(s?.name || s?.method || '').trim() || `Шаг ${idx + 1}`}</div>
+                        <div className="mt-1 text-xs font-mono text-[color:var(--text-primary)]">{String(s?.method || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-3 border-t border-[color:var(--border-color)]">
+                    <Button type="button" onClick={onApply} variant="ghost" className="w-full" disabled={steps.length === 0}>
+                      Применить в конструктор
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {notes.length > 0 ? (
+                <div className="text-xs text-[color:var(--text-secondary)]">
+                  {notes.slice(0, 4).map((n, i) => (
+                    <div key={i}>{String(n)}</div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <GlobalSettingsPanel value={globalSettings} onChange={onGlobalSettingsChange} />
+            </div>
           </div>
         </div>
       </div>
@@ -211,14 +419,396 @@ function loadSavedProtocols() {
   return parsed.map(normalizeSavedProtocol).filter(Boolean);
 }
 
+function normalizeGlobalSettings(raw) {
+  const alternative = raw?.alternative;
+  const postH = raw?.post_hoc;
+  const corr = raw?.post_hoc_correction;
+
+  const altOk = alternative === 'two-sided' || alternative === 'less' || alternative === 'greater' ? alternative : 'two-sided';
+  const postOk = postH === 'tukey' || postH === 'dunn' || postH === 'none' ? postH : 'none';
+  const corrOk = corr === 'bh' || corr === 'bky' || corr === 'none' ? corr : 'none';
+
+  return {
+    alternative: altOk,
+    post_hoc: postOk,
+    post_hoc_correction: corrOk,
+  };
+}
+
+function loadGlobalSettings() {
+  const text = localStorage.getItem(GLOBAL_SETTINGS_STORAGE_KEY);
+  const parsed = safeJsonParse(text, null);
+  return normalizeGlobalSettings(parsed);
+}
+
+function saveGlobalSettings(value) {
+  localStorage.setItem(GLOBAL_SETTINGS_STORAGE_KEY, JSON.stringify(normalizeGlobalSettings(value)));
+}
+
 function saveSavedProtocols(protocols) {
   localStorage.setItem(PROTOCOL_STORAGE_KEY, JSON.stringify(protocols));
 }
 
-const AnalysisDesign = () => {
+function baseKey(raw) {
+  const s = String(raw || '').trim();
+  const stripped = s
+    .replace(/\s+/g, ' ')
+    .replace(/(?:[_\-\s]?(?:t|time|tp|visit|day|week|month|m|w|d)?\d+)$/i, '')
+    .replace(/[_\-\s]+$/g, '')
+    .trim();
+  return stripped || s;
+}
+
+function timeIndex(raw) {
+  const s = String(raw || '').trim();
+  const m = s.match(/(?:[_\-\s]?(?:t|time|tp|visit|day|week|month|m|w|d)?)(\d+)$/i);
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function MassDynamicsModal({
+  isOpen,
+  onClose,
+  columns,
+  statsByName,
+  defaultGroupCol,
+  defaultSubjectCol,
+  formatMethodName,
+  onAppendSteps,
+}) {
+  const normalizedCols = useMemo(() => {
+    const list = Array.isArray(columns) ? columns : [];
+    return list
+      .map((c) => {
+        if (typeof c === 'string') return { name: c, type: '' };
+        return { name: String(c?.name || ''), type: String(c?.type || '') };
+      })
+      .filter((c) => c.name);
+  }, [columns]);
+
+  const [method, setMethod] = useState(() => 'rm_anova');
+  const [groupCol, setGroupCol] = useState(() => defaultGroupCol || '');
+  const [groupValues, setGroupValues] = useState(() => []);
+  const [subjectCol, setSubjectCol] = useState(() => defaultSubjectCol || '');
+  const [timeMin, setTimeMin] = useState(() => '1');
+  const [timeMax, setTimeMax] = useState(() => '6');
+
+  const groupColOptions = useMemo(() => {
+    return normalizedCols
+      .filter((c) => c.type === 'categorical' || c.type === 'text' || c.type === 'datetime' || !c.type)
+      .map((c) => c.name);
+  }, [normalizedCols]);
+
+  const subjectColOptions = useMemo(() => {
+    const names = normalizedCols.map((c) => c.name);
+    const byHeuristic = names.filter((n) => /(^id$|_id$|\bid\b)/i.test(n));
+    return byHeuristic.length > 0 ? byHeuristic : names;
+  }, [normalizedCols]);
+
+  const groupValueOptions = useMemo(() => {
+    if (!groupCol) return [];
+    const payload = statsByName?.[groupCol];
+    if (!payload || typeof payload !== 'object') return [];
+    const cats = Array.isArray(payload.categories) ? payload.categories : [];
+    if (cats.length > 0) return cats;
+    const top = Array.isArray(payload.top_values) ? payload.top_values : [];
+    return top.map((tv) => String(tv?.value ?? '')).filter(Boolean);
+  }, [groupCol, statsByName]);
+
+  const numericCandidates = useMemo(() => {
+    return normalizedCols
+      .filter((c) => c.type === 'numeric' || !c.type)
+      .map((c) => c.name);
+  }, [normalizedCols]);
+
+  const minNeeded = method === 'friedman' ? 3 : 2;
+
+  const groupedByBase = useMemo(() => {
+    const groups = new Map();
+    for (const n of numericCandidates) {
+      const k = baseKey(n);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(n);
+    }
+    const minN = Number.parseInt(timeMin, 10);
+    const maxN = Number.parseInt(timeMax, 10);
+    const hasMin = Number.isFinite(minN);
+    const hasMax = Number.isFinite(maxN);
+
+    const out = [];
+    for (const [k, names] of groups.entries()) {
+      const sorted = [...names].sort((a, b) => {
+        const ia = timeIndex(a);
+        const ib = timeIndex(b);
+        if (ia == null && ib == null) return String(a).localeCompare(String(b), 'ru');
+        if (ia == null) return 1;
+        if (ib == null) return -1;
+        return ia - ib;
+      });
+
+      const inRange = sorted.filter((n) => {
+        const idx = timeIndex(n);
+        if (idx == null) return !(hasMin || hasMax);
+        if (hasMin && idx < minN) return false;
+        if (hasMax && idx > maxN) return false;
+        return true;
+      });
+
+      const effective = inRange.length >= minNeeded ? inRange : sorted;
+      if (effective.length < minNeeded) continue;
+
+      out.push({ key: k, cols: effective });
+    }
+
+    out.sort((a, b) => a.key.localeCompare(b.key, 'ru'));
+    return out;
+  }, [minNeeded, numericCandidates, timeMax, timeMin]);
+
+  const stepPreview = useMemo(() => {
+    const bases = groupedByBase.length;
+    const groupCount = groupValues.length > 0 ? groupValues.length : (groupCol ? 1 : 1);
+    const steps = bases * groupCount;
+    return { bases, steps };
+  }, [groupCol, groupValues.length, groupedByBase.length]);
+
+  const canGenerate = groupedByBase.length > 0
+    && (method !== 'rm_anova' || Boolean(subjectCol));
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 transition-opacity duration-150 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Массовая динамика"
+      aria-hidden={!isOpen}
+      onMouseDown={(e) => {
+        if (!isOpen) return;
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+      onKeyDown={(e) => {
+        if (!isOpen) return;
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose?.();
+        }
+      }}
+    >
+      <div className={`w-full max-w-2xl bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] overflow-hidden transition-all duration-150 ${isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-[0.98]'}`}>
+        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[color:var(--border-color)]">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Конструктор</div>
+            <div className="mt-1 text-lg font-bold text-[color:var(--text-primary)] truncate">Массовая динамика</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Метод</label>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)]"
+              >
+                <option value="rm_anova">{formatMethodName?.('rm_anova') || 'RM ANOVA'}</option>
+                <option value="friedman">{formatMethodName?.('friedman') || 'Friedman'}</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Субъект (ID){method === 'rm_anova' ? '' : ' (опц.)'}</label>
+              <select
+                value={subjectCol}
+                onChange={(e) => setSubjectCol(e.target.value)}
+                disabled={method !== 'rm_anova'}
+                className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)] disabled:bg-[color:var(--bg-secondary)]"
+              >
+                <option value="">—</option>
+                {subjectColOptions.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              {method === 'rm_anova' && !subjectCol ? (
+                <div className="mt-1 text-xs text-[color:var(--accent)]">Нужен ID для rm_anova</div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Группа (фильтр)</label>
+              <select
+                value={groupCol}
+                onChange={(e) => {
+                  setGroupCol(e.target.value);
+                  setGroupValues([]);
+                }}
+                className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)]"
+              >
+                <option value="">—</option>
+                {groupColOptions.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Точки от</label>
+                <input
+                  value={timeMin}
+                  onChange={(e) => setTimeMin(e.target.value)}
+                  inputMode="numeric"
+                  className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">до</label>
+                <input
+                  value={timeMax}
+                  onChange={(e) => setTimeMax(e.target.value)}
+                  inputMode="numeric"
+                  className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {groupCol ? (
+            <div className="rounded-[2px] border border-[color:var(--border-color)] overflow-hidden">
+              <div className="px-3 py-2 bg-[color:var(--bg-secondary)] border-b border-[color:var(--border-color)] flex items-center justify-between gap-3">
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Значения</div>
+                <div className="text-xs text-[color:var(--text-muted)] font-mono">{groupValueOptions.length}</div>
+              </div>
+              <div className="max-h-[240px] overflow-y-auto">
+                {groupValueOptions.length > 0 ? groupValueOptions.map((v) => {
+                  const checked = groupValues.includes(v);
+                  return (
+                    <label key={v} className={`flex items-center gap-3 px-3 py-2 border-b border-[color:var(--border-color)] cursor-pointer ${checked ? 'bg-[color:var(--bg-secondary)]' : 'hover:bg-[color:var(--bg-secondary)]'}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setGroupValues((prev) => {
+                            const arr = Array.isArray(prev) ? prev : [];
+                            return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+                          });
+                        }}
+                        className="text-[color:var(--accent)] rounded-[2px]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm truncate text-[color:var(--text-primary)]">{v}</div>
+                      </div>
+                    </label>
+                  );
+                }) : (
+                  <div className="p-4 text-sm text-[color:var(--text-muted)]">Нет доступных значений (для {groupCol})</div>
+                )}
+              </div>
+              <div className="px-3 py-2 bg-[color:var(--white)] flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setGroupValues(groupValueOptions)}
+                  className="text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  disabled={groupValueOptions.length === 0}
+                >
+                  Выбрать все
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGroupValues([])}
+                  className="text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  disabled={groupValues.length === 0}
+                >
+                  Очистить
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] p-3">
+            <div className="flex items-baseline justify-between gap-4">
+              <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Объём</div>
+              <div className="text-xs text-[color:var(--text-primary)] font-mono">{stepPreview.bases} переменных · ~{stepPreview.steps} шаг(ов)</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>Отмена</Button>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={!canGenerate}
+            onClick={() => {
+              if (!canGenerate) return;
+
+              const now = Date.now();
+              const groups = groupCol && groupValues.length > 0 ? groupValues : [null];
+              const steps = [];
+              let idx = 0;
+
+              for (const g of groups) {
+                for (const item of groupedByBase) {
+                  const outcome_cols = Array.isArray(item?.cols) ? item.cols : [];
+                  if (method === 'friedman' && outcome_cols.length < 3) continue;
+                  if (method === 'rm_anova' && outcome_cols.length < 2) continue;
+
+                  const config = {
+                    outcome_cols,
+                    ...(method === 'rm_anova' ? { subject_col: subjectCol, group_col: '' } : {}),
+                  };
+
+                  if (groupCol && g != null) {
+                    config.filter = { col: groupCol, value: g };
+                  }
+
+                  const baseLabel = baseKey(outcome_cols[0]);
+                  const label = groupCol && g != null
+                    ? `${formatMethodName?.(method) || method} · ${baseLabel} · ${groupCol}=${g}`
+                    : `${formatMethodName?.(method) || method} · ${baseLabel}`;
+
+                  steps.push({
+                    id: `mass_${now}_${idx++}`,
+                    method,
+                    name: label,
+                    config,
+                  });
+                }
+              }
+
+              if (steps.length > 0) onAppendSteps?.(steps);
+              onClose?.();
+            }}
+          >
+            Добавить шаги
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const AnalysisDesign = ({ mode = 'constructor' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id: datasetIdFromRoute } = useParams();
+
+  const formatMethodName = useCallback((methodId) => {
+    if (!methodId) return '';
+    if (methodId === 'mixed_effects') return t('mixed_effects');
+    if (methodId === 'clustered_correlation') return t('clustered_correlation');
+    return String(methodId).replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  }, [t]);
 
   const [datasets, setDatasets] = useState([]);
   const [datasetsLoading, setDatasetsLoading] = useState(false);
@@ -241,21 +831,29 @@ const AnalysisDesign = () => {
     canRedo
   } = useUndoRedo([], { limit: 20 });
   const [savedProtocols, setSavedProtocols] = useState(() => loadSavedProtocols());
+  const [globalSettings, setGlobalSettings] = useState(() => loadGlobalSettings());
   const [isSaveProtocolOpen, setIsSaveProtocolOpen] = useState(false);
   const [isProtocolLibraryOpen, setIsProtocolLibraryOpen] = useState(false);
   const [saveProtocolSeed, setSaveProtocolSeed] = useState(0);
   const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
+  const [isMassDynamicsOpen, setIsMassDynamicsOpen] = useState(false);
+  const [massDynamicsSeed, setMassDynamicsSeed] = useState(0);
   const [selectedTest, setSelectedTest] = useState(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
-  const [showAI, setShowAI] = useState(false);
-  const [showVariables, setShowVariables] = useState(false);
-  const [selectedVars, setSelectedVars] = useState([]);
+  const [rightPane, setRightPane] = useState('inspector');
+  const [selectedStepId, setSelectedStepId] = useState(null);
   const [workspaceRoles, setWorkspaceRoles] = useState({ target: '', group: '', covariates: [] });
   const [aiRecommendations, setAIRecommendations] = useState([]);
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState(null);
+
+  const [isVibeOpen, setIsVibeOpen] = useState(false);
+  const [vibeText, setVibeText] = useState('');
+  const [vibePreview, setVibePreview] = useState(null);
+  const [vibeError, setVibeError] = useState(null);
+  const [isVibeLoading, setIsVibeLoading] = useState(false);
 
   const chartFallback = useMemo(() => (
     <div className="animate-pulse h-[360px] rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)] flex items-center justify-center text-[color:var(--text-muted)] text-xs">
@@ -276,6 +874,12 @@ const AnalysisDesign = () => {
 
   const datasetIdResolved = datasetIdFromRoute || datasetId;
 
+  useEffect(() => {
+    if (!selectedStepId) return;
+    const exists = protocol.some((s) => s?.id === selectedStepId);
+    if (!exists) setSelectedStepId(null);
+  }, [protocol, selectedStepId]);
+
   const totalRows = useMemo(() => {
     const n = scanReport?.missing_report?.total_rows;
     return typeof n === 'number' ? n : 0;
@@ -284,6 +888,10 @@ const AnalysisDesign = () => {
   useEffect(() => {
     saveSavedProtocols(savedProtocols);
   }, [savedProtocols]);
+
+  useEffect(() => {
+    saveGlobalSettings(globalSettings);
+  }, [globalSettings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -321,6 +929,34 @@ const AnalysisDesign = () => {
         setResults(null);
         setIsResultsOpen(false);
 
+        try {
+          const res = await getVariableMapping(datasetIdFromRoute);
+          if (cancelled) return;
+          const mapping = res?.mapping && typeof res.mapping === 'object' ? res.mapping : {};
+
+          let nextTarget = '';
+          let nextGroup = '';
+          const nextCovariates = [];
+
+          Object.entries(mapping).forEach(([name, meta]) => {
+            const role = meta?.role;
+            if (!nextTarget && role === 'Исход') nextTarget = name;
+            if (!nextGroup && role === 'Группа') nextGroup = name;
+            if (role === 'Ковариата') nextCovariates.push(name);
+          });
+
+          if (nextTarget || nextGroup || nextCovariates.length > 0) {
+            setWorkspaceRoles({ target: nextTarget, group: nextGroup, covariates: nextCovariates });
+            setTemplateVars((prev) => ({
+              ...prev,
+              target: prev.target || nextTarget,
+              group: prev.group || nextGroup,
+            }));
+          }
+        } catch (e) {
+          void e;
+        }
+
         if (!fallbackName) {
           try {
             const list = await getDatasets();
@@ -356,7 +992,7 @@ const AnalysisDesign = () => {
         const response = await fetch(`${API_URL}/v2/analysis/templates`);
         if (!response.ok) {
           const text = await response.text().catch(() => '');
-          throw new Error(text || 'Failed to load templates');
+          throw new Error(text || 'Не удалось загрузить шаблоны');
         }
         const data = await response.json();
         if (cancelled) return;
@@ -411,21 +1047,50 @@ const AnalysisDesign = () => {
 
   const handleConfigSave = (config) => {
     if (editingTest) {
-      setProtocol(prev =>
-        prev.map(test =>
-          test.id === editingTest.id
-            ? { ...test, config: { ...test.config, ...config } }
-            : test
-        )
+      setProtocol((prev) =>
+        prev.map((test) => {
+          if (test.id !== editingTest.id) return test;
+          const mergedConfig = { ...(test.config || {}), ...(config || {}) };
+          return {
+            ...test,
+            config: applyGlobalDefaultsToConfig(test.method, mergedConfig),
+          };
+        })
       );
     } else {
-      const newTest = {
-        id: `test_${Date.now()}`,
-        method: selectedTest.id,
-        name: selectedTest.name,
-        config: config
-      };
-      setProtocol(prev => [...prev, newTest]);
+      const methodId = selectedTest?.id;
+
+      if (
+        (methodId === 'anova' || methodId === 'anova_welch' || methodId === 'kruskal')
+        && Array.isArray(config?.targets)
+        && config.targets.length > 0
+      ) {
+        const group = config.group || '';
+        const baseConfig = { ...config };
+        delete baseConfig.targets;
+        delete baseConfig.target;
+        delete baseConfig.outcome;
+
+        const now = Date.now();
+        const newTests = config.targets
+          .filter(Boolean)
+          .map((target, idx) => ({
+            id: `test_${now}_${idx}`,
+            method: methodId,
+            name: selectedTest.name,
+            config: applyGlobalDefaultsToConfig(methodId, { ...baseConfig, target, group })
+          }));
+
+        if (newTests.length > 0) setProtocol(prev => [...prev, ...newTests]);
+      } else {
+        const newTest = {
+          id: `test_${Date.now()}`,
+          method: selectedTest.id,
+          name: selectedTest.name,
+          config: applyGlobalDefaultsToConfig(selectedTest.id, config)
+        };
+        setProtocol(prev => [...prev, newTest]);
+      }
     }
     setIsConfigModalOpen(false);
     setSelectedTest(null);
@@ -434,6 +1099,7 @@ const AnalysisDesign = () => {
 
   const handleRemoveTest = (testId) => {
     setProtocol(prev => prev.filter(test => test.id !== testId));
+    setSelectedStepId((current) => (current === testId ? null : current));
   };
 
   const handleEditTest = (test) => {
@@ -456,7 +1122,7 @@ const AnalysisDesign = () => {
     if (protocol.length === 0) return;
 
     setIsAIAnalyzing(true);
-    setShowAI(true);
+    setRightPane('ai');
 
     try {
       const response = await fetch(`${API_URL}/v2/ai/suggest-tests`, {
@@ -474,7 +1140,7 @@ const AnalysisDesign = () => {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(text || 'AI suggestion failed');
+        throw new Error(text || 'Не удалось получить рекомендации ИИ');
       }
 
       const data = await response.json();
@@ -492,12 +1158,84 @@ const AnalysisDesign = () => {
       id: `test_${Date.now()}`,
       method: recommendation.test.id,
       name: recommendation.test.name,
-      config: recommendation.test.config || {}
+      config: applyGlobalDefaultsToConfig(recommendation.test.id, recommendation.test.config || {})
     };
     setProtocol(prev => [...prev, newTest]);
   };
 
-  const handleExecuteProtocol = useCallback(async (protocolToExecute) => {
+  const globalDefaults = useMemo(() => normalizeGlobalSettings(globalSettings), [globalSettings]);
+
+  const applyGlobalDefaultsToConfig = useCallback((methodId, config) => {
+    const c = (config && typeof config === 'object') ? { ...config } : {};
+    const method = String(methodId || '').trim();
+
+    const needsAlternative = new Set([
+      't_test_ind',
+      't_test_welch',
+      'mann_whitney',
+      't_test_rel',
+      'wilcoxon',
+      'pearson',
+      'spearman',
+    ]);
+
+    const needsPostHoc = new Set(['anova', 'anova_welch', 'kruskal']);
+
+    if (needsAlternative.has(method) && c.alternative == null) {
+      c.alternative = globalDefaults.alternative;
+    }
+
+    if (needsPostHoc.has(method)) {
+      if (c.post_hoc == null) c.post_hoc = globalDefaults.post_hoc;
+      if (c.post_hoc_correction == null) c.post_hoc_correction = globalDefaults.post_hoc_correction;
+    }
+
+    return c;
+  }, [globalDefaults]);
+
+  const handleGlobalSettingsChange = useCallback((nextValue) => {
+    const next = normalizeGlobalSettings(nextValue);
+    setGlobalSettings(next);
+    setProtocol((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+
+      const needsAlternative = new Set([
+        't_test_ind',
+        't_test_welch',
+        'mann_whitney',
+        't_test_rel',
+        'wilcoxon',
+        'pearson',
+        'spearman',
+      ]);
+
+      const needsPostHoc = new Set(['anova', 'anova_welch', 'kruskal']);
+
+      return list.map((s) => {
+        const method = String(s?.method || '').trim();
+        const cfg = (s?.config && typeof s.config === 'object') ? { ...s.config } : {};
+
+        if (needsAlternative.has(method) && cfg.alternative == null) {
+          cfg.alternative = next.alternative;
+        }
+
+        if (needsPostHoc.has(method)) {
+          if (cfg.post_hoc == null) cfg.post_hoc = next.post_hoc;
+          if (cfg.post_hoc_correction == null) cfg.post_hoc_correction = next.post_hoc_correction;
+        }
+
+        return { ...s, config: cfg };
+      });
+    });
+  }, [setProtocol]);
+
+  const openVibe = useCallback(() => {
+    setIsVibeOpen(true);
+    setVibeError(null);
+    setVibePreview(null);
+  }, []);
+
+  const handleExecuteProtocol = useCallback(async (protocolToExecute, options) => {
     const normalizeStepForBackend = (step) => {
       const rawMethod = step?.method;
       const method = rawMethod === 'mixed_model' ? 'mixed_effects' : rawMethod;
@@ -546,12 +1284,13 @@ const AnalysisDesign = () => {
         body: JSON.stringify({
           dataset_id: datasetIdResolved,
           alpha: getAlphaSetting(),
+          protocol_name: options?.protocolName || undefined,
           protocol: protocolToExecute.map((test) => {
             const normalized = normalizeStepForBackend(test);
             return {
               id: normalized.id,
               method: normalized.method,
-              config: normalized.config
+              config: applyGlobalDefaultsToConfig(normalized.method, normalized.config)
             };
           })
         })
@@ -559,7 +1298,7 @@ const AnalysisDesign = () => {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        const err = text || 'Protocol execution failed';
+        const err = text || 'Не удалось выполнить протокол';
         setResults({
           status: 'error',
           completed_steps: 0,
@@ -574,88 +1313,206 @@ const AnalysisDesign = () => {
       const data = await response.json();
       setResults(data);
       setIsResultsOpen(true);
+      options?.onSuccess?.(data);
     } catch (error) {
       console.error('Protocol execution failed:', error);
     } finally {
       setIsExecuting(false);
     }
-  }, [datasetIdResolved]);
+  }, [applyGlobalDefaultsToConfig, datasetIdResolved]);
 
-  const columnNames = Array.isArray(columns)
-    ? columns
-      .map((c) => {
-        if (!c) return null;
-        if (typeof c === 'string') return c;
-        return c.name || c.column || c.id || null;
-      })
-      .filter(Boolean)
-    : [];
+  const handleVibeGenerate = useCallback(async () => {
+    if (!datasetIdResolved) return;
+    const text = String(vibeText || '').trim();
+    if (text.length < 12) return;
 
-  const selectedTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
+    setIsVibeLoading(true);
+    setVibeError(null);
+    try {
+      const response = await fetch(`${API_URL}/v2/ai/analyze-design`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dataset_id: datasetIdResolved,
+          text,
+          protocol: protocol.map((test) => ({ id: test.id, method: test.method, config: test.config })),
+          preferences: globalDefaults,
+        }),
+      });
 
-  const formatMethodName = useCallback((methodId) => {
-    if (!methodId) return '';
-    if (methodId === 'mixed_effects') return t('mixed_effects');
-    if (methodId === 'clustered_correlation') return t('clustered_correlation');
-    return String(methodId).replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-  }, [t]);
-
-  const humanizeError = (raw) => {
-    const text = String(raw || '').trim();
-    if (!text) {
-      return {
-        title: 'Неизвестная ошибка',
-        details: '',
-        actions: ['Попробуйте запустить анализ ещё раз.', 'Если ошибка повторяется — проверьте выбранные переменные.']
-      };
-    }
-
-    const patterns = [
-      {
-        re: /could not convert string to float|cannot convert|invalid literal for int/i,
-        title: 'В данных есть текст там, где ожидаются числа',
-        actions: ['Выберите числовую переменную для Target.', 'Преобразуйте колонку в числовую на шаге подготовки данных.']
-      },
-      {
-        re: /KeyError|column.*not found|not in index/i,
-        title: 'Колонка не найдена в данных',
-        actions: ['Проверьте, что колонка существует и не была переименована.', 'Откройте «Variables» и выберите переменные заново.']
-      },
-      {
-        re: /singular matrix|LinAlgError|nan.*infs?|perfect separation/i,
-        title: 'Модель не может быть оценена на этих данных',
-        actions: ['Проверьте, что в данных есть вариативность (нет константных колонок).', 'Уберите лишние ковариаты или коллинеарные признаки.']
-      },
-      {
-        re: /not enough data|at least|insufficient|too few/i,
-        title: 'Недостаточно данных для выбранного метода',
-        actions: ['Проверьте размер выборки в группах.', 'Упростите модель или выберите другой тест.']
-      },
-      {
-        re: /shapiro|normality|levene|homogeneity|assumption/i,
-        title: 'Нарушены статистические предпосылки',
-        actions: ['Используйте непараметрический тест или трансформации.', 'Проверьте выбросы и пропуски.']
+      if (!response.ok) {
+        const raw = await response.text().catch(() => '');
+        throw new Error(raw || 'Не удалось собрать протокол');
       }
-    ];
 
-    const hit = patterns.find((p) => p.re.test(text));
-    if (!hit) {
-      return {
-        title: 'Ошибка выполнения анализа',
-        details: text,
-        actions: ['Проверьте настройки теста и выбранные переменные.', 'Если не помогает — попробуйте другой тест или шаблон.']
-      };
+      const data = await response.json();
+      setVibePreview(data);
+      const merged = normalizeGlobalSettings({
+        ...globalDefaults,
+        ...(data?.globals && typeof data.globals === 'object' ? data.globals : {}),
+      });
+      setGlobalSettings(merged);
+    } catch (e) {
+      setVibePreview(null);
+      setVibeError(e?.message || String(e));
+    } finally {
+      setIsVibeLoading(false);
     }
+  }, [datasetIdResolved, globalDefaults, protocol, vibeText]);
 
-    return {
-      title: hit.title,
-      details: text,
-      actions: hit.actions
-    };
-  };
+  const handleVibeGenerateAndRun = useCallback(async () => {
+    if (!datasetIdResolved) return;
+    const text = String(vibeText || '').trim();
+    if (text.length < 12) return;
+
+    setIsVibeLoading(true);
+    setVibeError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/v2/ai/analyze-design`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dataset_id: datasetIdResolved,
+          text,
+          protocol: protocol.map((test) => ({ id: test.id, method: test.method, config: test.config })),
+          preferences: globalDefaults,
+        }),
+      });
+
+      if (!response.ok) {
+        const raw = await response.text().catch(() => '');
+        throw new Error(raw || 'Не удалось собрать протокол');
+      }
+
+      const data = await response.json();
+      setVibePreview(data);
+      const merged = normalizeGlobalSettings({
+        ...globalDefaults,
+        ...(data?.globals && typeof data.globals === 'object' ? data.globals : {}),
+      });
+      setGlobalSettings(merged);
+
+      const steps = Array.isArray(data?.protocol) ? data.protocol : [];
+      if (steps.length === 0) {
+        throw new Error('ИИ не вернул шаги протокола');
+      }
+
+      const now = Date.now();
+      const protocolToExecute = steps
+        .map((s, idx) => {
+          const method = String(s?.method || '').trim();
+          if (!method) return null;
+          const cfg = (s?.config && typeof s.config === 'object') ? s.config : {};
+          const nextCfg = applyGlobalDefaultsToConfig(method, cfg);
+          return {
+            id: `vibe_${now}_${idx}`,
+            method,
+            name: String(s?.name || '').trim() || formatMethodName(method),
+            config: nextCfg,
+          };
+        })
+        .filter(Boolean);
+
+      if (protocolToExecute.length === 0) {
+        throw new Error('Не удалось собрать валидные шаги для выполнения');
+      }
+
+      await handleExecuteProtocol(protocolToExecute, {
+        protocolName: String(data?.protocol_name || '').trim() || (datasetName ? `Протокол: ${datasetName}` : 'Протокол'),
+        onSuccess: (res) => {
+          const runId = res?.run_id;
+          if (!runId) return;
+          setIsVibeOpen(false);
+          setResults(null);
+          setIsResultsOpen(false);
+          navigate(`/report/${datasetIdResolved}?run=${encodeURIComponent(String(runId))}`);
+        },
+      });
+    } catch (e) {
+      setVibeError(e?.message || String(e));
+    } finally {
+      setIsVibeLoading(false);
+    }
+  }, [applyGlobalDefaultsToConfig, datasetIdResolved, datasetName, formatMethodName, globalDefaults, handleExecuteProtocol, navigate, protocol, vibeText]);
+
+  const handleApplyVibePreview = useCallback(() => {
+    const steps = Array.isArray(vibePreview?.protocol) ? vibePreview.protocol : [];
+    if (steps.length === 0) return;
+
+    const now = Date.now();
+    const mergedSteps = steps
+      .map((s, idx) => {
+        const method = String(s?.method || '').trim();
+        if (!method) return null;
+        const cfg = (s?.config && typeof s.config === 'object') ? s.config : {};
+        const nextCfg = applyGlobalDefaultsToConfig(method, cfg);
+        return {
+          id: `vibe_${now}_${idx}`,
+          method,
+          name: String(s?.name || '').trim() || formatMethodName(method),
+          config: nextCfg,
+        };
+      })
+      .filter(Boolean);
+
+    if (mergedSteps.length === 0) return;
+
+    setProtocol((prev) => {
+      const next = Array.isArray(prev) ? prev : [];
+      return [...next, ...mergedSteps];
+    });
+    setIsVibeOpen(false);
+    setResults(null);
+    setIsResultsOpen(false);
+  }, [applyGlobalDefaultsToConfig, formatMethodName, setProtocol, vibePreview]);
+
+  const handleAppendMassSteps = useCallback((steps) => {
+    const list = Array.isArray(steps) ? steps.filter(Boolean) : [];
+    if (list.length === 0) return;
+    setProtocol((prev) => {
+      const next = Array.isArray(prev) ? prev : [];
+      return [...next, ...list];
+    });
+    setResults(null);
+    setIsResultsOpen(false);
+  }, [setProtocol]);
+
+  const selectedStepMeta = useMemo(() => {
+    if (!selectedStepId) return { step: null, index: -1 };
+    const idx = protocol.findIndex((s) => s?.id === selectedStepId);
+    if (idx < 0) return { step: null, index: -1 };
+    return { step: protocol[idx], index: idx };
+  }, [protocol, selectedStepId]);
+
+  const columnNames = useMemo(() => {
+    return Array.isArray(columns)
+      ? columns
+        .map((c) => {
+          if (!c) return null;
+          if (typeof c === 'string') return c;
+          return c.name || c.column || c.id || null;
+        })
+        .filter(Boolean)
+      : [];
+  }, [columns]);
+
+  const selectedTemplate = useMemo(() => {
+    return templates.find((tpl) => tpl.id === selectedTemplateId) || null;
+  }, [selectedTemplateId, templates]);
+
+  const humanizeError = parseError;
 
   const templateGoal = selectedTemplate?.goal;
   const templateSecondaryKey = templateGoal === 'relationship' ? 'predictor' : 'group';
+
+  const roleByName = useMemo(() => buildRoleByName(workspaceRoles), [workspaceRoles]);
+
+  const handleWorkspaceRolesChange = useCallback((next) => {
+    const safeNext = normalizeWorkspaceRoles(next);
+    setWorkspaceRoles(safeNext);
+    setTemplateVars((prev) => mergeTemplateVarsFromRoles(prev, safeNext, templateSecondaryKey));
+  }, [templateSecondaryKey]);
 
   const applySavedProtocol = (p) => {
     const normalized = normalizeSavedProtocol(p);
@@ -667,7 +1524,7 @@ const AnalysisDesign = () => {
         id: step?.id || `saved_${Date.now()}_${idx}`,
         method: step?.method,
         name: formatMethodName(step?.method),
-        config: step?.config || {}
+        config: applyGlobalDefaultsToConfig(step?.method, step?.config || {})
       }))
     );
     setResults(null);
@@ -719,25 +1576,16 @@ const AnalysisDesign = () => {
     return cols;
   }, [scanReport]);
 
-  const roleByName = useMemo(() => {
-    const map = {};
-    if (workspaceRoles?.target) map[workspaceRoles.target] = 'target';
-    if (workspaceRoles?.group) map[workspaceRoles.group] = 'group';
-    if (Array.isArray(workspaceRoles?.covariates)) {
-      workspaceRoles.covariates.forEach((n) => {
-        if (n) map[n] = 'covariate';
-      });
-    }
-    return map;
-  }, [workspaceRoles]);
-
   const flowStepData = useMemo(() => {
     const dataLoaded = Boolean(datasetIdResolved) && Array.isArray(columns) && columns.length > 0;
     const variablesSet = Boolean(workspaceRoles?.target) && Boolean(workspaceRoles?.group);
+    const designReady = variablesSet;
 
     const analysisRunning = Boolean(isExecuting);
     const analysisDone = Boolean(results) && results?.status !== 'error';
     const resultsReady = Boolean(results) && results?.status !== 'error';
+    const graphsReady = resultsReady;
+    const reportReady = resultsReady;
 
     const dataSummary = totalRows > 0
       ? `${totalRows}×${columns.length}`
@@ -760,9 +1608,12 @@ const AnalysisDesign = () => {
     return {
       dataLoaded,
       variablesSet,
+      designReady,
       analysisRunning,
       analysisDone,
       resultsReady,
+      graphsReady,
+      reportReady,
       data_summary: dataSummary,
       design_summary: designSummary,
       analyze_summary: analyzeSummary,
@@ -854,7 +1705,7 @@ const AnalysisDesign = () => {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(text || 'Template design failed');
+        throw new Error(text || 'Не удалось создать протокол по шаблону');
       }
 
       const data = await response.json();
@@ -981,7 +1832,8 @@ const AnalysisDesign = () => {
     if (isSaveProtocolOpen) setIsSaveProtocolOpen(false);
     if (isProtocolLibraryOpen) setIsProtocolLibraryOpen(false);
     if (isShortcutsHelpOpen) setIsShortcutsHelpOpen(false);
-  }, [handleCloseConfigModal, isConfigModalOpen, isProtocolLibraryOpen, isSaveProtocolOpen, isShortcutsHelpOpen]);
+    if (isVibeOpen) setIsVibeOpen(false);
+  }, [handleCloseConfigModal, isConfigModalOpen, isProtocolLibraryOpen, isSaveProtocolOpen, isShortcutsHelpOpen, isVibeOpen]);
 
   const shortcuts = useMemo(() => ({
     'mod+enter': () => {
@@ -1015,8 +1867,6 @@ const AnalysisDesign = () => {
 
   useKeyboardShortcuts(shortcuts);
 
-  const canRun = Boolean(datasetIdResolved) && !datasetLoading && !datasetError;
-
   const onBack = () => {
     navigate('/datasets');
   };
@@ -1025,7 +1875,7 @@ const AnalysisDesign = () => {
     <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-3xl">
         <div className="mb-8">
-          <ResearchFlowNav active="data" />
+          <ResearchFlowNav active="data" showMenu={false} />
         </div>
         <div className="mb-8">
           <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('analysis_protocol')}</div>
@@ -1056,7 +1906,7 @@ const AnalysisDesign = () => {
                   <button
                     key={ds.id}
                     type="button"
-                    onClick={() => navigate(`/design/${ds.id}`)}
+                    onClick={() => navigate(`${mode === 'tests' ? '/tests' : '/design'}/${ds.id}`)}
                     className="text-left p-4 rounded-[2px] border border-[color:var(--border-color)] hover:border-black hover:bg-[color:var(--bg-tertiary)] transition"
                   >
                     <div className="text-sm font-semibold text-[color:var(--text-primary)] truncate">{ds.filename || ds.name || ds.id}</div>
@@ -1108,7 +1958,7 @@ const AnalysisDesign = () => {
 
   return (
     <>
-      <div className="h-screen flex flex-col bg-[color:var(--bg-secondary)]">
+      <div className="-mx-6 -my-6 min-h-[calc(100vh-56px)] flex flex-col bg-[color:var(--bg-secondary)]">
         <div className="bg-[color:var(--white)] border-b border-[color:var(--border-color)] px-6 py-4">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
@@ -1121,245 +1971,514 @@ const AnalysisDesign = () => {
                 >
                   <ArrowLeftIcon className="w-5 h-5" />
                 </button>
-                <div>
-                  <h1 className="text-xl font-bold text-[color:var(--text-primary)]">
-                    StatWizard
-                  </h1>
-                  {datasetName && (
-                    <p className="text-sm text-[color:var(--text-secondary)] mt-1">
-                      {datasetName}
-                    </p>
-                  )}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('analysis')}</div>
+                  <h1 className="text-xl font-bold text-[color:var(--text-primary)] truncate">{datasetName || t('dataset')}</h1>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
+                <div className="h-9 p-1 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => navigate(datasetIdResolved ? `/tests/${datasetIdResolved}` : '/tests')}
+                    className={`h-7 px-3 rounded-[2px] text-xs font-semibold ${mode === 'tests' ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]'}`}
+                  >
+                    {t('tests')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(datasetIdResolved ? `/design/${datasetIdResolved}` : '/design')}
+                    className={`h-7 px-3 rounded-[2px] text-xs font-semibold ${mode !== 'tests' ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]'}`}
+                  >
+                    Конструктор
+                  </button>
+                </div>
                 <Button
-                  onClick={() => setShowVariables(!showVariables)}
+                  onClick={() => {
+                    if (!datasetIdResolved) return;
+                    navigate(`/prep/${datasetIdResolved}`);
+                  }}
                   disabled={!columns.length}
-                  variant={showVariables ? 'secondary' : 'ghost'}
-                  className="gap-2"
+                  variant="ghost"
+                  className="gap-2 min-w-[160px] justify-start"
                   type="button"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                   </svg>
-                  Variables ({columns.length})
-                </Button>
-                <Button
-                  onClick={() => setShowAI(!showAI)}
-                  disabled={!canRun}
-                  variant={showAI ? 'primary' : 'ghost'}
-                  className="gap-2"
-                  type="button"
-                >
-                  <SparklesIcon className="w-4 h-4" />
-                  {t('ai_assistant')}
+                  <span className="tabular-nums">{t('variables')} ({columns.length})</span>
                 </Button>
               </div>
             </div>
 
-            <ResearchFlowNav active="variables" datasetId={datasetIdResolved} className="mt-3" stepData={flowStepData} />
+            <ResearchFlowNav active="design" datasetId={datasetIdResolved} className="mt-3" stepData={flowStepData} showMenu={false} />
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-96 flex-shrink-0">
-            <TestSelectionPanel
-              onTestSelect={handleTestSelect}
-              datasetId={datasetIdResolved}
-              suggestedConfig={workspaceRoles}
-              disabled={isExecuting}
-            />
-          </div>
-
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <ProtocolTemplateSelector
-              templates={templates}
-              templatesLoading={templatesLoading}
-              templatesError={templatesError}
-              selectedTemplateId={selectedTemplateId}
-              onSelectedTemplateIdChange={(nextId) => {
-                setSelectedTemplateId(nextId);
-                setTemplateVars((v) => ({ ...v, group: '', predictor: '' }));
-              }}
-              selectedTemplate={selectedTemplate}
-              templateVars={templateVars}
-              onTemplateVarsChange={setTemplateVars}
-              columnNames={columnNames}
-              columns={columns}
-              columnStatsByName={columnStatsByName}
-              canApplyTemplate={canApplyTemplate}
-              onApplyTemplate={handleApplyTemplate}
-              disabled={isExecuting}
-            />
-
-            {(workspaceRoles?.target || workspaceRoles?.group) ? (
-              <VariablePreview
-                t={t}
-                targetVar={workspaceRoles?.target}
-                groupVar={workspaceRoles?.group}
-                groupLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
-                statsByName={columnStatsByName}
-              />
-            ) : null}
-
-            <StepPreviewPanel title="📊 PREVIEW" steps={previewSteps} />
-
-            {showAI && (
-              <div className="flex-shrink-0 p-4 border-b border-[color:var(--border-color)]">
-                <AIRecommendationsPanel
-                  datasetId={datasetId}
-                  columns={columns}
-                  recommendations={aiRecommendations}
-                  onAddRecommendation={handleAddRecommendation}
-                  onClose={() => setShowAI(false)}
-                  isAnalyzing={isAIAnalyzing}
-                />
+          {mode === 'tests' ? (
+            <div className="w-[420px] max-w-[48vw] shrink-0 border-r border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden flex flex-col">
+              <div className="h-12 px-3 flex items-center justify-between border-b border-[color:var(--border-color)]">
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('tests')}</div>
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{protocol.length} шаг(ов)</div>
               </div>
-            )}
 
-            <div className="flex-1 overflow-hidden flex flex-col">
               <div className="flex-1 overflow-hidden">
-                <ProtocolBuilder
-                  protocol={protocol}
-                  datasetName={datasetName}
-                  onRemoveTest={handleRemoveTest}
-                  onEditTest={handleEditTest}
-                  onMoveTest={handleMoveTest}
-                  onExecuteProtocol={handleExecuteProtocol}
-                  onAISuggest={handleAISuggest}
-                  onSaveProtocol={() => {
-                    if (protocol.length === 0) return;
-                    setSaveProtocolSeed(Date.now());
-                    setIsSaveProtocolOpen(true);
-                  }}
-                  onOpenProtocols={() => setIsProtocolLibraryOpen(true)}
-                  onUndo={undoProtocol}
-                  onRedo={redoProtocol}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  isExecuting={isExecuting}
-                  isAIAnalyzing={isAIAnalyzing}
+                <TestSelectionPanel
+                  variant="compact"
+                  onTestSelect={handleTestSelect}
+                  datasetId={datasetIdResolved}
+                  suggestedConfig={workspaceRoles}
+                  disabled={isExecuting}
                 />
               </div>
             </div>
-
-            {/* Variable Workspace Right Sidebar */}
-            {showVariables && (
-              <div className="w-80 flex-shrink-0 border-l border-[color:var(--border-color)]">
-                <VariableWorkspace
-                  columns={columns}
-                  columnStatsByName={columnStatsByName}
-                  roleByName={roleByName}
-                  roles={workspaceRoles}
-                  secondaryRoleLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
-                  onRolesChange={(next) => {
-                    setWorkspaceRoles(next);
-                    setTemplateVars((prev) => {
-                      const out = { ...prev, target: next.target || prev.target };
-                      if (templateSecondaryKey === 'predictor') out.predictor = next.group || prev.predictor;
-                      else out.group = next.group || prev.group;
-                      return out;
-                    });
-                  }}
-                  selectedVariables={selectedVars}
-                  onSelectionChange={setSelectedVars}
-                  onVariableClick={(name) => {
-                    // Auto-fill template vars
-                    if (!templateVars.target) {
-                      setTemplateVars(prev => ({ ...prev, target: name }));
-                    } else if (!templateVars.group && !templateVars.predictor) {
-                      setTemplateVars(prev => ({ ...prev, group: name }));
-                    }
-                  }}
-                  mode="multi"
-                  showStats={true}
-                />
-              </div>
-            )}
-            {results && (
-              <div className={`border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] flex-shrink-0 ${isResultsOpen ? 'h-[46vh]' : 'h-12'} transition-[height] duration-200 overflow-hidden`}>
-                <div className="h-12 px-4 flex items-center justify-between bg-[color:var(--white)] border-b border-[color:var(--border-color)]">
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase truncate">
-                      {t('analysis_results')}
-                    </div>
-                    <div className="text-xs text-[color:var(--text-secondary)] truncate">
-                      {results?.status || t('not_available_short')} · {results?.completed_steps ?? 0}/{results?.total_steps ?? 0}
-                    </div>
-                  </div>
+          ) : (
+            <div className="w-[360px] max-w-[45vw] shrink-0 border-r border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden flex flex-col">
+              <div className="h-12 px-3 flex items-center justify-between border-b border-[color:var(--border-color)]">
+                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{t('templates')}</div>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsResultsOpen((v) => !v)}
-                    className="text-xs font-semibold text-[color:var(--text-secondary)] hover:text-black"
+                    onClick={() => {
+                      setMassDynamicsSeed(Date.now());
+                      setIsMassDynamicsOpen(true);
+                    }}
+                    disabled={!datasetIdResolved || columns.length === 0}
+                    className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isResultsOpen ? t('hide_results') : t('view_results')}
+                    Массовая динамика
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/tests/${datasetIdResolved}`)}
+                    className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black"
+                  >
+                    {t('tests')}
                   </button>
                 </div>
+              </div>
 
-                {isResultsOpen && (
-                  <div className="h-[calc(46vh-3rem)] overflow-y-auto p-4 space-y-4" aria-live="polite">
-                    {Array.isArray(results?.errors) && results.errors.length > 0 && (
-                      <div className="bg-[color:var(--white)] border border-[color:var(--black)] text-[color:var(--text-primary)] rounded-[2px] p-4 text-sm">
-                        <div className="text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--accent)]">{t('errors')}</div>
-                        <div className="mt-2 space-y-2">
-                          {results.errors.map((e, idx) => {
-                            const h = humanizeError(e?.error);
-                            return (
-                              <div key={`${e?.step_id || 'step'}_${idx}`} className="rounded-[2px] bg-[color:var(--bg-tertiary)] border border-[color:var(--border-color)] p-3">
-                                <div className="flex items-baseline justify-between gap-3">
-                                  <div className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
-                                    {e?.method || t('unknown')}
-                                  </div>
-                                  <div className="text-[10px] text-[color:var(--text-secondary)] font-mono truncate">
-                                    {h.details ? h.details : (e?.error || t('unknown_error'))}
-                                  </div>
-                                </div>
-                                <div className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">
-                                  {h.title}
-                                </div>
-                                {Array.isArray(h.actions) && h.actions.length > 0 && (
-                                  <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
-                                    <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-muted)]">Что делать:</div>
-                                    <ul className="mt-1 list-disc pl-4 space-y-0.5">
-                                      {h.actions.map((a, i) => (
-                                        <li key={`${idx}_a_${i}`}>{a}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-y-auto bg-[color:var(--bg-secondary)]">
+                  <ProtocolTemplateSelector
+                    templates={templates}
+                    templatesLoading={templatesLoading}
+                    templatesError={templatesError}
+                    selectedTemplateId={selectedTemplateId}
+                    onSelectedTemplateIdChange={(nextId) => {
+                      setSelectedTemplateId(nextId);
+                      setTemplateVars((v) => ({ ...v, group: '', predictor: '' }));
+                    }}
+                    selectedTemplate={selectedTemplate}
+                    templateVars={templateVars}
+                    onTemplateVarsChange={setTemplateVars}
+                    columnNames={columnNames}
+                    columns={columns}
+                    columnStatsByName={columnStatsByName}
+                    canApplyTemplate={canApplyTemplate}
+                    onApplyTemplate={handleApplyTemplate}
+                    disabled={isExecuting}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mode === 'tests' ? (
+            <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+              <div className="h-12 px-4 flex items-center justify-between border-b border-[color:var(--border-color)] bg-[color:var(--white)]">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase truncate">Очередь</div>
+                  <div className="text-xs text-[color:var(--text-secondary)] truncate">Собери шаги, затем открой конструктор.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (protocol.length === 0) return;
+                      if (!confirm('Очистить список шагов?')) return;
+                      resetProtocolHistory([]);
+                      setResults(null);
+                      setSelectedStepId(null);
+                    }}
+                    disabled={protocol.length === 0}
+                    className="h-9 px-4 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Очистить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/design/${datasetIdResolved}`)}
+                    className="h-9 px-4 rounded-[2px] bg-[color:var(--black)] text-[color:var(--white)] text-xs font-bold uppercase tracking-[0.18em] hover:opacity-90"
+                  >
+                    Конструктор
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 bg-[color:var(--bg-secondary)]">
+                {protocol.length === 0 ? (
+                  <div className="h-full rounded-[2px] border border-dashed border-[color:var(--border-color)] bg-[color:var(--white)] flex items-center justify-center text-sm text-[color:var(--text-secondary)]">
+                    Выбери тест слева — он появится здесь.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {protocol.map((step, idx) => (
+                      <div key={step.id} className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Шаг {idx + 1}</div>
+                            <div className="mt-1 text-sm font-bold text-[color:var(--text-primary)] truncate">{step.name || formatMethodName(step.method)}</div>
+                            <div className="mt-1 text-xs text-[color:var(--text-secondary)] font-mono truncate">{step.method}</div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleEditTest(step)}
+                              className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black"
+                            >
+                              {t('edit')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!confirm('Удалить шаг?')) return;
+                                handleRemoveTest(step.id);
+                              }}
+                              className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--accent)] hover:border-black"
+                            >
+                              {t('remove')}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {Array.isArray(results?.results) && results.results.length > 0 ? (
-                      results.results.map((step, idx) => (
-                        <div key={step?.step_id || `${step?.method || 'step'}_${idx}`} className="space-y-3">
-                          <div className="flex items-baseline justify-between">
-                            <div className="text-sm font-bold text-[color:var(--text-primary)] truncate">
-                              {formatMethodName(step?.method)}
-                            </div>
-                            <div className="text-xs text-[color:var(--text-secondary)] font-mono">
-                              {step?.status || t('not_available_short')}
+                        {step.config && typeof step.config === 'object' ? (
+                          <div className="mt-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] p-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                              {Object.entries(step.config).slice(0, 8).map(([k, v]) => (
+                                <div key={k} className="flex items-baseline justify-between gap-3">
+                                  <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{k}</div>
+                                  <div className="text-xs text-[color:var(--text-primary)] font-mono truncate">{Array.isArray(v) ? v.filter(Boolean).join(', ') : String(v ?? '')}</div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          {renderStepResult(step)}
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-hidden">
+                  <ProtocolBuilder
+                    protocol={protocol}
+                    selectedStepId={selectedStepId}
+                    onSelectStep={(id) => setSelectedStepId(id)}
+                    onRemoveTest={handleRemoveTest}
+                    onEditTest={handleEditTest}
+                    onMoveTest={handleMoveTest}
+                    onExecuteProtocol={handleExecuteProtocol}
+                    onAISuggest={handleAISuggest}
+                    onVibeDesign={openVibe}
+                    onSaveProtocol={() => {
+                      if (protocol.length === 0) return;
+                      setSaveProtocolSeed(Date.now());
+                      setIsSaveProtocolOpen(true);
+                    }}
+                    onOpenProtocols={() => setIsProtocolLibraryOpen(true)}
+                    onUndo={undoProtocol}
+                    onRedo={redoProtocol}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    isExecuting={isExecuting}
+                    isAIAnalyzing={isAIAnalyzing}
+                  />
+                </div>
+
+                {results && (
+                  <div className={`border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] flex-shrink-0 ${isResultsOpen ? 'h-[46vh]' : 'h-12'} transition-[height] duration-200 overflow-hidden`}>
+                    <div className="h-12 px-4 flex items-center justify-between bg-[color:var(--white)] border-b border-[color:var(--border-color)]">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase truncate">
+                          {t('analysis_results')}
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-[color:var(--text-secondary)]">{t('no_results_yet')}</div>
+                        <div className="text-xs text-[color:var(--text-secondary)] truncate">
+                          {results?.status || t('not_available_short')} · {results?.completed_steps ?? 0}/{results?.total_steps ?? 0}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsResultsOpen((v) => !v)}
+                        className="text-xs font-semibold text-[color:var(--text-secondary)] hover:text-black"
+                      >
+                        {isResultsOpen ? t('hide_results') : t('view_results')}
+                      </button>
+                    </div>
+
+                    {isResultsOpen && (
+                      <div className="h-[calc(46vh-3rem)] overflow-y-auto p-4 space-y-4" aria-live="polite">
+                        {Array.isArray(results?.errors) && results.errors.length > 0 && (
+                          <div className="bg-[color:var(--white)] border border-[color:var(--black)] text-[color:var(--text-primary)] rounded-[2px] p-4 text-sm">
+                            <div className="text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--accent)]">{t('errors')}</div>
+                            <div className="mt-2 space-y-2">
+                              {results.errors.map((e, idx) => {
+                                const h = humanizeError(e?.error);
+                                return (
+                                  <div key={`${e?.step_id || 'step'}_${idx}`} className="rounded-[2px] bg-[color:var(--bg-tertiary)] border border-[color:var(--border-color)] p-3">
+                                    <div className="flex items-baseline justify-between gap-3">
+                                      <div className="text-xs font-semibold text-[color:var(--text-primary)] truncate">
+                                        {e?.method || t('unknown')}
+                                      </div>
+                                      <div className="text-[10px] text-[color:var(--text-secondary)] font-mono truncate">
+                                        {h.details ? h.details : (e?.error || t('unknown_error'))}
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">
+                                      {h.title}
+                                    </div>
+                                    {Array.isArray(h.actions) && h.actions.length > 0 && (
+                                      <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                                        <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-muted)]">Что делать:</div>
+                                        <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                                          {h.actions.map((a, i) => (
+                                            <li key={`${idx}_a_${i}`}>{a}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {Array.isArray(results?.results) && results.results.length > 0 ? (
+                          results.results.map((step, idx) => (
+                            <div key={step?.step_id || `${step?.method || 'step'}_${idx}`} className="space-y-3">
+                              <div className="flex items-baseline justify-between">
+                                <div className="text-sm font-bold text-[color:var(--text-primary)] truncate">
+                                  {formatMethodName(step?.method)}
+                                </div>
+                                <div className="text-xs text-[color:var(--text-secondary)] font-mono">
+                                  {step?.status || t('not_available_short')}
+                                </div>
+                              </div>
+                              {renderStepResult(step)}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-[color:var(--text-secondary)]">{t('no_results_yet')}</div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+
+              <div className="w-[420px] max-w-[48vw] shrink-0 border-l border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden flex flex-col">
+                <div className="h-12 px-3 flex items-center justify-between border-b border-[color:var(--border-color)]">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setRightPane('inspector')}
+                      className={`h-8 px-3 rounded-[2px] text-xs font-semibold ${rightPane === 'inspector' ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]'}`}
+                    >
+                      Инспектор
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRightPane('ai')}
+                      className={`h-8 px-3 rounded-[2px] text-xs font-semibold ${rightPane === 'ai' ? 'bg-[color:var(--bg-secondary)] text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]'}`}
+                    >
+                      ИИ
+                    </button>
+                  </div>
+
+                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{protocol.length} шаг(ов)</div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 bg-[color:var(--bg-secondary)]">
+                  {rightPane === 'ai' ? (
+                    <div className="space-y-3">
+                      <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Рекомендации</div>
+                          <button
+                            type="button"
+                            onClick={handleAISuggest}
+                            disabled={isAIAnalyzing || protocol.length === 0}
+                            className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isAIAnalyzing ? t('ai_analyzing') : t('ai_suggest_tests')}
+                          </button>
+                        </div>
+                        <div className="mt-2 text-xs text-[color:var(--text-secondary)]">ИИ предлагает шаги поверх твоего текущего пайплайна.</div>
+                      </div>
+
+                      <AIRecommendationsPanel
+                        recommendations={aiRecommendations}
+                        onAddRecommendation={handleAddRecommendation}
+                        onClose={() => setRightPane('inspector')}
+                        isAnalyzing={isAIAnalyzing}
+                      />
+
+                      {!isAIAnalyzing && aiRecommendations.length === 0 ? (
+                        <div className="text-xs text-[color:var(--text-muted)]">Нажми «{t('ai_suggest_tests')}» чтобы получить предложения.</div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="h-[540px]">
+                        <VariableWorkspace
+                          columns={columns}
+                          columnStatsByName={columnStatsByName}
+                          roleByName={roleByName}
+                          roles={workspaceRoles}
+                          onRolesChange={handleWorkspaceRolesChange}
+                          secondaryRoleLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
+                        />
+                      </div>
+
+                      {(workspaceRoles?.target || workspaceRoles?.group) ? (
+                        <VariablePreview
+                          t={t}
+                          targetVar={workspaceRoles?.target}
+                          groupVar={workspaceRoles?.group}
+                          groupLabel={templateSecondaryKey === 'predictor' ? t('predictor') : t('group')}
+                          statsByName={columnStatsByName}
+                        />
+                      ) : null}
+
+                      <StepPreviewPanel title={t('preview')} steps={previewSteps} />
+
+                      <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] overflow-hidden">
+                        <div className="px-3 py-2 bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)] flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Шаг</div>
+                            <div className="text-sm font-semibold text-[color:var(--text-primary)] truncate">
+                              {selectedStepMeta.step ? (selectedStepMeta.step.name || formatMethodName(selectedStepMeta.step.method)) : 'Не выбран'}
+                            </div>
+                          </div>
+
+                          {selectedStepMeta.step ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (selectedStepMeta.index > 0) handleMoveTest(selectedStepMeta.index, selectedStepMeta.index - 1);
+                                }}
+                                disabled={selectedStepMeta.index <= 0}
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-[2px] border border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:border-[color:var(--border-color)] disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={t('move_up')}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (selectedStepMeta.index >= 0 && selectedStepMeta.index < protocol.length - 1) handleMoveTest(selectedStepMeta.index, selectedStepMeta.index + 1);
+                                }}
+                                disabled={selectedStepMeta.index < 0 || selectedStepMeta.index >= protocol.length - 1}
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-[2px] border border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] hover:border-[color:var(--border-color)] disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={t('move_down')}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditTest(selectedStepMeta.step)}
+                                className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black"
+                              >
+                                {t('edit')}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="p-3">
+                          {protocol.length > 0 && !selectedStepMeta.step ? (
+                            <div className="text-xs text-[color:var(--text-secondary)]">Выбери шаг в центре — здесь будет его конфиг.</div>
+                          ) : null}
+
+                          {protocol.length === 0 ? (
+                            <div className="text-xs text-[color:var(--text-secondary)]">Добавь шаг через «Тесты».</div>
+                          ) : null}
+
+                          {selectedStepMeta.step ? (
+                            <div className="space-y-3">
+                              <div className="text-xs text-[color:var(--text-secondary)] font-mono">{selectedStepMeta.step.method}</div>
+
+                              {selectedStepMeta.step.config && typeof selectedStepMeta.step.config === 'object' ? (
+                                <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] p-2">
+                                  <div className="space-y-1">
+                                    {Object.entries(selectedStepMeta.step.config).map(([k, v]) => (
+                                      <div key={k} className="flex items-baseline justify-between gap-3">
+                                        <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{k}</div>
+                                        <div className="text-xs text-[color:var(--text-primary)] font-mono truncate">
+                                          {Array.isArray(v) ? v.filter(Boolean).join(', ') : String(v ?? '')}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!confirm('Удалить шаг?')) return;
+                                  handleRemoveTest(selectedStepMeta.step.id);
+                                  setSelectedStepId(null);
+                                }}
+                                className="h-9 w-full rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--accent)] hover:border-black"
+                              >
+                                {t('remove')}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      <MassDynamicsModal
+        key={massDynamicsSeed}
+        isOpen={isMassDynamicsOpen}
+        onClose={() => setIsMassDynamicsOpen(false)}
+        columns={columns}
+        statsByName={columnStatsByName}
+        defaultGroupCol={workspaceRoles?.group || ''}
+        defaultSubjectCol=""
+        formatMethodName={formatMethodName}
+        onAppendSteps={handleAppendMassSteps}
+      />
+
+      <VibeDesignModal
+        isOpen={isVibeOpen}
+        onClose={() => setIsVibeOpen(false)}
+        value={vibeText}
+        onValueChange={setVibeText}
+        globalSettings={globalDefaults}
+        onGlobalSettingsChange={handleGlobalSettingsChange}
+        onGenerate={handleVibeGenerate}
+        onGenerateAndRun={handleVibeGenerateAndRun}
+        isLoading={isVibeLoading}
+        error={vibeError}
+        preview={vibePreview}
+        onApply={handleApplyVibePreview}
+      />
 
       <TestConfigModal
         isOpen={isConfigModalOpen}

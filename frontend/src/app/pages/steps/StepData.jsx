@@ -15,6 +15,7 @@ import DataTableWithTypes from '../../components/DataTableWithTypes';
 import Button from '../../components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import VariableListView from '../../components/VariableListView';
+import SearchableSelect from '../../components/SearchableSelect';
 
 /* -- HELPER: Cleaning Alert -- */
 const CleaningWizardAlert = ({ report, onFix, onMice }) => {
@@ -39,12 +40,12 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
             <div className="flex items-start">
                 <ExclamationTriangleIcon className="w-5 h-5 text-[color:var(--accent)] mt-0.5 mr-3" />
                 <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Data Preparation</h3>
+                    <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Подготовка данных</h3>
 
                     {hasMissing && (
                         <div className="mt-3">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-secondary)]">Missing Values</div>
+                                <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-secondary)]">Пропуски</div>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -64,7 +65,7 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
                                     <div key={m.column} className="flex items-center justify-between gap-3 text-sm text-[color:var(--text-primary)] bg-[color:var(--white)] p-2 rounded-[2px] border border-[color:var(--border-color)]">
                                         <div className="min-w-0">
                                             <div className="truncate font-semibold">{m.column}</div>
-                                            <div className="text-xs text-[color:var(--text-secondary)]">{m.missing_count} missing ({m.missing_percent}%)</div>
+                                            <div className="text-xs text-[color:var(--text-secondary)]">{m.missing_count} пропусков ({m.missing_percent}%)</div>
                                         </div>
 
                                         <div className="flex items-center gap-1.5 shrink-0">
@@ -74,13 +75,13 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
                                                         onClick={() => onFix(m.column, 'fill_mean')}
                                                         className="px-2 py-1 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[11px] font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
                                                     >
-                                                        Mean
+                                                        Среднее
                                                     </button>
                                                     <button
                                                         onClick={() => onFix(m.column, 'fill_median')}
                                                         className="px-2 py-1 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[11px] font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
                                                     >
-                                                        Median
+                                                        Медиана
                                                     </button>
                                                 </>
                                             )}
@@ -100,7 +101,7 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
                                                 onClick={() => onFix(m.column, 'drop_na')}
                                                 className="px-2 py-1 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[11px] font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
                                             >
-                                                Drop
+                                                Удалить
                                             </button>
                                         </div>
                                     </div>
@@ -111,7 +112,7 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
 
                     {hasIssues && (
                         <div className="mt-4">
-                            <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-secondary)]">Type Issues</div>
+                            <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-secondary)]">Проблемы типов</div>
                             <div className="mt-2 space-y-2">
                                 {issues.filter(i => i?.type === 'mixed_type').slice(0, 8).map((issue, idx) => (
                                     <div key={`${issue.column}-${idx}`} className="flex items-center justify-between text-sm text-[color:var(--text-primary)] bg-[color:var(--white)] p-2 rounded-[2px] border border-[color:var(--border-color)]">
@@ -123,7 +124,7 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
                                             className="ml-4 flex items-center px-3 py-1 rounded-[2px] text-xs font-medium text-[color:var(--white)] bg-[color:var(--accent)] border border-[color:var(--accent)] hover:bg-[color:var(--accent-hover)] hover:border-[color:var(--accent-hover)] transition-colors"
                                         >
                                             <SparklesIcon className="w-3 h-3 mr-1.5 inline" />
-                                            To Numeric
+                                    Преобразовать в число
                                         </button>
                                     </div>
                                 ))}
@@ -140,26 +141,26 @@ const CleaningWizardAlert = ({ report, onFix, onMice }) => {
 const VariableMapper = ({ columns, goal, variables, setVariables }) => {
     const fields = {
         compare_groups: [
-            { key: 'target', label: 'Dependent Variable (Outcome)', type: 'numeric' },
-            { key: 'group', label: 'Grouping Factor', type: 'categorical' },
+            { key: 'target', label: 'Зависимая переменная (исход)', type: 'numeric' },
+            { key: 'group', label: 'Группирующий фактор', type: 'categorical' },
         ],
         relationship: [
-            { key: 'target', label: 'Variable Y (Outcome)', type: 'numeric' },
-            { key: 'predictor', label: 'Variable X (Predictor)', type: 'numeric' },
+            { key: 'target', label: 'Переменная Y (исход)', type: 'numeric' },
+            { key: 'predictor', label: 'Переменная X (предиктор)', type: 'numeric' },
         ],
         prediction: [
-            { key: 'target', label: 'Outcome to Predict', type: 'numeric' },
-            { key: 'predictors', label: 'Predictors (Select Multiple)', type: 'mixed', multiple: true },
+            { key: 'target', label: 'Исход для прогнозирования', type: 'numeric' },
+            { key: 'predictors', label: 'Предикторы (можно несколько)', type: 'mixed', multiple: true },
         ],
         survival: [
-            { key: 'duration', label: 'Time to Event', type: 'numeric' },
-            { key: 'event', label: 'Event Status (0/1)', type: 'binary' },
-            { key: 'group', label: 'Group (Optional)', type: 'categorical' },
+            { key: 'duration', label: 'Время до события', type: 'numeric' },
+            { key: 'event', label: 'Событие (0/1)', type: 'binary' },
+            { key: 'group', label: 'Группа (необязательно)', type: 'categorical' },
         ],
         repeated_measures: [
-            { key: 'target', label: 'Dependent Variable (Outcome)', type: 'numeric' },
-            { key: 'time', label: 'Timepoint / Condition', type: 'categorical' },
-            { key: 'subject', label: 'Subject ID (Repeated Measures)', type: 'categorical' },
+            { key: 'target', label: 'Зависимая переменная (исход)', type: 'numeric' },
+            { key: 'time', label: 'Временная точка / условие', type: 'categorical' },
+            { key: 'subject', label: 'ID участника (повторные измерения)', type: 'categorical' },
         ]
     }[goal] || [];
 
@@ -181,6 +182,14 @@ const VariableMapper = ({ columns, goal, variables, setVariables }) => {
         }
     };
 
+    const removeMultiple = (key, value) => {
+        setVariables((prev) => {
+            const current = prev[key] ? prev[key].split(',').filter(Boolean) : [];
+            const next = current.filter((v) => v !== value);
+            return { ...prev, [key]: next.join(',') };
+        });
+    };
+
     return (
         <div className="space-y-6 animate-fadeIn">
             {fields.map((field) => (
@@ -190,35 +199,45 @@ const VariableMapper = ({ columns, goal, variables, setVariables }) => {
                     </label>
 
                     {field.multiple ? (
-                        <div className="border border-[color:var(--border-color)] rounded-[2px] p-3 max-h-60 overflow-y-auto bg-[color:var(--bg-secondary)]">
-                            {columns.map(col => {
-                                const isSelected = (variables[field.key] || '').split(',').includes(col);
-                                return (
-                                    <label key={col} className="flex items-center space-x-3 p-2 hover:bg-[color:var(--white)] rounded-[2px] cursor-pointer transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => handleSelect(field.key, col, true)}
-                                            className="w-4 h-4 rounded-[2px] border-[color:var(--border-color)] accent-[color:var(--accent)]"
-                                        />
-                                        <span className={`text-sm ${isSelected ? 'text-[color:var(--accent)] font-medium' : 'text-[color:var(--text-secondary)]'}`}>
-                                            {col}
-                                        </span>
-                                    </label>
-                                );
-                            })}
+                        <div className="border border-[color:var(--border-color)] rounded-[2px] p-3 bg-[color:var(--bg-secondary)]">
+                            <SearchableSelect
+                                value=""
+                                onChange={(v) => {
+                                    if (!v) return;
+                                    handleSelect(field.key, v, true);
+                                }}
+                                options={columns}
+                                placeholder="Добавить переменную…"
+                                searchPlaceholder="Поиск…"
+                                countLabel="переменных"
+                            />
+
+                            {Boolean((variables[field.key] || '').trim()) && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {(variables[field.key] || '').split(',').filter(Boolean).map((v) => (
+                                        <button
+                                            key={v}
+                                            type="button"
+                                            onClick={() => removeMultiple(field.key, v)}
+                                            className="inline-flex items-center gap-2 px-2 py-1 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black"
+                                            title="Убрать"
+                                        >
+                                            <span className="max-w-[260px] truncate">{v}</span>
+                                            <span className="text-[color:var(--text-muted)]">×</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <select
-                            className="w-full p-2.5 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm text-[color:var(--text-primary)] outline-none"
+                        <SearchableSelect
                             value={variables[field.key] || ''}
-                            onChange={(e) => handleSelect(field.key, e.target.value)}
-                        >
-                            <option value="">Select a variable...</option>
-                            {columns.map(col => (
-                                <option key={col} value={col}>{col}</option>
-                            ))}
-                        </select>
+                            onChange={(v) => handleSelect(field.key, v)}
+                            options={columns}
+                            placeholder="Выберите переменную…"
+                            searchPlaceholder="Поиск…"
+                            countLabel="переменных"
+                        />
                     )}
                 </div>
             ))}
@@ -320,7 +339,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
             const newReport = await getScanReport(selectedDataset);
             setScanReport(newReport);
         } catch (e) {
-            alert("Fix failed: " + e.message);
+            alert("Не удалось применить исправление: " + e.message);
         }
     };
 
@@ -331,7 +350,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
             const newReport = await getScanReport(selectedDataset);
             setScanReport(newReport);
         } catch (e) {
-            alert("MICE failed: " + e.message);
+            alert("Не удалось выполнить MICE-импутацию: " + e.message);
         }
     };
 
@@ -374,7 +393,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
         onDataReady({ datasetId: selectedDataset, variables: derivedVariables });
     }, [derivedVariables, onDataReady, selectedDataset]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div className="text-sm text-[color:var(--text-secondary)]">Загрузка…</div>;
 
     const rows = Array.isArray(profile?.head) ? profile.head : [];
 
@@ -468,8 +487,8 @@ const StepData = ({ goal, onDataReady, onNext }) => {
     return (
         <div className="stepdata grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 pr-0 lg:pr-8 lg:border-r lg:border-[color:var(--border-color)]">
-                <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">Dataset</div>
-                <div className="mt-1 text-lg font-bold text-[color:var(--text-primary)]">Выбери таблицу</div>
+                <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">Файлы данных</div>
+                <div className="mt-1 text-lg font-bold text-[color:var(--text-primary)]">Выберите файл данных</div>
                 <div className="mt-4 space-y-2">
                     {datasets.map((ds) => (
                         <button
@@ -503,15 +522,15 @@ const StepData = ({ goal, onDataReady, onNext }) => {
 
                 {!selectedDataset ? (
                     <div className="rounded-[2px] border border-dashed border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] p-10 text-center">
-                        <div className="text-sm font-semibold text-[color:var(--text-primary)]">Выбери dataset слева</div>
+                        <div className="text-sm font-semibold text-[color:var(--text-primary)]">Выберите файл данных слева</div>
                         <div className="mt-1 text-sm text-[color:var(--text-secondary)]">Дальше появится таблица и список переменных</div>
                     </div>
                 ) : usePhase7Flow ? (
                     <>
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
                             <TabsList>
-                                <TabsTrigger value="prepare">Prepare</TabsTrigger>
-                                <TabsTrigger value="design">Design</TabsTrigger>
+                                <TabsTrigger value="prepare">Таблица</TabsTrigger>
+                                <TabsTrigger value="design">Переменные</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="prepare" className="pt-5">
@@ -536,7 +555,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
 
                         <div className="mt-8 flex items-center justify-end gap-2">
                             <Button type="button" variant="primary" disabled={!canProceed} onClick={onNext}>
-                                Review Protocol →
+                                К протоколу →
                             </Button>
                         </div>
                     </>
@@ -551,7 +570,7 @@ const StepData = ({ goal, onDataReady, onNext }) => {
 
                         <div className="mt-8 flex items-center justify-end gap-2">
                             <Button type="button" variant="primary" disabled={!canProceed} onClick={onNext}>
-                                Review Protocol →
+                                К протоколу →
                             </Button>
                         </div>
                     </>

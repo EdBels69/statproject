@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 from typing import List, Dict, Any, Optional
 from app.stats.engine import run_analysis, select_test
 from app.core.pipeline import PipelineManager
@@ -35,6 +36,23 @@ class ProtocolEngine:
     def _sanitize(self, obj):
         """Recursively replace NaN/Inf with None for JSON safety."""
         import math
+        try:
+            if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
+                return self._sanitize(obj.model_dump())
+            if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
+                return self._sanitize(obj.dict())
+        except Exception:
+            pass
+
+        try:
+            import numpy as np
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                obj = float(obj)
+        except Exception:
+            pass
+
         if isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
                 return None
@@ -80,8 +98,10 @@ class ProtocolEngine:
                     res = self._run_mixed_effects(df, step, alpha)
                 elif step_type == "clustered_correlation":
                     res = self._run_clustered_correlation(df, step, alpha)
+                elif step_type == "responders":
+                    res = self._run_responders(df, step, alpha)
                 else:
-                    res = {"error": f"Unknown step type: {step_type}"}
+                    res = {"type": str(step_type), "error": f"Unknown step type: {step_type}"}
                 
                 results_map[step_id] = res
                 log.append(f"Step {step_id} completed.")
@@ -95,7 +115,7 @@ class ProtocolEngine:
                 logger.error(f"Step {step_id} failed: {str(e)}", exc_info=True)
                 error_msg = f"Step {step_id} failed: {str(e)}"
                 log.append(error_msg)
-                results_map[step_id] = {"error": error_msg}
+                results_map[step_id] = {"type": str(step_type), "error": error_msg}
 
         # 3. Save Results
         sanitized_results = self._sanitize(results_map)
@@ -103,13 +123,154 @@ class ProtocolEngine:
         full_output = {
             "protocol_name": protocol.get("name", "Unnamed Protocol"),
             "dataset_id": dataset_id,
+            "alpha": alpha,
             "results": sanitized_results,
             "log": log
         }
         
         self.pipeline.save_run_results(run_dir, full_output)
-        
-        return run_dir.split("/")[-1]
+
+        return os.path.basename(run_dir)
+
+    def _run_responders(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
+        outcome_label = step.get("outcome_label") or step.get("outcome") or step.get("target")
+        group_col = step.get("group_column") or step.get("group")
+        subject_col = step.get("subject_column") or step.get("subject")
+
+        outcome_columns = step.get("outcome_columns")
+        time_labels = step.get("time_labels")
+        baseline_label = step.get("baseline_label") or step.get("baseline_time")
+        baseline_index = step.get("baseline_index")
+
+        threshold_raw = step.get("threshold")
+        if threshold_raw is None:
+            threshold_raw = step.get("response_threshold")
+        try:
+            threshold = float(threshold_raw) if threshold_raw is not None else 0.0
+        except Exception:
+            threshold = 0.0
+
+        direction = str(step.get("direction") or step.get("improvement_direction") or "decrease").strip().lower()
+        if direction not in {"decrease", "increase"}:
+            direction = "decrease"
+
+        if not group_col or not isinstance(group_col, str) or group_col not in df.columns:
+            return {"type": "responders", "error": "Missing group column"}
+
+        if not isinstance(outcome_columns, list) or not outcome_columns:
+            return {"type": "responders", "error": "Missing outcome_columns"}
+        outcome_columns = [c for c in outcome_columns if isinstance(c, str) and c in df.columns]
+        if len(outcome_columns) < 2:
+            return {"type": "responders", "error": "Insufficient outcome columns"}
+
+        if not isinstance(time_labels, list) or len(time_labels) != len(outcome_columns):
+            time_labels = [str(i) for i in range(len(outcome_columns))]
+
+        baseline_idx = 0
+        if isinstance(baseline_index, int) and 0 <= baseline_index < len(outcome_columns):
+            baseline_idx = int(baseline_index)
+        elif isinstance(baseline_label, str) and baseline_label in time_labels:
+            baseline_idx = int(time_labels.index(baseline_label))
+
+        baseline_col = outcome_columns[baseline_idx]
+        baseline_time = str(time_labels[baseline_idx])
+
+        group_merge = step.get("merge_groups") or step.get("group_merge") or step.get("group_map")
+        mapping: Dict[str, str] = {}
+        buckets: List[Dict[str, Any]] = []
+        if isinstance(group_merge, dict):
+            for k, v in group_merge.items():
+                if k is None or v is None:
+                    continue
+                mapping[str(k)] = str(v)
+        elif isinstance(group_merge, list):
+            for item in group_merge:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name")
+                values = item.get("values")
+                if isinstance(name, str) and isinstance(values, list) and values:
+                    buckets.append({"name": name, "values": {str(v) for v in values if v is not None}})
+
+        def _map_group(value: Any) -> str:
+            raw = "-" if value is None else str(value)
+            if raw in mapping:
+                return mapping[raw]
+            if buckets:
+                for b in buckets:
+                    if raw in b.get("values", set()):
+                        return str(b.get("name"))
+            return raw
+
+        visits: List[Dict[str, str]] = []
+        for idx, col in enumerate(outcome_columns):
+            if idx == baseline_idx:
+                continue
+            visits.append({"time": str(time_labels[idx]), "column": str(col)})
+        if not visits:
+            return {"type": "responders", "error": "No follow-up visits"}
+
+        by_visit: Dict[str, Any] = {}
+        for v in visits:
+            visit_time = v.get("time")
+            visit_col = v.get("column")
+            cols = [group_col, baseline_col, visit_col]
+            if isinstance(subject_col, str) and subject_col in df.columns:
+                cols = [subject_col, *cols]
+
+            tmp = df[cols].copy()
+            tmp[baseline_col] = pd.to_numeric(tmp[baseline_col], errors="coerce")
+            tmp[visit_col] = pd.to_numeric(tmp[visit_col], errors="coerce")
+            tmp = tmp.dropna(subset=[group_col, baseline_col, visit_col])
+            if tmp.empty:
+                continue
+
+            tmp["__group__"] = tmp[group_col].map(_map_group)
+            if direction == "increase":
+                tmp["__delta__"] = tmp[visit_col] - tmp[baseline_col]
+            else:
+                tmp["__delta__"] = tmp[baseline_col] - tmp[visit_col]
+            tmp["__responder__"] = (tmp["__delta__"] >= threshold).astype(int)
+
+            group_stats: Dict[str, Any] = {}
+            for g, sub in tmp.groupby("__group__", dropna=False):
+                total = int(len(sub))
+                responders = int(sub["__responder__"].sum())
+                rate = (responders / total) if total else 0.0
+                group_stats[str(g)] = {"responders": responders, "total": total, "rate": rate}
+
+            test_res = None
+            uniq_groups = [k for k, v in group_stats.items() if isinstance(v, dict) and v.get("total", 0) > 0]
+            if len(uniq_groups) >= 2:
+                try:
+                    test_res = run_analysis(tmp[["__group__", "__responder__"]].copy(), "chi_square", "__group__", "__responder__", alpha=alpha)
+                except Exception:
+                    test_res = None
+
+            by_visit[str(visit_time)] = {
+                "visit": str(visit_time),
+                "baseline": baseline_time,
+                "threshold": threshold,
+                "direction": direction,
+                "groups": group_stats,
+                "test": test_res,
+            }
+
+        if not by_visit:
+            return {"type": "responders", "error": "No responder results computed"}
+
+        return {
+            "type": "responders",
+            "outcome": outcome_label,
+            "group_column": group_col,
+            "subject_column": subject_col,
+            "baseline": {"time": baseline_time, "column": baseline_col},
+            "visits": visits,
+            "threshold": threshold,
+            "direction": direction,
+            "group_merge": group_merge if group_merge is not None else None,
+            "by_visit": by_visit,
+        }
 
     def execute_v2_protocol(self, dataset_id: str, df: pd.DataFrame, protocol: List[Dict], alpha: float = 0.05) -> Dict[str, Any]:
         """
@@ -237,7 +398,13 @@ class ProtocolEngine:
             # Filter Data
             sub_df = df[df[split_col] == s]
             # Create a mini-step for this slice
-            sub_step = {"target": target, "group": group, "method": step.get("method")}
+            sub_step = {
+                "target": target,
+                "group": group,
+                "method": step.get("method"),
+                "auto_fallback": step.get("auto_fallback"),
+                "is_paired": step.get("is_paired"),
+            }
             
             # Re-use existing compare logic
             results[str(s)] = self._run_compare(sub_df, sub_step, alpha)
@@ -286,6 +453,9 @@ class ProtocolEngine:
             # Standardize / Overlay
             result_dict["type"] = "hypothesis_test"
             result_dict["method"] = get_method(method_id)
+            result_dict["target"] = target
+            result_dict["group"] = group
+            result_dict["alpha"] = alpha
             
             # Map common fields if names differ (run_analysis standardization usually matches)
             if "stat_value" in raw_res: result_dict["stats"] = raw_res["stat_value"] # Legacy mapping if needed
@@ -308,12 +478,35 @@ class ProtocolEngine:
     def _run_compare(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         target = step.get("target")
         group = step.get("group") or step.get("predictor")
+        target_label = step.get("target_label") or step.get("outcome_label") or target
+        group_label = step.get("group_label") or step.get("group_column_label") or group
+        unit = step.get("unit") or step.get("units")
         
         # Auto-detect method if not provided
         if not step.get("method"):
+            def _infer_kind_for_select(col: str) -> str:
+                if not col or col not in df.columns:
+                    return "categorical"
+                s = df[col]
+                if not pd.api.types.is_numeric_dtype(s):
+                    return "categorical"
+                try:
+                    non_na = s.dropna()
+                    n = int(len(non_na))
+                    u = int(non_na.nunique(dropna=True)) if n else 0
+                except Exception:
+                    return "numeric"
+
+                name_l = str(col).strip().lower()
+                looks_like_group = any(k in name_l for k in ["group", "группа", "treatment", "arm", "cohort", "рандом"])
+                small_cardinality = u <= min(12, max(2, int(n * 0.2)))
+                if looks_like_group or small_cardinality:
+                    return "categorical"
+                return "numeric"
+
             types = {
                 target: "numeric" if pd.api.types.is_numeric_dtype(df[target]) else "categorical",
-                group: "numeric" if group and pd.api.types.is_numeric_dtype(df[group]) else "categorical"
+                group: _infer_kind_for_select(group),
             }
             method_id = select_test(df, target, group, types)
         else:
@@ -331,7 +524,14 @@ class ProtocolEngine:
         
         # Format for storage
         result_dict = {
+            "type": "compare",
             "method": get_method(method_id),
+            "target": target,
+            "target_label": target_label,
+            "unit": unit,
+            "group": group,
+            "group_label": group_label,
+            "alpha": alpha,
             "p_value": raw_res.get("p_value"),
             "significant": raw_res.get("significant"),
             "stats": raw_res.get("stat_value"),
@@ -385,10 +585,13 @@ class ProtocolEngine:
         raw_res = run_analysis(df, method_id, target, predictors[0], predictors=predictors, alpha=alpha)
         
         return {
+            "type": "regression",
             "method": get_method(method_id),
             "r_squared": raw_res.get("r_squared"),
             "coefficients": raw_res.get("coefficients"),
-            "p_value": raw_res.get("p_value")
+            "p_value": raw_res.get("p_value"),
+            "significant": raw_res.get("significant"),
+            "roc": raw_res.get("roc"),
         }
 
     def _run_mixed_effects(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
@@ -401,24 +604,145 @@ class ProtocolEngine:
         subject_col = step.get("subject_column")
         covariates = step.get("covariates", [])
         random_slope = step.get("random_slopes", False)
+        outcome_columns = step.get("outcome_columns")
+        time_labels = step.get("time_labels")
+
+        group_merge = step.get("merge_groups") or step.get("group_merge") or step.get("group_map")
+        mapping: Dict[str, str] = {}
+        buckets: List[Dict[str, Any]] = []
+        if isinstance(group_merge, dict):
+            for k, v in group_merge.items():
+                if k is None or v is None:
+                    continue
+                mapping[str(k)] = str(v)
+        elif isinstance(group_merge, list):
+            for item in group_merge:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name")
+                values = item.get("values")
+                if isinstance(name, str) and isinstance(values, list) and values:
+                    buckets.append({"name": name, "values": {str(v) for v in values if v is not None}})
+
+        def _map_group(value: Any) -> str:
+            raw = "-" if value is None else str(value)
+            if raw in mapping:
+                return mapping[raw]
+            if buckets:
+                for b in buckets:
+                    if raw in b.get("values", set()):
+                        return str(b.get("name"))
+            return raw
         
         try:
+            analysis_df = df
+            used_outcome = outcome
+            used_time_col = time_col
+            used_group_col = group_col
+            if (not isinstance(time_col, str) or time_col not in df.columns) and isinstance(outcome_columns, list) and outcome_columns:
+                id_vars = [c for c in [subject_col, group_col, *covariates] if isinstance(c, str) and c in df.columns]
+                value_vars = [c for c in outcome_columns if isinstance(c, str) and c in df.columns]
+                if not id_vars or not value_vars:
+                    return {
+                        "type": "mixed_effects",
+                        "method": get_method("mixed_effects"),
+                        "error": "Insufficient columns for wide mixed effects",
+                    }
+
+                used_time_col = time_col if isinstance(time_col, str) and time_col else "Time"
+                wide_long = df[id_vars + value_vars].melt(
+                    id_vars=id_vars,
+                    value_vars=value_vars,
+                    var_name=used_time_col,
+                    value_name="Value",
+                )
+                wide_long["Value"] = pd.to_numeric(wide_long["Value"], errors="coerce")
+                wide_long = wide_long.dropna(subset=["Value"])
+
+                if isinstance(time_labels, list) and len(time_labels) == len(value_vars):
+                    time_map = {v: str(t) for v, t in zip(value_vars, time_labels)}
+                    wide_long[used_time_col] = wide_long[used_time_col].map(lambda x: time_map.get(x, str(x)))
+                else:
+                    import re
+
+                    def _extract_visit(v: Any) -> str:
+                        s = str(v)
+                        m = re.search(r"\bV\s*(\d+)\b", s)
+                        if m:
+                            return str(int(m.group(1)))
+                        m = re.search(r"(\d+)", s)
+                        if m:
+                            return str(int(m.group(1)))
+                        return s
+
+                    wide_long[used_time_col] = wide_long[used_time_col].map(_extract_visit)
+
+                analysis_df = wide_long
+                used_outcome = "Value"
+
+            if isinstance(analysis_df, pd.DataFrame) and isinstance(used_group_col, str) and used_group_col in analysis_df.columns and (mapping or buckets):
+                analysis_df = analysis_df.copy()
+                analysis_df["__group__"] = analysis_df[used_group_col].map(_map_group)
+                used_group_col = "__group__"
+
+            if not isinstance(used_group_col, str) or used_group_col not in analysis_df.columns:
+                return {
+                    "type": "mixed_effects",
+                    "method": get_method("mixed_effects"),
+                    "error": "Missing group column",
+                }
+
+            if not isinstance(subject_col, str) or subject_col not in analysis_df.columns:
+                return {
+                    "type": "mixed_effects",
+                    "method": get_method("mixed_effects"),
+                    "error": "Missing subject column",
+                }
+
             engine = MixedEffectsEngine(max_memory_mb=800)
-            result = engine.fit(df, outcome, time_col, group_col, subject_col, covariates, random_slope, alpha)
-            
+            result = engine.fit(analysis_df, used_outcome, used_time_col, used_group_col, subject_col, covariates, random_slope, alpha)
+
+            if isinstance(result, dict) and result.get("error"):
+                return {
+                    "type": "mixed_effects",
+                    "method": get_method("mixed_effects"),
+                    "error": str(result.get("error")),
+                    "message": str(result.get("message")) if result.get("message") is not None else None,
+                    "suggestion": str(result.get("suggestion")) if result.get("suggestion") is not None else None,
+                }
+
+            interaction_p_value = result.get("interaction_p_value")
+            try:
+                p = float(interaction_p_value)
+                significant = bool(np.isfinite(p) and p < alpha)
+            except Exception:
+                significant = None
+
+            interaction = result.get("interaction")
+            conclusion = None
+            if isinstance(interaction, dict):
+                conclusion = interaction.get("interpretation")
+
             return {
                 "type": "mixed_effects",
                 "method": get_method("mixed_effects"),
-                "fixed_effects": result.get("fixed_effects"),
-                "random_effects": result.get("random_effects"),
-                "interaction_p_value": result.get("interaction_p_value"),
+                "p_value": interaction_p_value,
+                "interaction_p_value": interaction_p_value,
+                "significant": significant,
+                "outcome": step.get("outcome_label") or result.get("outcome") or outcome,
+                "group_column": group_col,
+                "group_merge": group_merge if group_merge is not None else None,
+                "formula": step.get("formula") or result.get("formula"),
+                "n_observations": result.get("n_observations"),
+                "n_subjects": result.get("n_subjects"),
                 "model_statistics": result.get("model_statistics"),
                 "estimated_means": result.get("estimated_means"),
-                "plot_data": result.get("plot_data")
+                "coefficients": result.get("coefficients"),
+                "conclusion": conclusion,
             }
         except Exception as e:
             logger.error(f"Mixed effects analysis failed: {e}", exc_info=True)
-            return {"error": str(e)}
+            return {"type": "mixed_effects", "method": get_method("mixed_effects"), "error": str(e)}
 
     def _run_clustered_correlation(self, df: pd.DataFrame, step: Dict, alpha: float = 0.05) -> Dict:
         """

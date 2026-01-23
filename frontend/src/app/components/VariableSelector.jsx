@@ -48,10 +48,13 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
     const [selectedAvailableNames, setSelectedAvailableNames] = useState([]);
     const [selectedTargetNames, setSelectedTargetNames] = useState([]);
 
+    const [availableSearch, setAvailableSearch] = useState('');
+    const [availableType, setAvailableType] = useState('all');
+
     const selectedAvailableSet = useMemo(() => new Set(selectedAvailableNames), [selectedAvailableNames]);
     const selectedTargetSet = useMemo(() => new Set(selectedTargetNames), [selectedTargetNames]);
 
-    const available = useMemo(() => {
+    const availableRaw = useMemo(() => {
         const taken = new Set([
             ...targetCols.map(c => c?.name).filter(Boolean),
             groupCol?.name
@@ -59,9 +62,61 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
         return (Array.isArray(allColumns) ? allColumns : []).filter(c => c && !taken.has(c.name));
     }, [allColumns, targetCols, groupCol]);
 
+    const normalizeType = (raw) => {
+        const t = String(raw || '').toLowerCase();
+        if (!t) return 'text';
+        if (t.includes('int') || t.includes('float') || t.includes('double') || t.includes('numeric') || t === 'number') return 'numeric';
+        if (t.includes('cat') || t.includes('category') || t.includes('bool')) return 'categorical';
+        if (t.includes('date') || t.includes('time')) return 'datetime';
+        if (t === 'numeric' || t === 'categorical' || t === 'datetime' || t === 'text') return t;
+        return 'text';
+    };
+
+    const available = useMemo(() => {
+        let out = Array.isArray(availableRaw) ? availableRaw : [];
+        if (availableType && availableType !== 'all') {
+            out = out.filter((c) => normalizeType(c?.type) === availableType);
+        }
+        if (availableSearch.trim()) {
+            const q = availableSearch.trim().toLowerCase();
+            out = out.filter((c) => String(c?.name || '').toLowerCase().includes(q));
+        }
+        return out;
+    }, [availableRaw, availableSearch, availableType]);
+
     const moveRightTarget = () => {
         const toMove = available.filter(c => selectedAvailableNames.includes(c.name));
         setTargetCols([...targetCols, ...toMove]);
+        setSelectedAvailableNames([]);
+    };
+
+    const addAllVisibleToTargets = () => {
+        if (!available.length) return;
+        const existing = new Set(targetCols.map((c) => c?.name).filter(Boolean));
+        const toAdd = available.filter((c) => c?.name && !existing.has(c.name));
+        if (!toAdd.length) return;
+        setTargetCols([...targetCols, ...toAdd]);
+        setSelectedAvailableNames([]);
+    };
+
+    const addAllNumericToTargets = () => {
+        const pool = Array.isArray(availableRaw) ? availableRaw : [];
+        const existing = new Set(targetCols.map((c) => c?.name).filter(Boolean));
+        const toAdd = pool.filter((c) => c?.name && normalizeType(c?.type) === 'numeric' && !existing.has(c.name));
+        if (!toAdd.length) return;
+        setTargetCols([...targetCols, ...toAdd]);
+        setSelectedAvailableNames([]);
+    };
+
+    const addAllNonTextToTargets = () => {
+        const pool = Array.isArray(availableRaw) ? availableRaw : [];
+        const existing = new Set(targetCols.map((c) => c?.name).filter(Boolean));
+        const toAdd = pool.filter((c) => {
+            const t = normalizeType(c?.type);
+            return c?.name && t !== 'text' && !existing.has(c.name);
+        });
+        if (!toAdd.length) return;
+        setTargetCols([...targetCols, ...toAdd]);
         setSelectedAvailableNames([]);
     };
 
@@ -205,6 +260,44 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
                 minHeight: 0,
                 overflow: 'hidden'
             }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                        value={availableSearch}
+                        onChange={(e) => setAvailableSearch(e.target.value)}
+                        placeholder="Поиск"
+                        style={{
+                            flex: 1,
+                            height: '34px',
+                            padding: '0 10px',
+                            borderRadius: '2px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--white)',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            color: 'var(--text-primary)'
+                        }}
+                    />
+                    <select
+                        value={availableType}
+                        onChange={(e) => setAvailableType(e.target.value)}
+                        style={{
+                            height: '34px',
+                            padding: '0 8px',
+                            borderRadius: '2px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--white)',
+                            fontSize: '11px',
+                            color: 'var(--text-secondary)'
+                        }}
+                    >
+                        <option value="all">Все</option>
+                        <option value="numeric">NUM</option>
+                        <option value="categorical">CAT</option>
+                        <option value="datetime">DAT</option>
+                        <option value="text">TXT</option>
+                    </select>
+                </div>
+
                 {/* Available */}
                 <div style={sectionStyle}>
                     <div style={headerStyle}>
@@ -230,7 +323,7 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <button
                         onClick={moveRightTarget}
                         disabled={selectedAvailableNames.length === 0}
@@ -238,6 +331,30 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
                         style={{ fontSize: '10px', padding: '6px 12px' }}
                     >
                         Add Y ↓
+                    </button>
+                    <button
+                        onClick={addAllVisibleToTargets}
+                        disabled={available.length === 0}
+                        className="btn-secondary"
+                        style={{ fontSize: '10px', padding: '6px 12px' }}
+                    >
+                        All (filter) → Y
+                    </button>
+                    <button
+                        onClick={addAllNumericToTargets}
+                        disabled={availableRaw.length === 0}
+                        className="btn-secondary"
+                        style={{ fontSize: '10px', padding: '6px 12px' }}
+                    >
+                        All NUM → Y
+                    </button>
+                    <button
+                        onClick={addAllNonTextToTargets}
+                        disabled={availableRaw.length === 0}
+                        className="btn-secondary"
+                        style={{ fontSize: '10px', padding: '6px 12px' }}
+                    >
+                        All ≠TXT → Y
                     </button>
                     <button
                         onClick={moveLeftTarget}
@@ -354,7 +471,7 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
                                 fontSize: '10px',
                                 color: 'var(--text-muted)'
                             }}>
-                                Not selected
+                                Не выбрано
                             </div>
                         )}
                     </div>
@@ -374,7 +491,7 @@ export default function VariableSelector({ allColumns, onRun, loading, initialGr
                         letterSpacing: '0.1em'
                     }}
                 >
-                    {loading ? 'Processing...' : 'Run Analysis'}
+                    {loading ? 'Обрабатываю…' : 'Запустить анализ'}
                 </button>
             </div>
         </div>

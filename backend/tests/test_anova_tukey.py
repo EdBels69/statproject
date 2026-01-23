@@ -49,5 +49,12 @@ def test_anova_tukey():
     assert a_c is not None
     assert a_c['significant'] == True, "A vs C should be significant"
 
+    # 4. Run ANOVA with BKY correction request (post-hoc should include adjusted p-values)
+    results_bky = run_analysis(df, "anova", "value", "group", post_hoc="tukey", post_hoc_correction="bky")
+    post_hoc_bky = results_bky.get("post_hoc")
+    assert post_hoc_bky is not None
+    any_adj = any((c.get("p_value_adj") is not None) for c in post_hoc_bky)
+    assert any_adj, "Expected adjusted p-values in post-hoc results"
+
 if __name__ == "__main__":
     test_anova_tukey()

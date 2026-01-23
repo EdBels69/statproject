@@ -238,6 +238,145 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
         },
         "emoji": "📐"
     },
+
+    "type_i_error": {
+        "term": "Type I Error",
+        "term_ru": "Ошибка I рода",
+        "definition": {
+            "junior": "Ложноположительный результат: решили, что эффект есть, хотя его нет.",
+            "mid": "Вероятность ошибки I рода равна α (уровню значимости).",
+            "senior": "Контроль Type I Error — часть дизайна. При множественных проверках без поправки общий риск растёт."
+        },
+        "what_to_check": ["alpha", "multiple_comparison"],
+        "emoji": "🎯"
+    },
+
+    "type_ii_error": {
+        "term": "Type II Error",
+        "term_ru": "Ошибка II рода",
+        "definition": {
+            "junior": "Ложноотрицательный результат: пропустили реальный эффект.",
+            "mid": "Вероятность ошибки II рода — β. Мощность = 1 − β.",
+            "senior": "Снижается при большем n и/или большем эффекте. Нельзя «починить» β после факта без увеличения данных."
+        },
+        "what_to_check": ["power", "sample_size"],
+        "emoji": "⚡"
+    },
+
+    "beta": {
+        "term": "Beta",
+        "term_ru": "β (бета)",
+        "definition": {
+            "junior": "β — шанс пропустить эффект (ошибка II рода).",
+            "mid": "β = 1 − power. Например power=0.80 → β=0.20.",
+            "senior": "В power analysis обычно задают power, а не β напрямую."
+        },
+        "what_to_check": ["power"],
+        "emoji": "⚡"
+    },
+
+    "one_tailed": {
+        "term": "One-tailed test",
+        "term_ru": "Односторонний тест",
+        "definition": {
+            "junior": "Проверяем эффект только в одном направлении (только ↑ или только ↓).",
+            "mid": "Даёт меньший порог для p в выбранном направлении, но запрещает считать значимым эффект в обратную сторону.",
+            "senior": "Выбор должен быть до анализа и обоснован. Если направление заранее не гарантировано — используйте двусторонний."
+        },
+        "common_mistakes": ["Выбирать односторонний после того, как увидели данные"],
+        "emoji": "➡️"
+    },
+
+    "two_tailed": {
+        "term": "Two-tailed test",
+        "term_ru": "Двусторонний тест",
+        "definition": {
+            "junior": "Проверяем эффект в обе стороны (↑ или ↓).",
+            "mid": "Стандарт по умолчанию: контролирует ошибки при любом направлении эффекта.",
+            "senior": "Честнее, когда направление заранее не закреплено. В power analysis требует большего n, чем one-tailed при прочих равных."
+        },
+        "emoji": "↔️"
+    },
+
+    "sample_size": {
+        "term": "Sample Size",
+        "term_ru": "Размер выборки (n)",
+        "definition": {
+            "junior": "Сколько наблюдений нужно, чтобы с высокой вероятностью найти эффект.",
+            "mid": "n зависит от effect size, α, power и дизайна (баланс групп, повторные измерения, кластеры).",
+            "senior": "Планируйте n под первичную гипотезу. Делайте sensitivity analysis (коридор по эффекту/SD/dropout)."
+        },
+        "what_to_check": ["effect_size", "alpha", "power", "multiple_comparison"],
+        "emoji": "🧮"
+    },
+
+    "allocation_ratio": {
+        "term": "Allocation ratio",
+        "term_ru": "Соотношение групп (N2/N1)",
+        "definition": {
+            "junior": "Как делим участников по группам: 1:1, 1:2 и т.д.",
+            "mid": "Дисбаланс увеличивает общий n при фиксированном power, особенно если редкая группа маленькая.",
+            "senior": "Если одна группа дороже/редче — дисбаланс может быть оправдан, но закладывайте рост n и анализируйте причину."
+        },
+        "emoji": "⚖️"
+    },
+
+    "dropout": {
+        "term": "Dropout / Attrition",
+        "term_ru": "Выбывание (dropout)",
+        "definition": {
+            "junior": "Часть людей не дойдёт до анализа (потеря данных).",
+            "mid": "Если нужно n для анализа, то набрать обычно нужно больше: n_recruit = n / (1 − dropout).",
+            "senior": "Dropout часто неслучаен. Планируйте стратегии работы с пропусками и критерии включения заранее."
+        },
+        "formula": "n_recruit = n_analyzed / (1 − dropout)",
+        "emoji": "🧷"
+    },
+
+    "minimal_detectable_effect": {
+        "term": "Minimal Detectable Effect",
+        "term_ru": "Минимально обнаружимый эффект (MDE)",
+        "definition": {
+            "junior": "Самый маленький эффект, который вы хотите уметь обнаружить.",
+            "mid": "Если заложить слишком маленький эффект — n вырастет сильно. Если слишком большой — велик риск «не увидеть» реальность.",
+            "senior": "Опирайтесь на клиническую значимость (MCID), литературу и пилот. Делайте диапазон (sensitivity)."
+        },
+        "what_to_check": ["effect_size", "confidence_interval"],
+        "emoji": "📏"
+    },
+
+    "sensitivity_analysis": {
+        "term": "Sensitivity analysis",
+        "term_ru": "Сенситивити-анализ",
+        "definition": {
+            "junior": "Проверка «а если параметры другие?»",
+            "mid": "Пересчитывают n для нескольких сценариев: эффект меньше/больше, dropout выше, α строже.",
+            "senior": "Лучший способ не «заблудиться»: фиксируйте базовый сценарий и 2–4 стресс-сценария с выводом по рискам."
+        },
+        "emoji": "🧭"
+    },
+
+    "standard_deviation": {
+        "term": "Standard deviation",
+        "term_ru": "Стандартное отклонение (SD)",
+        "definition": {
+            "junior": "Показывает, насколько значения разбросаны вокруг среднего.",
+            "mid": "Для расчёта n по средним SD критичен: завысите SD — получите больший n. Занижите — риск недомощности.",
+            "senior": "SD берите из пилота, прошлых исследований или консервативной оценки. Учитывайте, что SD зависит от популяции и измерения."
+        },
+        "emoji": "📐"
+    },
+
+    "delta": {
+        "term": "Delta",
+        "term_ru": "Δ (разница)",
+        "definition": {
+            "junior": "Разница между группами/условиями, которую вы ожидаете.",
+            "mid": "В расчёте по средним часто удобнее задавать Δ и SD, а не d.",
+            "senior": "Δ лучше якорить на клинической значимости (MCID) и измеримой шкале."
+        },
+        "emoji": "Δ"
+    },
     
     # -------------------------------------------------------------------------
     # Assumptions
@@ -557,6 +696,14 @@ def get_explanation(term: str, level: str = "junior") -> Optional[Dict[str, Any]
         "definition": definition.get(level, definition.get("junior", "")),
         "common_mistakes": knowledge.get("common_mistakes", []),
         "what_to_check": knowledge.get("what_to_check", []),
+        "how_to_check": knowledge.get("how_to_check"),
+        "if_violated": knowledge.get("if_violated"),
+        "recommendation": knowledge.get("recommendation"),
+        "recommendations": knowledge.get("recommendations"),
+        "formula": knowledge.get("formula"),
+        "thresholds": knowledge.get("thresholds"),
+        "methods": knowledge.get("methods"),
+        "examples": knowledge.get("examples"),
         "emoji": knowledge.get("emoji", "📊")
     }
 
@@ -590,7 +737,20 @@ def get_test_rationale(
         "when_to_use": knowledge.get("when_to_use", []),
         "why_it_works": why.get(level, why.get("junior", "")),
         "assumptions": knowledge.get("assumptions", []),
+        "assumption_details": [
+            {
+                "key": a,
+                "term": STAT_TERMS.get(a, {}).get("term", a),
+                "term_ru": STAT_TERMS.get(a, {}).get("term_ru", a),
+                "definition": STAT_TERMS.get(a, {}).get("definition", {}).get(level, STAT_TERMS.get(a, {}).get("definition", {}).get("junior", "")),
+                "how_to_check": STAT_TERMS.get(a, {}).get("how_to_check"),
+                "if_violated": STAT_TERMS.get(a, {}).get("if_violated"),
+            }
+            for a in knowledge.get("assumptions", [])
+        ],
         "alternatives": knowledge.get("alternatives", {}),
+        "references": get_references_for_test(test_id),
+        "reporting": knowledge.get("reporting"),
         "effect_size": knowledge.get("effect_size"),
         "emoji": knowledge.get("emoji", "📊")
     }

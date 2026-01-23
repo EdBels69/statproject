@@ -1,7 +1,11 @@
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import List, Dict, Any, Optional
+import asyncio
 import os
+import mimetypes
+import hashlib
+from datetime import datetime
 import pandas as pd
 from pydantic import BaseModel
 import json
@@ -33,10 +37,63 @@ pipeline = PipelineManager(DATA_DIR)
 protocol_engine = ProtocolEngine(pipeline)
 
 
+async def _run_in_threadpool_with_timeout(fn, timeout_s: float, timeout_detail: str):
+    from fastapi.concurrency import run_in_threadpool
+
+    try:
+        return await asyncio.wait_for(run_in_threadpool(fn), timeout=timeout_s)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail=timeout_detail)
+
+
+def _infer_kind(df: pd.DataFrame, col: str) -> str:
+    if col not in df.columns:
+        return "categorical"
+
+    s = df[col]
+    name_l = str(col).strip().lower()
+    if pd.api.types.is_numeric_dtype(s):
+        try:
+            non_na = s.dropna()
+            n = int(len(non_na))
+            unique = int(non_na.nunique(dropna=True)) if n else 0
+        except Exception:
+            n = int(len(s))
+            try:
+                unique = int(s.nunique(dropna=True))
+            except Exception:
+                unique = 0
+
+        ratio = float(unique) / float(max(1, n))
+        looks_like_group = any(
+            k in name_l
+            for k in [
+                "группа",
+                "group",
+                "treatment",
+                "arm",
+                "cohort",
+                "класс",
+                "категор",
+                "category",
+                "групп",
+                "рандом",
+            ]
+        )
+        if (unique and unique <= 12 and ratio <= 0.2) or (looks_like_group and unique and unique <= 50):
+            return "categorical"
+
+        return "numeric"
+
+    return "categorical"
+
+
 class ExportDocxRequest(BaseModel):
     results: Dict[str, Any]
     dataset_name: Optional[str] = None
     filename: Optional[str] = None
+    style: Optional[str] = None
+    format_options: Optional[Dict[str, Any]] = None
 
 
 class AssumptionsCheckRequest(BaseModel):
@@ -51,9 +108,9 @@ async def check_assumptions(req: AssumptionsCheckRequest):
     try:
         df = get_dataframe(req.dataset_id, DATA_DIR)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dataset not found")
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Не удалось загрузить файл данных: {str(e)}")
 
     method_id = (req.method_id or "").strip()
     config = req.config or {}
@@ -86,7 +143,7 @@ async def check_assumptions(req: AssumptionsCheckRequest):
 
         col_a, col_b = targets[0], targets[1]
         if col_a not in df.columns or col_b not in df.columns:
-            raise HTTPException(status_code=400, detail="Selected columns not found")
+            raise HTTPException(status_code=400, detail="Выбранные столбцы не найдены")
 
         a = pd.to_numeric(df[col_a], errors="coerce").tolist()
         b = pd.to_numeric(df[col_b], errors="coerce").tolist()
@@ -109,7 +166,7 @@ async def check_assumptions(req: AssumptionsCheckRequest):
         return {"alpha": alpha, "method_id": method_id, "shapiro_p": None, "levene_p": None}
 
     if target not in df.columns or group not in df.columns:
-        raise HTTPException(status_code=400, detail="Selected columns not found")
+        raise HTTPException(status_code=400, detail="Выбранные столбцы не найдены")
 
     df_local = df[[target, group]].copy()
     df_local[target] = pd.to_numeric(df_local[target], errors="coerce")
@@ -162,7 +219,7 @@ def list_design_templates(goal: Optional[str] = None):
         designer = StudyDesignEngine()
         return {"templates": designer.list_templates(goal=goal)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Template listing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось получить список шаблонов: {str(e)}")
 
 @router.post("/design", response_model=Dict[str, Any])
 def suggest_design(req: DesignRequest):
@@ -187,7 +244,7 @@ def suggest_design(req: DesignRequest):
         return protocol
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Design generation failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Не удалось сформировать дизайн исследования: {str(e)}")
 
 @router.get("/run/{run_id}")
 def get_run_results(run_id: str, dataset_id: str):
@@ -199,10 +256,10 @@ def get_run_results(run_id: str, dataset_id: str):
         # Pipeline structure: datasets/{id}/analysis/{run_id}/results.json
         res = pipeline.get_run_results(dataset_id, run_id)
         if not res:
-             raise HTTPException(status_code=404, detail="Results not found")
+             raise HTTPException(status_code=404, detail="Результаты не найдены")
         return res
     except Exception as e:
-         raise HTTPException(status_code=404, detail=f"Run not found: {str(e)}")
+         raise HTTPException(status_code=404, detail=f"Запуск не найден: {str(e)}")
 
 
 def _apply_report_customization(run_data: Dict[str, Any], sections: Optional[str], order: Optional[str]) -> Dict[str, Any]:
@@ -243,8 +300,55 @@ def _apply_report_customization(run_data: Dict[str, Any], sections: Optional[str
     next_run["results"] = dict(out_items)
     return next_run
 
+
+def _artifact_basename(
+    kind: str,
+    run_id: str,
+    style: Optional[str],
+    density: Optional[str],
+    accent: Optional[str],
+    sections: Optional[str],
+    order: Optional[str],
+) -> str:
+    payload = {
+        "kind": str(kind),
+        "run_id": str(run_id),
+        "style": style,
+        "density": density,
+        "accent": accent,
+        "sections": sections,
+        "order": order,
+    }
+    digest = hashlib.sha1(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
+    return f"{kind}_{run_id}_{digest}"
+
+
+def _read_run_file(dataset_id: str, run_id: str, filename: str) -> bytes:
+    safe_name = os.path.basename(str(filename or "").strip())
+    if not safe_name or safe_name in {".", ".."}:
+        raise FileNotFoundError("File not found")
+    if safe_name != str(filename).strip():
+        raise FileNotFoundError("File not found")
+
+    run_dir = pipeline.get_run_dir(dataset_id, run_id)
+    path = os.path.join(run_dir, safe_name)
+    if not os.path.exists(path) or not os.path.isfile(path):
+        raise FileNotFoundError("File not found")
+    with open(path, "rb") as f:
+        return f.read()
+
 @router.get("/protocol/report/{run_id}/html")
-def get_protocol_report_html(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
+async def get_protocol_report_html(
+    run_id: str,
+    dataset_id: str,
+    sections: Optional[str] = None,
+    order: Optional[str] = None,
+    style: Optional[str] = None,
+    density: Optional[str] = None,
+    accent: Optional[str] = None,
+):
     """
     Generates a printable HTML report for the analysis run.
     """
@@ -252,31 +356,165 @@ def get_protocol_report_html(run_id: str, dataset_id: str, sections: Optional[st
     from app.modules.reporting import render_protocol_report
     
     try:
-        res = pipeline.get_run_results(dataset_id, run_id)
+        artifact_name = _artifact_basename(
+            "protocol_report",
+            run_id,
+            style,
+            density,
+            accent,
+            sections,
+            order,
+        ) + ".html"
+        try:
+            cached = await _run_in_threadpool_with_timeout(
+                lambda: pipeline.read_run_artifact(dataset_id, run_id, artifact_name),
+                10.0,
+                "",
+            )
+            return HTMLResponse(content=cached.decode("utf-8", errors="replace"))
+        except Exception:
+            pass
+
+        res = await _run_in_threadpool_with_timeout(
+            lambda: pipeline.get_run_results(dataset_id, run_id),
+            60.0,
+            "Получение результатов протокола занимает слишком много времени",
+        )
         if not res:
-             raise HTTPException(status_code=404, detail="Results not found")
+            raise HTTPException(status_code=404, detail="Результаты не найдены")
 
         res = _apply_report_customization(res, sections, order)
-             
-        # Generate HTML
-        html = render_protocol_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+
+        html = await _run_in_threadpool_with_timeout(
+            lambda: render_protocol_report(
+                res,
+                dataset_name=f"Файл данных {dataset_id[:5]}...",
+                style=style,
+                options={"density": density, "accent": accent},
+            ),
+            60.0,
+            "Формирование HTML-отчёта занимает слишком много времени",
+        )
+        try:
+            await _run_in_threadpool_with_timeout(
+                lambda: pipeline.save_run_artifact(
+                    pipeline.get_run_dir(dataset_id, run_id),
+                    artifact_name,
+                    html.encode("utf-8"),
+                ),
+                10.0,
+                "",
+            )
+        except Exception:
+            pass
         return HTMLResponse(content=html)
+    except HTTPException:
+        raise
     except Exception as e:
-         raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось сформировать отчёт: {str(e)}")
 
 
 @router.get("/protocol/report/{run_id}/pdf")
-def get_protocol_report_pdf(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
+async def get_protocol_report_pdf(
+    run_id: str,
+    dataset_id: str,
+    sections: Optional[str] = None,
+    order: Optional[str] = None,
+    style: Optional[str] = None,
+    density: Optional[str] = None,
+    accent: Optional[str] = None,
+):
     from fastapi.responses import Response
 
+    def _enrich_run_data_for_report(run_data: Any) -> Any:
+        if not isinstance(run_data, dict):
+            return run_data
+        enriched = dict(run_data)
+        enriched["run_id"] = run_id
+        try:
+            run_dir = pipeline.get_run_dir(dataset_id, run_id)
+            proto_path = os.path.join(run_dir, "protocol.json")
+            if os.path.exists(proto_path):
+                with open(proto_path, "r") as f:
+                    protocol = json.load(f)
+                if isinstance(protocol, dict):
+                    enriched["protocol"] = protocol
+                    if isinstance(protocol.get("goal"), str) and protocol.get("goal"):
+                        enriched["protocol_goal"] = protocol.get("goal")
+                    steps = protocol.get("steps")
+                    if isinstance(steps, list) and steps:
+                        step_meta: Dict[str, Any] = {}
+                        for s in steps:
+                            if not isinstance(s, dict):
+                                continue
+                            sid = s.get("id")
+                            if sid is None:
+                                continue
+                            step_meta[str(sid)] = s
+                        if step_meta:
+                            enriched["step_meta"] = step_meta
+        except Exception:
+            pass
+        return enriched
+
     try:
-        res = pipeline.get_run_results(dataset_id, run_id)
+        artifact_name = _artifact_basename(
+            "protocol_report",
+            run_id,
+            style,
+            density,
+            accent,
+            sections,
+            order,
+        ) + ".pdf"
+        try:
+            cached = await _run_in_threadpool_with_timeout(
+                lambda: pipeline.read_run_artifact(dataset_id, run_id, artifact_name),
+                10.0,
+                "",
+            )
+            filename = f"protocol_report_{run_id}.pdf"
+            return Response(
+                content=cached,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        except Exception:
+            pass
+
+        res = await _run_in_threadpool_with_timeout(
+            lambda: pipeline.get_run_results(dataset_id, run_id),
+            60.0,
+            "Получение результатов протокола занимает слишком много времени",
+        )
         if not res:
-            raise HTTPException(status_code=404, detail="Results not found")
+            raise HTTPException(status_code=404, detail="Результаты не найдены")
 
         res = _apply_report_customization(res, sections, order)
+        res = _enrich_run_data_for_report(res)
 
-        pdf_bytes = generate_protocol_pdf_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+        pdf_bytes = await _run_in_threadpool_with_timeout(
+            lambda: generate_protocol_pdf_report(
+                res,
+                dataset_name=f"Файл данных {dataset_id[:5]}...",
+                style=style,
+                options={"density": density, "accent": accent},
+            ),
+            240.0,
+            "Формирование PDF-отчёта занимает слишком много времени",
+        )
+        try:
+            await _run_in_threadpool_with_timeout(
+                lambda: pipeline.save_run_artifact(
+                    pipeline.get_run_dir(dataset_id, run_id),
+                    artifact_name,
+                    pdf_bytes,
+                ),
+                10.0,
+                "",
+            )
+        except Exception:
+            pass
         filename = f"protocol_report_{run_id}.pdf"
         return Response(
             content=pdf_bytes,
@@ -286,20 +524,109 @@ def get_protocol_report_pdf(run_id: str, dataset_id: str, sections: Optional[str
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF report generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось сформировать PDF-отчёт: {str(e)}")
 
 @router.get("/protocol/report/{run_id}/docx")
-def get_protocol_report_docx(run_id: str, dataset_id: str, sections: Optional[str] = None, order: Optional[str] = None, style: Optional[str] = None):
+async def get_protocol_report_docx(
+    run_id: str,
+    dataset_id: str,
+    sections: Optional[str] = None,
+    order: Optional[str] = None,
+    style: Optional[str] = None,
+    density: Optional[str] = None,
+    accent: Optional[str] = None,
+):
     from fastapi.responses import Response
 
+    def _enrich_run_data_for_report(run_data: Any) -> Any:
+        if not isinstance(run_data, dict):
+            return run_data
+        enriched = dict(run_data)
+        enriched["run_id"] = run_id
+        try:
+            run_dir = pipeline.get_run_dir(dataset_id, run_id)
+            proto_path = os.path.join(run_dir, "protocol.json")
+            if os.path.exists(proto_path):
+                with open(proto_path, "r") as f:
+                    protocol = json.load(f)
+                if isinstance(protocol, dict):
+                    enriched["protocol"] = protocol
+                    if isinstance(protocol.get("goal"), str) and protocol.get("goal"):
+                        enriched["protocol_goal"] = protocol.get("goal")
+                    steps = protocol.get("steps")
+                    if isinstance(steps, list) and steps:
+                        step_meta: Dict[str, Any] = {}
+                        for s in steps:
+                            if not isinstance(s, dict):
+                                continue
+                            sid = s.get("id")
+                            if sid is None:
+                                continue
+                            step_meta[str(sid)] = s
+                        if step_meta:
+                            enriched["step_meta"] = step_meta
+        except Exception:
+            pass
+        return enriched
+
     try:
-        res = pipeline.get_run_results(dataset_id, run_id)
+        artifact_name = _artifact_basename(
+            "protocol_report",
+            run_id,
+            style,
+            density,
+            accent,
+            sections,
+            order,
+        ) + ".docx"
+        try:
+            cached = await _run_in_threadpool_with_timeout(
+                lambda: pipeline.read_run_artifact(dataset_id, run_id, artifact_name),
+                10.0,
+                "",
+            )
+            filename = f"protocol_report_{run_id}.docx"
+            return Response(
+                content=cached,
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        except Exception:
+            pass
+
+        res = await _run_in_threadpool_with_timeout(
+            lambda: pipeline.get_run_results(dataset_id, run_id),
+            60.0,
+            "Получение результатов протокола занимает слишком много времени",
+        )
         if not res:
-            raise HTTPException(status_code=404, detail="Results not found")
+            raise HTTPException(status_code=404, detail="Результаты не найдены")
 
         res = _apply_report_customization(res, sections, order)
+        res = _enrich_run_data_for_report(res)
 
-        docx_bytes = generate_protocol_docx_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+        docx_bytes = await _run_in_threadpool_with_timeout(
+            lambda: generate_protocol_docx_report(
+                res,
+                dataset_name=f"Файл данных {dataset_id[:5]}...",
+                style=style,
+                options={"density": density, "accent": accent},
+            ),
+            240.0,
+            "Формирование DOCX-отчёта занимает слишком много времени",
+        )
+        try:
+            await _run_in_threadpool_with_timeout(
+                lambda: pipeline.save_run_artifact(
+                    pipeline.get_run_dir(dataset_id, run_id),
+                    artifact_name,
+                    docx_bytes,
+                ),
+                10.0,
+                "",
+            )
+        except Exception:
+            pass
         filename = f"protocol_report_{run_id}.docx"
         return Response(
             content=docx_bytes,
@@ -309,7 +636,91 @@ def get_protocol_report_docx(run_id: str, dataset_id: str, sections: Optional[st
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"DOCX report generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось сформировать DOCX-отчёт: {str(e)}")
+
+
+@router.get("/protocol/artifacts/{run_id}")
+async def list_protocol_artifacts(run_id: str, dataset_id: str):
+    try:
+        run_dir = pipeline.get_run_dir(dataset_id, run_id)
+        if not os.path.isdir(run_dir):
+            raise HTTPException(status_code=404, detail="Запуск не найден")
+
+        items: List[Dict[str, Any]] = []
+        for base_name in ["protocol.json", "results.json"]:
+            path = os.path.join(run_dir, base_name)
+            if os.path.exists(path) and os.path.isfile(path):
+                st = os.stat(path)
+                items.append(
+                    {
+                        "name": base_name,
+                        "size": int(st.st_size),
+                        "updated_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
+                        "location": "run",
+                    }
+                )
+
+        artifacts_dir = os.path.join(run_dir, "artifacts")
+        if os.path.isdir(artifacts_dir):
+            for name in sorted(os.listdir(artifacts_dir)):
+                if not name or name.startswith("."):
+                    continue
+                path = os.path.join(artifacts_dir, name)
+                if not os.path.isfile(path):
+                    continue
+                st = os.stat(path)
+                items.append(
+                    {
+                        "name": name,
+                        "size": int(st.st_size),
+                        "updated_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
+                        "location": "artifacts",
+                    }
+                )
+
+        return {"run_id": run_id, "dataset_id": dataset_id, "files": items}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось получить список артефактов: {str(e)}")
+
+
+@router.get("/protocol/artifacts/{run_id}/download")
+async def download_protocol_artifact(run_id: str, dataset_id: str, name: str):
+    from fastapi.responses import Response
+
+    try:
+        safe_name = os.path.basename(str(name or "").strip())
+        if not safe_name or safe_name in {".", ".."}:
+            raise HTTPException(status_code=400, detail="Некорректное имя файла")
+        if safe_name != str(name).strip():
+            raise HTTPException(status_code=400, detail="Некорректное имя файла")
+
+        if safe_name in {"protocol.json", "results.json"}:
+            content = await _run_in_threadpool_with_timeout(
+                lambda: _read_run_file(dataset_id, run_id, safe_name),
+                60.0,
+                "Чтение файла занимает слишком много времени",
+            )
+        else:
+            content = await _run_in_threadpool_with_timeout(
+                lambda: pipeline.read_run_artifact(dataset_id, run_id, safe_name),
+                60.0,
+                "Чтение файла занимает слишком много времени",
+            )
+
+        media_type = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+        )
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось скачать файл: {str(e)}")
 
 
 @router.post("/export/docx")
@@ -317,7 +728,16 @@ async def export_docx(request: ExportDocxRequest):
     from fastapi.responses import StreamingResponse
 
     try:
-        buffer = create_results_document(request.results, dataset_name=request.dataset_name)
+        buffer = await _run_in_threadpool_with_timeout(
+            lambda: create_results_document(
+                request.results,
+                dataset_name=request.dataset_name,
+                style=request.style,
+                options=request.format_options,
+            ),
+            240.0,
+            "Экспорт DOCX занимает слишком много времени",
+        )
         filename = request.filename or "results.docx"
         return StreamingResponse(
             buffer,
@@ -325,7 +745,7 @@ async def export_docx(request: ExportDocxRequest):
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"DOCX export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось экспортировать DOCX: {str(e)}")
 
 @router.post("/protocol/run")
 async def run_protocol_api(request: ProtocolRequest):
@@ -334,26 +754,30 @@ async def run_protocol_api(request: ProtocolRequest):
     Returns the run_id (analysis container ID).
     """
     try:
-        # Load Data using centralized helper (Processed > Raw)
-        df = get_dataframe(request.dataset_id, DATA_DIR)
-        
-        # Run Engine with alpha parameter
-        run_id = protocol_engine.execute_protocol(request.dataset_id, df, request.protocol, alpha=request.alpha)
-        
+        df = await _run_in_threadpool_with_timeout(
+            lambda: get_dataframe(request.dataset_id, DATA_DIR),
+            60.0,
+            "Загрузка данных занимает слишком много времени",
+        )
+
+        run_id = await _run_in_threadpool_with_timeout(
+            lambda: protocol_engine.execute_protocol(request.dataset_id, df, request.protocol, alpha=request.alpha),
+            240.0,
+            "Запуск протокола занимает слишком много времени",
+        )
+
         return {"status": "success", "run_id": run_id}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Protocol execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить протокол: {str(e)}")
 
 @router.post("/run", response_model=AnalysisResult)
 async def run_method_api(request: AnalysisRequest):
-    from fastapi.concurrency import run_in_threadpool
-    
-    # 1. Load Data (async via threadpool)
-    async def load_data():
-        return get_dataframe(request.dataset_id, DATA_DIR)
-    
-    df = await run_in_threadpool(load_data)
+    df = await _run_in_threadpool_with_timeout(
+        lambda: get_dataframe(request.dataset_id, DATA_DIR),
+        60.0,
+        "Загрузка данных занимает слишком много времени",
+    )
     
     col_a = request.target_column
     col_b = request.features[0] # Single feature for now
@@ -362,19 +786,14 @@ async def run_method_api(request: AnalysisRequest):
     method_id = request.method_override
     if not method_id:
         # Auto-detect
-        types = {}
-        for col in [col_a, col_b]:
-            if pd.api.types.is_numeric_dtype(df[col]):
-                types[col] = "numeric"
-            else:
-                types[col] = "categorical"
+        types = {c: _infer_kind(df, c) for c in [col_a, col_b]}
         method_id = select_test(df, col_a, col_b, types, is_paired=request.is_paired)
 
     if not method_id:
-         raise HTTPException(status_code=400, detail="Method determination failed.")
+        raise HTTPException(status_code=400, detail="Не удалось определить метод анализа.")
 
     # 3. Run (async via threadpool for CPU-bound operations)
-    async def execute_analysis():
+    def execute_analysis():
         results = run_analysis(df, method_id, col_a, col_b, is_paired=request.is_paired)
         
         # Build AnalysisResult
@@ -399,15 +818,23 @@ async def run_method_api(request: AnalysisRequest):
         return res
     
     try:
-        res = await run_in_threadpool(execute_analysis)
+        res = await _run_in_threadpool_with_timeout(
+            execute_analysis,
+            180.0,
+            "Анализ занимает слишком много времени",
+        )
         
-        # AI Conclusion (already async)
-        ai_conclusion = await get_ai_conclusion(res)
-        res.conclusion = ai_conclusion
+        try:
+            from app.llm import get_ai_conclusion
+            ai_conclusion = await asyncio.wait_for(get_ai_conclusion(res), timeout=20.0)
+            if ai_conclusion:
+                res.conclusion = ai_conclusion
+        except Exception:
+            pass
         return res
     except Exception as e:
         logger.error(f"Analysis execution failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
     
     
     # 4. Format Result
@@ -450,13 +877,17 @@ async def download_report(
     from app.modules.reporting import render_report
     
     try:
-        df = get_dataframe(dataset_id, DATA_DIR)
+        df = await _run_in_threadpool_with_timeout(
+            lambda: get_dataframe(dataset_id, DATA_DIR),
+            60.0,
+            "Загрузка данных занимает слишком много времени",
+        )
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dataset not found or file missing")
+        raise HTTPException(status_code=404, detail="Файл данных не найден или исходный файл отсутствует")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Не удалось загрузить файл данных: {str(e)}")
 
-    dataset_name = f"Dataset {dataset_id[:8]}"
+    dataset_name = f"Файл данных {dataset_id[:8]}"
     meta_path = os.path.join(DATA_DIR, dataset_id, "source", "meta.json")
     if os.path.exists(meta_path):
         try:
@@ -472,16 +903,20 @@ async def download_report(
     
     if not method_id:
         # Mini auto-detect
-        types = {c: ("numeric" if pd.api.types.is_numeric_dtype(df[c]) else "categorical") for c in [col_a, col_b]}
+        types = {c: _infer_kind(df, c) for c in [col_a, col_b]}
         method_id = select_test(df, col_a, col_b, types)
     
     if not method_id:
-        raise HTTPException(status_code=400, detail="Could not determine method for report.")
+        raise HTTPException(status_code=400, detail="Не удалось определить метод для отчёта.")
 
     
     # 3. Run Analysis
     try:
-        res = run_analysis(df, method_id, col_a, col_b)
+        res = await _run_in_threadpool_with_timeout(
+            lambda: run_analysis(df, method_id, col_a, col_b),
+            180.0,
+            "Анализ для отчёта занимает слишком много времени",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -489,7 +924,7 @@ async def download_report(
     
     # 4. Create Result Object
     # Initial conclusion
-    conclusion = f"Statistically {'significant' if res['significant'] else 'insignificant'} difference found (p={res['p_value']:.4f})."
+    conclusion = f"{'Обнаружено статистически значимое различие' if res['significant'] else 'Статистически значимых различий не обнаружено'} (p={res['p_value']:.4f})."
     
     analysis_result = AnalysisResult(
         method=method_info,
@@ -513,14 +948,18 @@ async def download_report(
     if settings.GLM_ENABLED and settings.GLM_API_KEY:
         from app.llm import get_ai_conclusion
         try:
-            ai_text = await get_ai_conclusion(analysis_result)
+            ai_text = await asyncio.wait_for(get_ai_conclusion(analysis_result), timeout=20.0)
             if ai_text:
                 analysis_result.conclusion = ai_text
         except Exception as e:
             logger.warning(f"AI Enhancement failed: {e}", exc_info=True)
             
     # 6. Render HTML
-    html_content = render_report(analysis_result, target_col, group_col, dataset_name=dataset_name)
+    html_content = await _run_in_threadpool_with_timeout(
+        lambda: render_report(analysis_result, target_col, group_col, dataset_name=dataset_name),
+        60.0,
+        "Формирование HTML-отчёта занимает слишком много времени",
+    )
     
     return HTMLResponse(content=html_content)
 
@@ -535,29 +974,37 @@ async def download_report_pdf(
     from fastapi.responses import Response
 
     try:
-        df = get_dataframe(dataset_id, DATA_DIR)
+        df = await _run_in_threadpool_with_timeout(
+            lambda: get_dataframe(dataset_id, DATA_DIR),
+            60.0,
+            "Загрузка данных занимает слишком много времени",
+        )
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dataset not found or file missing")
+        raise HTTPException(status_code=404, detail="Файл данных не найден или исходный файл отсутствует")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dataset load failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Не удалось загрузить файл данных: {str(e)}")
 
     col_a = target_col
     col_b = group_col
 
     if not method_id:
-        types = {c: ("numeric" if pd.api.types.is_numeric_dtype(df[c]) else "categorical") for c in [col_a, col_b]}
+        types = {c: _infer_kind(df, c) for c in [col_a, col_b]}
         method_id = select_test(df, col_a, col_b, types)
 
     if not method_id:
-        raise HTTPException(status_code=400, detail="Could not determine method for report.")
+        raise HTTPException(status_code=400, detail="Не удалось определить метод для отчёта.")
 
     try:
-        res = run_analysis(df, method_id, col_a, col_b)
+        res = await _run_in_threadpool_with_timeout(
+            lambda: run_analysis(df, method_id, col_a, col_b),
+            180.0,
+            "Анализ для отчёта занимает слишком много времени",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     method_info = get_method(method_id)
-    conclusion = f"Statistically {'significant' if res['significant'] else 'insignificant'} difference found (p={res['p_value']:.4f})."
+    conclusion = f"{'Обнаружено статистически значимое различие' if res['significant'] else 'Статистически значимых различий не обнаружено'} (p={res['p_value']:.4f})."
 
     analysis_result = AnalysisResult(
         method=method_info,
@@ -580,16 +1027,20 @@ async def download_report_pdf(
     if settings.GLM_ENABLED and settings.GLM_API_KEY:
         from app.llm import get_ai_conclusion
         try:
-            ai_text = await get_ai_conclusion(analysis_result)
+            ai_text = await asyncio.wait_for(get_ai_conclusion(analysis_result), timeout=20.0)
             if ai_text:
                 analysis_result.conclusion = ai_text
         except Exception as e:
             logger.warning(f"AI Enhancement failed: {e}", exc_info=True)
 
-    pdf_bytes = generate_pdf_report(
-        analysis_result.model_dump(),
-        {"target": target_col, "group": group_col},
-        dataset_id
+    pdf_bytes = await _run_in_threadpool_with_timeout(
+        lambda: generate_pdf_report(
+            analysis_result.model_dump(),
+            {"target": target_col, "group": group_col},
+            dataset_id,
+        ),
+        240.0,
+        "Формирование PDF-отчёта занимает слишком много времени",
     )
 
     filename = f"report_{dataset_id}.pdf"
@@ -604,13 +1055,19 @@ class PdfExportRequest(BaseModel):
     results: Dict[str, Any]
     variables: Dict[str, Any]
     dataset_id: str
+    style: Optional[str] = None
+    format_options: Optional[Dict[str, Any]] = None
 
 
 @router.post("/report/pdf")
 async def export_report_pdf(req: PdfExportRequest):
     from fastapi.responses import Response
 
-    pdf_bytes = generate_pdf_report(req.results, req.variables, req.dataset_id)
+    pdf_bytes = await _run_in_threadpool_with_timeout(
+        lambda: generate_pdf_report(req.results, req.variables, req.dataset_id, style=req.style, options=req.format_options),
+        240.0,
+        "Экспорт PDF занимает слишком много времени",
+    )
     filename = f"report_{req.dataset_id}.pdf"
     return Response(
         content=pdf_bytes,
@@ -673,6 +1130,8 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                     sd=stats.get("std"),
                     se=stats.get("se"),
                     variance=stats.get("variance"),
+                    cv=stats.get("cv"),
+                    geometric_mean=stats.get("geometric_mean"),
                     range=stats.get("range"),
                     iqr=stats.get("iqr"),
                     skewness=stats.get("skewness"),
@@ -720,7 +1179,7 @@ async def run_batch_analysis(request: BatchAnalysisRequest):
                 
                 # Format
                 method_info = get_method(method_id)
-                conclusion = f"P={res.get('p_value'):.4f}" if res.get('p_value') is not None else "P=N/A"
+                conclusion = f"p={res.get('p_value'):.4f}" if res.get('p_value') is not None else "p=н/д"
                 
                 result_obj = AnalysisResult(
                     method=method_info,

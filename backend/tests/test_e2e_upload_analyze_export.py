@@ -7,8 +7,40 @@ from app.main import app
 from app.api.datasets import DATA_DIR
 import shutil
 from io import BytesIO
+import zipfile
+import re
 
 client = TestClient(app)
+
+
+def _extract_docx_document_xml(docx_bytes: bytes) -> str:
+    with zipfile.ZipFile(BytesIO(docx_bytes)) as z:
+        xml = z.read("word/document.xml")
+    return xml.decode("utf-8", errors="ignore")
+
+
+def _assert_docx_quality(docx_bytes: bytes) -> None:
+    xml = _extract_docx_document_xml(docx_bytes)
+
+    text_parts = re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml)
+    text = " ".join(text_parts)
+
+    banned = [
+        "простыми словами",
+        "p=—",
+        "p = —",
+        "p= ?",
+        "p=?",
+        "p= N/A",
+        "P-Value: N/A",
+        "Ты — методолог-биостатистик",
+        "You are an expert statistician",
+        "Return ONLY JSON",
+    ]
+    for s in banned:
+        assert s not in text, f"DOCX содержит запрещённую строку: {s}"
+
+    assert re.search(r"(?i)\bp\b.{0,20}0\.\d{3,}", text), "DOCX не содержит p-value рядом с числом"
 
 
 def test_e2e_upload_analyze_export():
@@ -78,6 +110,8 @@ def test_e2e_upload_analyze_export():
     assert len(docx_content) > 500, "DOCX export too small"
     assert docx_content[:2] == b"PK", "DOCX header missing"
     print(f"   ✓ DOCX exported: {len(docx_content)} bytes")
+
+    _assert_docx_quality(docx_content)
     
     # Verify analysis quality
     hypothesis_key = None
@@ -135,6 +169,8 @@ def test_e2e_upload_analyze_export():
     assert len(protocol_docx) > 500, "Protocol DOCX too small"
     assert protocol_docx[:2] == b"PK", "DOCX header missing"
     print(f"   ✓ Protocol DOCX exported: {len(protocol_docx)} bytes")
+
+    _assert_docx_quality(protocol_docx)
     
     # 9. Cleanup
     ds_dir = os.path.join(DATA_DIR, dataset_id)

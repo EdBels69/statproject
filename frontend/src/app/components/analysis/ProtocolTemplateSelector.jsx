@@ -13,13 +13,32 @@ function scoreMatch(name, keywords) {
   return score;
 }
 
-function pickBest(names, wantType, keywords, typeByName) {
+function pickBest(names, wantType, keywords, typeByName, statsByName, roleHint) {
   const scored = (Array.isArray(names) ? names : [])
     .map((n) => {
       const type = typeByName?.[n] || '';
       const typeScore = wantType && type.includes(wantType) ? 5 : 0;
       const keywordScore = scoreMatch(n, keywords);
-      return { n, s: typeScore + keywordScore };
+
+      const stats = statsByName?.[n];
+      const unique = typeof stats?.unique_count === 'number' ? stats.unique_count : null;
+      const hasMean = typeof stats?.mean === 'number';
+
+      let statsScore = 0;
+      if (roleHint === 'group') {
+        if (unique != null) {
+          if (unique >= 2 && unique <= 10) statsScore += 7;
+          else if (unique >= 2 && unique <= 20) statsScore += 4;
+          else if (unique > 50) statsScore -= 3;
+        }
+        if (type.includes('cat')) statsScore += 4;
+      }
+      if (roleHint === 'target' || roleHint === 'predictor') {
+        if (hasMean) statsScore += 4;
+        if (unique != null && unique <= 1) statsScore -= 6;
+      }
+
+      return { n, s: typeScore + keywordScore + statsScore };
     })
     .sort((a, b) => b.s - a.s);
   const best = scored.find((x) => x.s > 0)?.n || '';
@@ -27,16 +46,16 @@ function pickBest(names, wantType, keywords, typeByName) {
   return { best, top };
 }
 
-function buildSuggestions(safeColumnNames, templateSecondaryKey, typeByName) {
+function buildSuggestions(safeColumnNames, templateSecondaryKey, typeByName, columnStatsByName) {
   const targetKeywords = ['outcome', 'target', 'response', 'result', 'score', 'value', 'measure', 'y', 'endpoint', 'эффект', 'исход', 'результ', 'балл', 'оценк'];
   const groupKeywords = ['group', 'treatment', 'arm', 'condition', 'cohort', 'sex', 'gender', 'batch', 'site', 'группа', 'леч', 'терап', 'контроль', 'услов', 'пол', 'центр'];
   const predictorKeywords = ['predictor', 'x', 'dose', 'exposure', 'time', 'age', 'baseline', 'predict', 'доза', 'экспоз', 'время', 'возраст', 'баз'];
 
-  const targetPick = pickBest(safeColumnNames, 'num', targetKeywords, typeByName);
+  const targetPick = pickBest(safeColumnNames, 'num', targetKeywords, typeByName, columnStatsByName, 'target');
   const pool = safeColumnNames.filter((n) => n !== targetPick.best);
   const secondaryPick = templateSecondaryKey === 'predictor'
-    ? pickBest(pool, 'num', predictorKeywords, typeByName)
-    : pickBest(pool, 'cat', groupKeywords, typeByName);
+    ? pickBest(pool, 'num', predictorKeywords, typeByName, columnStatsByName, 'predictor')
+    : pickBest(pool, 'cat', groupKeywords, typeByName, columnStatsByName, 'group');
 
   return { target: targetPick, secondary: secondaryPick };
 }
@@ -60,8 +79,9 @@ function buildValidation(templateVars, templateSecondaryKey, typeByName, columnS
       if (!secondaryType.includes('num') && secondaryType !== 'numeric') errors.push('Predictor должен быть числовой переменной.');
     } else {
       // For Group: allow categorical OR numeric with low unique count
-      const uniqueCount = columnStatsByName?.[secondaryName]?.unique_count;
-      const isLowCardinality = typeof uniqueCount === 'number' && uniqueCount >= 2 && uniqueCount <= 10;
+      const rawUniqueCount = columnStatsByName?.[secondaryName]?.unique_count;
+      const uniqueCount = Number.isFinite(Number(rawUniqueCount)) ? Number(rawUniqueCount) : null;
+      const isLowCardinality = uniqueCount != null && uniqueCount >= 2 && uniqueCount <= 10;
 
       if (!secondaryType.includes('cat') && secondaryType !== 'categorical' && !isLowCardinality) {
         errors.push('Group должен быть категориальной переменной или иметь мало уникальных значений.');
@@ -70,7 +90,7 @@ function buildValidation(templateVars, templateSecondaryKey, typeByName, columnS
         warnings.push(`Переменная "${secondaryName}" числовая, но имеет ${uniqueCount} уникальных значений — можно использовать как группу.`);
       }
 
-      if (typeof uniqueCount === 'number' && (uniqueCount < 2 || uniqueCount > 20)) {
+      if (uniqueCount != null && (uniqueCount < 2 || uniqueCount > 20)) {
         warnings.push(`Для Group обычно ожидается 2–10 категорий (сейчас: ${uniqueCount}).`);
       }
     }
@@ -110,8 +130,9 @@ export default function ProtocolTemplateSelector({
 
   const secondaryValue = templateGoal === 'relationship' ? templateVars.predictor : templateVars.group;
 
-  // Ensure columnNames is always an array
-  const safeColumnNames = Array.isArray(columnNames) ? columnNames : [];
+  const safeColumnNames = useMemo(() => {
+    return Array.isArray(columnNames) ? columnNames : [];
+  }, [columnNames]);
 
   const typeByName = useMemo(() => {
     const map = {};
@@ -123,7 +144,9 @@ export default function ProtocolTemplateSelector({
     return map;
   }, [columns]);
 
-  const suggestions = buildSuggestions(safeColumnNames, templateSecondaryKey, typeByName);
+  const suggestions = useMemo(() => {
+    return buildSuggestions(safeColumnNames, templateSecondaryKey, typeByName, columnStatsByName);
+  }, [columnStatsByName, safeColumnNames, templateSecondaryKey, typeByName]);
 
   useEffect(() => {
     if (!selectedTemplateId) return;
@@ -171,7 +194,7 @@ export default function ProtocolTemplateSelector({
             <button
               type="button"
               onClick={onApplyTemplate}
-              disabled={!canApplyTemplate || templatesLoading || disabled}
+              disabled={!canApplyTemplate || templatesLoading || disabled || validation.errors.length > 0}
               className="px-4 py-2 rounded-[2px] text-sm font-semibold bg-[color:var(--accent)] text-[color:var(--white)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t('apply_template')}

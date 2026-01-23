@@ -105,6 +105,8 @@ class DescriptiveStat(BaseModel):
     sd: Optional[float] = None
     se: Optional[float] = None
     variance: Optional[float] = None
+    cv: Optional[float] = None
+    geometric_mean: Optional[float] = None
     range: Optional[float] = None
     iqr: Optional[float] = None
     skewness: Optional[float] = None

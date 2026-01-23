@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from fastapi.testclient import TestClient
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -226,6 +226,12 @@ def test_mixed_effects_basic():
     # Check that interaction exists
     assert result["interaction"]["significant"], "Interaction should be significant in synthetic data"
 
+    assert "min_p_value" in result["interaction"], "interaction.min_p_value missing"
+    assert isinstance(result["interaction"]["min_p_value"], (int, float)), "interaction.min_p_value must be numeric"
+    assert 0.0 <= float(result["interaction"]["min_p_value"]) <= 1.0
+    assert isinstance(result["interaction"].get("p_values"), dict), "interaction.p_values must be a dict"
+    assert isinstance(result["interaction"].get("interpretation"), str) and result["interaction"]["interpretation"].strip()
+
 def test_mixed_effects_random_slope():
     """Test mixed effects model with random slopes."""
     payload = {
@@ -262,7 +268,7 @@ def test_mixed_effects_missing_columns():
     
     response = client.post("/api/v1/v2/mixed-effects", json=payload)
     assert response.status_code == 400, "Should fail with 400 for missing columns"
-    assert "not found" in response.json()["detail"].lower()
+    assert "не найд" in response.json()["detail"].lower()
 
 # --- Clustered Correlation Tests ---
 
@@ -317,6 +323,10 @@ def test_clustered_correlation_basic():
     assert isinstance(heatmap_data, list)
     assert len(heatmap_data) == n_vars * n_vars
     assert all("row" in item and "col" in item and "r" in item for item in heatmap_data)
+    assert all("p" in item and "significant" in item for item in heatmap_data)
+    non_null_p = [item["p"] for item in heatmap_data if item.get("p") is not None]
+    assert len(non_null_p) > 0, "Expected p-values when show_p_values=True"
+    assert all(0.0 <= float(p) <= 1.0 for p in non_null_p)
 
 def test_clustered_correlation_auto_clusters():
     """Test clustered correlation with automatic cluster detection."""
@@ -431,6 +441,44 @@ def test_template_design_and_execute_protocol():
     assert exec_data.get("status") in ["completed", "partial"]
     assert exec_data.get("total_steps") == len(protocol)
     assert (exec_data.get("completed_steps") or 0) >= 1
+
+
+def test_ai_analyze_design_returns_protocol():
+    payload = {
+        "dataset_id": TEST_ID_V2,
+        "text": "Сравнить outcome между группами group",
+        "protocol": [],
+        "preferences": {
+            "alternative": "two-sided",
+            "post_hoc": "none",
+            "post_hoc_correction": "none",
+        },
+    }
+
+    mocked = {
+        "status": "completed",
+        "protocol_name": "Auto",
+        "globals": {"alternative": "two-sided"},
+        "protocol": [
+            {
+                "id": "step_1",
+                "name": "Сравнение",
+                "method": "auto",
+                "config": {"outcome": "outcome", "group": "group"},
+            }
+        ],
+        "notes": [],
+    }
+
+    with patch("app.api.ai_module.analyze_research_design", new=AsyncMock(return_value=mocked)):
+        response = client.post("/api/v1/v2/ai/analyze-design", json=payload)
+
+    assert response.status_code == 200, f"AI analyze design failed: {response.text}"
+    data = response.json()
+    assert data.get("status") == "completed"
+    assert isinstance(data.get("protocol"), list)
+    assert len(data.get("protocol")) >= 1
+    assert data["protocol"][0].get("method")
 
 # --- Memory and Performance Tests ---
 

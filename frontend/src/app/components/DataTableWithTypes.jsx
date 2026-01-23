@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 const TYPE_OPTIONS = [
@@ -16,16 +16,66 @@ export default function DataTableWithTypes({
   onOpenSettings,
   limit = 12
 }) {
-  const safeColumns = Array.isArray(columns) ? columns : [];
+  const safeColumns = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
   const safeRows = Array.isArray(rows) ? rows : [];
+
+  const totalCols = safeColumns.length;
+  const colLimit = totalCols > 80 ? 24 : totalCols;
+  const [colOffset, setColOffset] = useState(0);
+
+  const safeColOffset = Math.min(Math.max(0, colOffset), Math.max(0, totalCols - 1));
+
+  const visibleColumns = useMemo(() => {
+    if (!totalCols) return [];
+    return safeColumns.slice(safeColOffset, safeColOffset + colLimit);
+  }, [colLimit, safeColOffset, safeColumns, totalCols]);
 
   return (
     <div className="rounded-[2px] border border-[color:var(--border-color)] overflow-hidden bg-[color:var(--white)]">
+      {totalCols > colLimit ? (
+        <div className="px-4 py-3 border-b border-[color:var(--border-color)] bg-[color:var(--white)] flex items-center justify-between gap-3">
+          <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[color:var(--text-secondary)]">
+            Колонки {safeColOffset + 1}–{Math.min(totalCols, safeColOffset + colLimit)} / {totalCols}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setColOffset((v) => Math.max(0, v - colLimit))}
+              disabled={safeColOffset <= 0}
+              className="h-8 px-2 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black hover:bg-[color:var(--bg-tertiary)] disabled:opacity-50"
+            >
+              ◀︎
+            </button>
+            <button
+              type="button"
+              onClick={() => setColOffset((v) => Math.min(Math.max(0, totalCols - 1), v + colLimit))}
+              disabled={safeColOffset + colLimit >= totalCols}
+              className="h-8 px-2 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black hover:bg-[color:var(--bg-tertiary)] disabled:opacity-50"
+            >
+              ▶︎
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(1, totalCols)}
+              value={Math.max(1, safeColOffset + 1)}
+              onChange={(e) => {
+                const raw = Number(e.target.value);
+                if (!Number.isFinite(raw)) return;
+                const next = Math.max(1, Math.min(totalCols || 1, raw));
+                setColOffset(next - 1);
+              }}
+              className="h-8 w-20 px-2 rounded-[2px] border border-[color:var(--border-color)] text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent)]"
+            />
+          </div>
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {safeColumns.map((col) => (
+              {visibleColumns.map((col) => (
                 <th
                   key={col.name}
                   className="p-0 align-bottom border-b border-[color:var(--border-color)]"
@@ -72,7 +122,7 @@ export default function DataTableWithTypes({
           <tbody>
             {safeRows.slice(0, limit).map((row, idx) => (
               <tr key={idx} className="hover:bg-[color:var(--bg-secondary)]">
-                {safeColumns.map((col) => (
+                {visibleColumns.map((col) => (
                   <td
                     key={col.name}
                     className="px-4 py-2 text-sm border-b border-[color:var(--border-color)] text-[color:var(--text-primary)]"
@@ -90,4 +140,3 @@ export default function DataTableWithTypes({
     </div>
   );
 }
-

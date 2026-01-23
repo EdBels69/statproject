@@ -47,6 +47,22 @@ class TextGenerator:
         return "large effect"
 
     @staticmethod
+    def interpret_correlation_strength(r: float) -> str:
+        try:
+            v = abs(float(r))
+        except Exception:
+            v = 0.0
+        if v < 0.1:
+            return "negligible"
+        if v < 0.3:
+            return "weak"
+        if v < 0.5:
+            return "moderate"
+        if v < 0.7:
+            return "strong"
+        return "very strong"
+
+    @staticmethod
     def interpret_result(results: Dict[str, Any], variables: Dict[str, str], style: str = "pro") -> str:
         return TextGenerator.generate_conclusion(results, variables, style)
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import Sidebar from './Sidebar';
+import TopNavBar from './TopNavBar';
 
 export default function MainLayout({ children }) {
     return (
@@ -12,13 +12,13 @@ export default function MainLayout({ children }) {
                 Skip to main content
             </a>
 
-            {/* Left Sidebar */}
-            <Sidebar />
+            {/* Top Navigation Bar */}
+            <TopNavBar />
 
-            {/* Main Content Areas */}
-            {/* Margin-left matches sidebar width (260px) */}
-            <main id="main-content" className="ml-[260px] min-h-screen relative z-0" tabIndex={-1}>
-                <div className="max-w-[1200px] mx-auto p-8">
+            {/* Main Content Area */}
+            {/* Padding-top matches navbar height (56px = h-14) */}
+            <main id="main-content" className="pt-14 min-h-screen" tabIndex={-1}>
+                <div className="max-w-[1400px] mx-auto p-6">
                     {children}
                 </div>
             </main>

@@ -45,7 +45,7 @@ class StreamingAnalysisEngine:
             result = await engine.run_analysis(analysis_func, *args, **kwargs)
             
             if not result.get("success"):
-                yield self._create_error_chunk(result.get("error", "Analysis failed"))
+                yield self._create_error_chunk(result.get("error", "Не удалось выполнить анализ"))
                 return
             
             analysis_data = result["data"]
@@ -61,7 +61,7 @@ class StreamingAnalysisEngine:
                 
                 for i in range(0, total_items, self.chunk_size):
                     if chunks_sent >= self.max_chunks:
-                        yield self._create_error_chunk("Maximum chunk limit exceeded")
+                        yield self._create_error_chunk("Превышен максимальный лимит чанков")
                         break
                         
                     chunk = analysis_data[i:i + self.chunk_size]
@@ -139,7 +139,7 @@ async def stream_analysis(request: AnalysisRequest):
     
     # Validate request
     if not request.dataset_id or not request.protocol:
-        raise HTTPException(status_code=400, detail="Missing dataset_id or protocol")
+        raise HTTPException(status_code=400, detail="Не указан dataset_id или protocol")
     
     # Create streaming response
     return StreamingResponse(
