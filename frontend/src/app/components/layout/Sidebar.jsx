@@ -49,6 +49,7 @@ export default function Sidebar() {
                 </div>
                 <NavigationItem to="/" icon={HomeIcon} label="Главная" />
                 <NavigationItem to="/wizard" icon={BeakerIcon} label="Новый анализ" />
+                <NavigationItem to="/ai" icon={SparklesIcon} label="ИИ" />
                 <NavigationItem to="/datasets" icon={FolderIcon} label="Файлы данных" />
 
                 <div className="px-4 mt-8 mb-2 text-xs font-semibold text-[color:var(--text-muted)] uppercase tracking-wider">

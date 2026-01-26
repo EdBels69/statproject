@@ -90,32 +90,63 @@ class MixedEffectsEngine:
         analysis_df[time_col] = analysis_df[time_col].astype('category')
         analysis_df[group_col] = analysis_df[group_col].astype('category')
         
-        # Build formula: outcome ~ Time * Group + covariates
-        fixed_effects = f"{_q(outcome)} ~ C({_q(time_col)}) * C({_q(group_col)})"
-        if covariates:
-            cov_terms = " + ".join([_q(c) for c in covariates])
-            fixed_effects += f" + {cov_terms}"
-        
-        # Random effects
-        re_formula = "~1" if not random_slope else f"~1 + C({_q(time_col)})"
-        
-        try:
+        def attempt_fit(active_covariates: Optional[List[str]], use_random_slope: bool) -> Dict[str, Any]:
+            fixed_effects = f"{_q(outcome)} ~ C({_q(time_col)}) * C({_q(group_col)})"
+            if active_covariates:
+                cov_terms = " + ".join([_q(c) for c in active_covariates])
+                fixed_effects += f" + {cov_terms}"
+
+            re_formula = "~1" if not use_random_slope else f"~1 + C({_q(time_col)})"
+            fit_attempts = [
+                {"method": "lbfgs", "reml": False},
+                {"method": "bfgs", "reml": False},
+                {"method": "powell", "reml": False},
+                {"method": "nm", "reml": False},
+                {"method": "cg", "reml": False},
+                {"method": "lbfgs", "reml": True},
+                {"method": "powell", "reml": True}
+            ]
+            last_error = None
+
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                
-                model = smf.mixedlm(
-                    fixed_effects,
-                    data=analysis_df,
-                    groups=analysis_df[subject_col],
-                    re_formula=re_formula
-                )
-                result = model.fit(method='lbfgs', maxiter=500)
-                
-                return self._extract_results(
-                    result, analysis_df, time_col, group_col, outcome, alpha
-                )
-                
+                for attempt in fit_attempts:
+                    try:
+                        model = smf.mixedlm(
+                            fixed_effects,
+                            data=analysis_df,
+                            groups=analysis_df[subject_col],
+                            re_formula=re_formula
+                        )
+                        result = model.fit(method=attempt["method"], reml=attempt["reml"], maxiter=500)
+                        return self._extract_results(
+                            result, analysis_df, time_col, group_col, outcome, alpha
+                        )
+                    except Exception as ex:
+                        last_error = ex
+
+            if last_error is not None:
+                raise last_error
+
+            raise RuntimeError("Mixed effects fit failed")
+
+        try:
+            return attempt_fit(covariates if covariates else None, random_slope)
         except Exception as e:
+            fallbacks = []
+            if random_slope:
+                fallbacks.append((covariates if covariates else None, False))
+            if covariates:
+                fallbacks.append((None, random_slope))
+            if covariates and random_slope:
+                fallbacks.append((None, False))
+
+            for next_covariates, next_random_slope in fallbacks:
+                try:
+                    return attempt_fit(next_covariates, next_random_slope)
+                except Exception:
+                    continue
+
             return {
                 "error": str(e),
                 "suggestion": "Check data quality or reduce model complexity"

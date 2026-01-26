@@ -128,6 +128,7 @@ export default function SampleSizeCalculator() {
 
   const [correction, setCorrection] = useState('none');
   const [comparisons, setComparisons] = useState('1');
+  const [groupCount, setGroupCount] = useState('2');
   const [allocationRatio, setAllocationRatio] = useState('1');
   const [attrition, setAttrition] = useState('0');
 
@@ -149,10 +150,26 @@ export default function SampleSizeCalculator() {
     return Math.max(1, n);
   }, [comparisons]);
 
+  const groupCountN = useMemo(() => {
+    const raw = parseNum(groupCount);
+    const n = raw === null ? 2 : Math.floor(raw);
+    return Math.max(2, Math.min(6, n));
+  }, [groupCount]);
+
+  const comparisonsAuto = useMemo(() => {
+    return Math.max(1, Math.round(groupCountN * (groupCountN - 1) / 2));
+  }, [groupCountN]);
+
   const alphaEffective = useMemo(() => {
     const a = clamp01(alpha);
     if (!a) return null;
     if (correction === 'bonferroni') {
+      return clamp01(a / comparisonsN);
+    }
+    if (correction === 'sidak') {
+      return clamp01(1 - Math.pow(1 - a, 1 / comparisonsN));
+    }
+    if (correction === 'holm') {
       return clamp01(a / comparisonsN);
     }
     return a;
@@ -168,6 +185,9 @@ export default function SampleSizeCalculator() {
     const k = parseNum(allocationRatio);
     return clampMin(k, 0.05);
   }, [allocationRatio]);
+
+  const isMultiGroup = tab !== 'corr' && groupCountN > 2;
+  const kRatioEffective = isMultiGroup ? 1 : kRatio;
 
   const zAlpha = useMemo(() => zForAlpha(alphaEffective, sided), [alphaEffective, sided]);
   const zBeta = useMemo(() => zForPower(power), [power]);
@@ -190,19 +210,24 @@ export default function SampleSizeCalculator() {
     const effect = derivedEffect;
     if (!Number.isFinite(effect) || effect <= 0) return { ok: false, message: 'Задайте эффект больше 0.' };
     if (!Number.isFinite(zAlpha) || !Number.isFinite(zBeta)) return { ok: false, message: 'Проверьте α и мощность.' };
-    if (!Number.isFinite(kRatio) || kRatio <= 0) return { ok: false, message: 'Проверьте соотношение групп.' };
+    if (!Number.isFinite(kRatioEffective) || kRatioEffective <= 0) return { ok: false, message: 'Проверьте соотношение групп.' };
 
-    const n1 = Math.pow((zAlpha + zBeta) / effect, 2) * (1 + 1 / kRatio);
-    const n2 = n1 * kRatio;
+    const n1 = Math.pow((zAlpha + zBeta) / effect, 2) * (1 + 1 / kRatioEffective);
+    const n2 = n1 * kRatioEffective;
 
     const n1Ceil = ceilInt(n1);
     const n2Ceil = ceilInt(n2);
     if (!n1Ceil || !n2Ceil) return { ok: false, message: 'Не удалось посчитать n.' };
 
-    const analyzedTotal = n1Ceil + n2Ceil;
+    const nPerGroup = isMultiGroup ? n1Ceil : null;
+    const analyzedTotal = isMultiGroup ? n1Ceil * groupCountN : n1Ceil + n2Ceil;
     const inflate = dropoutRate > 0 ? 1 / (1 - dropoutRate) : 1;
     const recruitN1 = ceilInt(n1Ceil * inflate);
     const recruitN2 = ceilInt(n2Ceil * inflate);
+    const recruitPerGroup = isMultiGroup ? recruitN1 : null;
+    const recruitTotal = isMultiGroup
+      ? (recruitPerGroup ? recruitPerGroup * groupCountN : null)
+      : (recruitN1 && recruitN2 ? recruitN1 + recruitN2 : null);
 
     return {
       ok: true,
@@ -211,11 +236,15 @@ export default function SampleSizeCalculator() {
       analyzedTotal,
       recruitN1,
       recruitN2,
-      recruitTotal: recruitN1 && recruitN2 ? recruitN1 + recruitN2 : null,
+      recruitTotal,
+      nPerGroup,
+      recruitPerGroup,
+      groupCount: groupCountN,
+      isMultiGroup,
       effect,
-      k: kRatio,
+      k: kRatioEffective,
     };
-  }, [tab, derivedEffect, dropoutRate, kRatio, zAlpha, zBeta]);
+  }, [tab, derivedEffect, dropoutRate, groupCountN, isMultiGroup, kRatioEffective, zAlpha, zBeta]);
 
   const propsResult = useMemo(() => {
     if (tab !== 'props') return null;
@@ -227,24 +256,29 @@ export default function SampleSizeCalculator() {
     if (x1 === null || x2 === null) return { ok: false, message: 'Введите доли в диапазоне 0…1.' };
     if (x1 <= 0 || x1 >= 1 || x2 <= 0 || x2 >= 1) return { ok: false, message: 'Доли должны быть строго между 0 и 1.' };
     if (!Number.isFinite(zAlpha) || !Number.isFinite(zBeta)) return { ok: false, message: 'Проверьте α и мощность.' };
-    if (!Number.isFinite(kRatio) || kRatio <= 0) return { ok: false, message: 'Проверьте соотношение групп.' };
+    if (!Number.isFinite(kRatioEffective) || kRatioEffective <= 0) return { ok: false, message: 'Проверьте соотношение групп.' };
     const delta = Math.abs(x2 - x1);
     if (delta <= 0) return { ok: false, message: 'Разница долей должна быть больше 0.' };
 
     const pBar = (x1 + x2) / 2;
-    const term1 = zAlpha * Math.sqrt(pBar * (1 - pBar) * (1 + 1 / kRatio));
-    const term2 = zBeta * Math.sqrt(x1 * (1 - x1) + (x2 * (1 - x2)) / kRatio);
+    const term1 = zAlpha * Math.sqrt(pBar * (1 - pBar) * (1 + 1 / kRatioEffective));
+    const term2 = zBeta * Math.sqrt(x1 * (1 - x1) + (x2 * (1 - x2)) / kRatioEffective);
     const n1 = Math.pow(term1 + term2, 2) / Math.pow(delta, 2);
-    const n2 = n1 * kRatio;
+    const n2 = n1 * kRatioEffective;
 
     const n1Ceil = ceilInt(n1);
     const n2Ceil = ceilInt(n2);
     if (!n1Ceil || !n2Ceil) return { ok: false, message: 'Не удалось посчитать n.' };
 
-    const analyzedTotal = n1Ceil + n2Ceil;
+    const nPerGroup = isMultiGroup ? n1Ceil : null;
+    const analyzedTotal = isMultiGroup ? n1Ceil * groupCountN : n1Ceil + n2Ceil;
     const inflate = dropoutRate > 0 ? 1 / (1 - dropoutRate) : 1;
     const recruitN1 = ceilInt(n1Ceil * inflate);
     const recruitN2 = ceilInt(n2Ceil * inflate);
+    const recruitPerGroup = isMultiGroup ? recruitN1 : null;
+    const recruitTotal = isMultiGroup
+      ? (recruitPerGroup ? recruitPerGroup * groupCountN : null)
+      : (recruitN1 && recruitN2 ? recruitN1 + recruitN2 : null);
 
     return {
       ok: true,
@@ -253,13 +287,17 @@ export default function SampleSizeCalculator() {
       analyzedTotal,
       recruitN1,
       recruitN2,
-      recruitTotal: recruitN1 && recruitN2 ? recruitN1 + recruitN2 : null,
+      recruitTotal,
+      nPerGroup,
+      recruitPerGroup,
+      groupCount: groupCountN,
+      isMultiGroup,
       delta,
-      k: kRatio,
+      k: kRatioEffective,
       p1: x1,
       p2: x2,
     };
-  }, [tab, alphaEffective, dropoutRate, kRatio, p1, p2, power, zAlpha, zBeta]);
+  }, [tab, alphaEffective, dropoutRate, groupCountN, isMultiGroup, kRatioEffective, p1, p2, power, zAlpha, zBeta]);
 
   const corrResult = useMemo(() => {
     if (tab !== 'corr') return null;
@@ -297,6 +335,8 @@ export default function SampleSizeCalculator() {
       if (!Number.isFinite(effect) || effect <= 0) return [];
       const k = meansResult?.k;
       if (!Number.isFinite(k) || k <= 0) return [];
+      const groups = meansResult?.isMultiGroup ? meansResult?.groupCount : 2;
+      if (!Number.isFinite(groups) || groups <= 1) return [];
       const multipliers = [0.8, 1, 1.25];
       return multipliers.map((m) => {
         const dEff = effect * m;
@@ -304,7 +344,10 @@ export default function SampleSizeCalculator() {
         const n2 = n1 * k;
         const n1Ceil = ceilInt(n1);
         const n2Ceil = ceilInt(n2);
-        return { key: `d_${m}`, label: `d×${m}`, total: (n1Ceil && n2Ceil) ? n1Ceil + n2Ceil : null };
+        const total = (n1Ceil && n2Ceil)
+          ? (groups > 2 ? n1Ceil * groups : n1Ceil + n2Ceil)
+          : null;
+        return { key: `d_${m}`, label: `d×${m}`, total };
       }).filter((x) => x.total);
     }
 
@@ -316,6 +359,8 @@ export default function SampleSizeCalculator() {
       if (!Number.isFinite(delta) || delta <= 0) return [];
       if (!Number.isFinite(k) || k <= 0) return [];
       if (!Number.isFinite(x1) || !Number.isFinite(x2)) return [];
+      const groups = propsResult?.isMultiGroup ? propsResult?.groupCount : 2;
+      if (!Number.isFinite(groups) || groups <= 1) return [];
 
       const pBar = (x1 + x2) / 2;
       const multipliers = [0.8, 1, 1.25];
@@ -327,7 +372,10 @@ export default function SampleSizeCalculator() {
         const n2 = n1 * k;
         const n1Ceil = ceilInt(n1);
         const n2Ceil = ceilInt(n2);
-        return { key: `dp_${m}`, label: `Δp×${m}`, total: (n1Ceil && n2Ceil) ? n1Ceil + n2Ceil : null };
+        const total = (n1Ceil && n2Ceil)
+          ? (groups > 2 ? n1Ceil * groups : n1Ceil + n2Ceil)
+          : null;
+        return { key: `dp_${m}`, label: `Δp×${m}`, total };
       }).filter((x) => x.total);
     }
 
@@ -340,7 +388,7 @@ export default function SampleSizeCalculator() {
       const n = Math.pow(z / fisher, 2) + 3;
       return { key: `r_${m}`, label: `r×${m}`, total: ceilInt(n) };
     }).filter((x) => x.total);
-  }, [activeResult?.ok, corrResult?.absR, meansResult?.effect, meansResult?.k, propsResult?.delta, propsResult?.k, propsResult?.p1, propsResult?.p2, tab, zAlpha, zBeta]);
+  }, [activeResult?.ok, corrResult?.absR, meansResult?.effect, meansResult?.groupCount, meansResult?.isMultiGroup, meansResult?.k, propsResult?.delta, propsResult?.groupCount, propsResult?.isMultiGroup, propsResult?.k, propsResult?.p1, propsResult?.p2, tab, zAlpha, zBeta]);
 
   return (
     <div className="max-w-[1200px]">
@@ -410,6 +458,8 @@ export default function SampleSizeCalculator() {
                 >
                   <option value="none">Без поправки (одна первичная гипотеза)</option>
                   <option value="bonferroni">Bonferroni: α / m</option>
+                  <option value="sidak">Šidák: 1 − (1 − α)^(1/m)</option>
+                  <option value="holm">Holm-Bonferroni (step-down)</option>
                 </select>
                 <Input
                   inputMode="numeric"
@@ -417,13 +467,40 @@ export default function SampleSizeCalculator() {
                   onChange={(e) => setComparisons(e.target.value)}
                   placeholder="m"
                   aria-label="Количество сравнений"
-                  disabled={correction !== 'bonferroni'}
+                  disabled={correction === 'none'}
                 />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[color:var(--text-muted)]">
+                <span>Для k групп: m = k·(k−1)/2.</span>
+                <button
+                  type="button"
+                  onClick={() => setComparisons(String(comparisonsAuto))}
+                  className="h-6 px-2 rounded-[999px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[10px] font-semibold tracking-widest text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:border-[color:var(--text-primary)]"
+                >
+                  Подставить m={comparisonsAuto}
+                </button>
               </div>
               <div className="text-[11px] text-[color:var(--text-muted)]">
                 α для расчёта: <span className="font-mono text-[color:var(--text-primary)]">{formatFloat(alphaEffective, 5)}</span>
               </div>
+              <div className="text-[11px] text-[color:var(--text-muted)] leading-relaxed">
+                Bonferroni — самый строгий контроль FWER, Šidák немного мягче. Holm step-down обычно мощнее Bonferroni, но для планирования n используется консервативная граница.
+              </div>
             </label>
+
+            {tab !== 'corr' ? (
+              <label className="grid gap-1">
+                <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Групп</div>
+                <Input
+                  inputMode="numeric"
+                  value={String(groupCount)}
+                  onChange={(e) => setGroupCount(e.target.value)}
+                  placeholder="2"
+                  aria-label="Количество групп"
+                />
+                <div className="text-[11px] text-[color:var(--text-muted)]">2–6 групп, расчет с равными размерами</div>
+              </label>
+            ) : null}
 
             <label className="grid gap-1">
               <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Allocation ratio</div>
@@ -433,6 +510,7 @@ export default function SampleSizeCalculator() {
                 onChange={(e) => setAllocationRatio(e.target.value)}
                 placeholder="1"
                 aria-label="Соотношение групп (N2/N1)"
+                disabled={isMultiGroup}
               />
               <div className="text-[11px] text-[color:var(--text-muted)]">N1:N2 = <span className="font-mono">{ratioLabel(kRatio)}</span></div>
             </label>
@@ -594,20 +672,35 @@ export default function SampleSizeCalculator() {
                       </div>
                     ) : (
                       <div className="mt-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <div className="text-4xl font-black tracking-tight text-[color:var(--text-primary)]">{formatInt(activeResult.n1)}</div>
-                            <div className="mt-1 text-xs text-[color:var(--text-secondary)]">группа 1</div>
-                          </div>
-                          <div>
-                            <div className="text-4xl font-black tracking-tight text-[color:var(--text-primary)]">{formatInt(activeResult.n2)}</div>
-                            <div className="mt-1 text-xs text-[color:var(--text-secondary)]">группа 2</div>
-                          </div>
-                        </div>
-                        <div className="mt-3 font-mono text-xs text-[color:var(--text-muted)]">итого (анализ): {formatInt(activeResult.analyzedTotal)}</div>
-                        {dropoutRate > 0 && activeResult.recruitN1 && activeResult.recruitN2 ? (
-                          <div className="mt-2 font-mono text-xs text-[color:var(--text-muted)]">набрать: {formatInt(activeResult.recruitN1)} + {formatInt(activeResult.recruitN2)} = {formatInt(activeResult.recruitTotal)}</div>
-                        ) : null}
+                        {activeResult.isMultiGroup ? (
+                          <>
+                            <div>
+                              <div className="text-4xl font-black tracking-tight text-[color:var(--text-primary)]">{formatInt(activeResult.nPerGroup)}</div>
+                              <div className="mt-1 text-xs text-[color:var(--text-secondary)]">на группу</div>
+                            </div>
+                            <div className="mt-3 font-mono text-xs text-[color:var(--text-muted)]">итого (анализ): {formatInt(activeResult.analyzedTotal)}</div>
+                            {dropoutRate > 0 && activeResult.recruitPerGroup ? (
+                              <div className="mt-2 font-mono text-xs text-[color:var(--text-muted)]">набрать: {formatInt(activeResult.recruitPerGroup)} × {activeResult.groupCount} = {formatInt(activeResult.recruitTotal)}</div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <div className="text-4xl font-black tracking-tight text-[color:var(--text-primary)]">{formatInt(activeResult.n1)}</div>
+                                <div className="mt-1 text-xs text-[color:var(--text-secondary)]">группа 1</div>
+                              </div>
+                              <div>
+                                <div className="text-4xl font-black tracking-tight text-[color:var(--text-primary)]">{formatInt(activeResult.n2)}</div>
+                                <div className="mt-1 text-xs text-[color:var(--text-secondary)]">группа 2</div>
+                              </div>
+                            </div>
+                            <div className="mt-3 font-mono text-xs text-[color:var(--text-muted)]">итого (анализ): {formatInt(activeResult.analyzedTotal)}</div>
+                            {dropoutRate > 0 && activeResult.recruitN1 && activeResult.recruitN2 ? (
+                              <div className="mt-2 font-mono text-xs text-[color:var(--text-muted)]">набрать: {formatInt(activeResult.recruitN1)} + {formatInt(activeResult.recruitN2)} = {formatInt(activeResult.recruitTotal)}</div>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -630,10 +723,16 @@ export default function SampleSizeCalculator() {
                       {tab !== 'corr' ? (
                         <div className="flex items-baseline justify-between gap-3">
                           <div className="text-[color:var(--text-secondary)]">N2/N1</div>
-                          <div className="font-mono text-[color:var(--text-primary)]">{formatFloat(kRatio, 3)}</div>
+                          <div className="font-mono text-[color:var(--text-primary)]">{formatFloat(kRatioEffective, 3)}</div>
                         </div>
                       ) : null}
-                      {correction === 'bonferroni' ? (
+                      {tab !== 'corr' && isMultiGroup ? (
+                        <div className="flex items-baseline justify-between gap-3">
+                          <div className="text-[color:var(--text-secondary)]">групп</div>
+                          <div className="font-mono text-[color:var(--text-primary)]">{groupCountN}</div>
+                        </div>
+                      ) : null}
+                      {correction !== 'none' ? (
                         <div className="flex items-baseline justify-between gap-3">
                           <div className="text-[color:var(--text-secondary)]">m</div>
                           <div className="font-mono text-[color:var(--text-primary)]">{formatInt(comparisonsN)}</div>
@@ -694,7 +793,7 @@ export default function SampleSizeCalculator() {
               ) : null}
 
               <div className="mt-8 text-xs text-[color:var(--text-muted)] leading-relaxed">
-                Это оценки как в G*Power: effect size + α err prob + power + tails (+ allocation ratio). Если дизайн сложнее (кластеризация/повторы/ковариаты) — эти n скорее нижняя граница.
+                Это оценки как в G*Power: effect size + α err prob + power + tails (+ allocation ratio). Для k групп расчёт идёт по минимально важной парной разнице между группами с равным n. Если дизайн сложнее (кластеризация/повторы/ковариаты) — эти n скорее нижняя граница.
               </div>
             </div>
           </div>

@@ -14,12 +14,13 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { WhyThisTest } from '../education';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { checkAssumptions, getAlphaSetting } from '../../../lib/api';
-import TestConfigModal from './TestConfigModal';
+import TestConfigModal from '../TestConfigModal';
 
 const TestSelectionPanel = ({
   onTestSelect,
   datasetId,
   suggestedConfig,
+  columns = [],
   variant = 'full',
   disabled = false
 }) => {
@@ -96,6 +97,15 @@ const TestSelectionPanel = ({
 
   const testCategories = [
     {
+      id: 'compare_1',
+      name: 'Одна выборка',
+      icon: UserGroupIcon,
+      description: 'Сравнение среднего с заданным значением',
+      tests: [
+        { id: 't_test_one', name: 't-тест одной выборки', description: 'Сравнение среднего с эталонным значением' }
+      ]
+    },
+    {
       id: 'compare_2',
       name: t('compare_2_groups'),
       icon: UserGroupIcon,
@@ -164,7 +174,8 @@ const TestSelectionPanel = ({
       tests: [
         { id: 'linear_regression', name: 'Линейная регрессия', description: 'Предсказание непрерывной переменной' },
         { id: 'logistic_regression', name: 'Логистическая регрессия', description: 'Предсказание бинарного исхода' },
-        { id: 'mixed_model', name: 'Смешанные эффекты (LMM)', description: 'Вложенные/кластеризованные данные' }
+        { id: 'mixed_effects', name: 'Смешанные эффекты (LMM)', description: 'Вложенные/кластеризованные данные' },
+        { id: 'mixed_model', name: 'Линейная смешанная модель', description: 'Случайные эффекты и несбалансированные данные' }
       ]
     },
     {
@@ -341,13 +352,15 @@ const TestSelectionPanel = ({
         <TestConfigModal
           isOpen={isConfigModalOpen}
           onClose={() => setIsConfigModalOpen(false)}
-          test={selectedTest}
+          method={selectedTest?.id}
           initialConfig={selectedTest ? testConfigs[selectedTest.id] : {}}
-          onApply={(config) => {
-            if (selectedTest) {
-              setTestConfigs(prev => ({ ...prev, [selectedTest.id]: config }));
-            }
+          onConfigSave={(config) => {
+            if (!selectedTest) return;
+            setTestConfigs(prev => ({ ...prev, [selectedTest.id]: config }));
           }}
+          columns={columns}
+          suggestedConfig={suggestedConfig}
+          datasetId={datasetId}
         />
       ) : null}
     </div>

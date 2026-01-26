@@ -84,7 +84,7 @@ function App() {
                   <Route path="/wizard" element={<AnalysisDesign />} />
                   <Route path="/design" element={<AnalysisDesign />} />
                   <Route path="/design/:id" element={<AnalysisDesign />} />
-                  <Route path="/ai" element={<ProtocolWizard />} />
+                  <Route path="/ai" element={<AnalysisDesign />} />
                   <Route path="/protocol" element={<ProtocolWizard />} />
                   <Route path="/calculator" element={<SampleSizeCalculator />} />
                   <Route path="/wiki" element={<StatWiki />} />

@@ -29,6 +29,58 @@
   --plot-mean: #D55E00;
 }
 
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: #18181B;
+    --black: #FAFAFA;
+    --gray-100: #27272A;
+    --gray-200: #3F3F46;
+    --gray-400: #71717A;
+    --gray-600: #A1A1AA;
+
+    --bg-primary: #18181B;
+    --bg-secondary: #27272A;
+    --bg-tertiary: #3F3F46;
+    --border-color: #3F3F46;
+
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+
+    --accent: #FF8533;
+    --accent-hover: color-mix(in oklab, var(--accent) 85%, var(--white));
+
+    --plot-raw: #56B4E9;
+    --plot-mean: #E69F00;
+  }
+}
+
+/* Manual dark mode toggle class */
+.dark {
+  --white: #18181B;
+  --black: #FAFAFA;
+  --gray-100: #27272A;
+  --gray-200: #3F3F46;
+  --gray-400: #71717A;
+  --gray-600: #A1A1AA;
+
+  --bg-primary: #18181B;
+  --bg-secondary: #27272A;
+  --bg-tertiary: #3F3F46;
+  --border-color: #3F3F46;
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+
+  --accent: #FF8533;
+  --accent-hover: color-mix(in oklab, var(--accent) 85%, var(--white));
+
+  --plot-raw: #56B4E9;
+  --plot-mean: #E69F00;
+}
+
 * {
   box-sizing: border-box;
 }

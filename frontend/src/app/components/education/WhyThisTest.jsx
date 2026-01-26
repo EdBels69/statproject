@@ -122,6 +122,21 @@ const TEST_KNOWLEDGE = {
             non_normal: { test: "icc", reason: "если нужна численная оценка согласия или разности не близки к нормальным" }
         }
     },
+    t_test_one: {
+        name: "One-sample t-test",
+        name_ru: "T-test для одной выборки",
+        emoji: "📊",
+        when_to_use: [
+            "Одна группа",
+            "Сравнение среднего с заданным значением",
+            "Нормальное распределение (или n > 30)"
+        ],
+        why_it_works: {
+            junior: "Проверяет, отличается ли среднее от заданного значения.",
+            mid: "Использует t-распределение для среднего одной выборки."
+        },
+        assumptions: ["normality", "independence"]
+    },
     t_test_ind: {
         name: "Independent t-test",
         name_ru: "T-test для независимых выборок",
@@ -420,6 +435,21 @@ const TEST_KNOWLEDGE = {
         assumptions: ["independence"]
     },
     mixed_model: {
+        name: "Linear mixed model",
+        name_ru: "Смешанная модель (LMM)",
+        emoji: "🧩",
+        when_to_use: [
+            "Повторные измерения/иерархические данные",
+            "Есть случайные эффекты (субъект/центр/партия)",
+            "Нужна гибкость по пропускам и дизайну"
+        ],
+        why_it_works: {
+            junior: "Добавляет случайные эффекты, чтобы учитывать зависимость внутри групп.",
+            mid: "Разделяет фиксированные и случайные эффекты, оценивая дисперсионные компоненты."
+        },
+        assumptions: ["independence", "normality"]
+    },
+    mixed_effects: {
         name: "Linear mixed model",
         name_ru: "Смешанная модель (LMM)",
         emoji: "🧩",

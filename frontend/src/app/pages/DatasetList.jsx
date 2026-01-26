@@ -141,7 +141,7 @@ export default function DatasetList() {
                                     <td style={{ color: 'var(--text-secondary)' }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                             <CalendarIcon className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                                            {ds.uploaded_at ? new Date(ds.uploaded_at).toLocaleDateString('ru-RU') : 'Неизвестно'}
+                                            {(ds.uploaded_at || ds.created_at) ? new Date(ds.uploaded_at || ds.created_at).toLocaleDateString('ru-RU') : 'Неизвестно'}
                                         </span>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>

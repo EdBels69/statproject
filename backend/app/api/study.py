@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 import json
+import os
 from pathlib import Path
 
 from app.configs import StudyConfig
@@ -8,7 +9,8 @@ from app.configs import StudyConfig
 
 router = APIRouter(prefix="/study", tags=["study"])
 
-DATASETS_DIR = Path("backend/workspace/datasets") # Should come from config
+WORKSPACE_DIR = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+DATASETS_DIR = Path(WORKSPACE_DIR) / "datasets"
 
 def _get_study_config_path(dataset_id: str) -> Path:
     return DATASETS_DIR / dataset_id / "study_config.json"

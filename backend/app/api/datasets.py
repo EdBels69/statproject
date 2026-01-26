@@ -5,7 +5,7 @@ import pandas as pd
 import aiofiles
 import json
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
 from fastapi.concurrency import run_in_threadpool
 from typing import List, Dict, Any, Optional, Literal
 
@@ -20,6 +20,7 @@ from app.schemas.dataset import (
 )
 from app.modules.parsers import parse_file, get_dataset_path, get_dataframe, get_dataset_columns, get_dataset_row_count, get_dataframe_window
 from app.core.pipeline import PipelineManager
+from app.api.deps import require_roles
 from pydantic import BaseModel
 import math
 
@@ -67,6 +68,16 @@ def _sanitize_json(obj: Any) -> Any:
     if isinstance(obj, tuple):
         return [_sanitize_json(v) for v in obj]
     return obj
+
+
+def _normalize_dataset_timestamp(meta: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(meta, dict):
+        return None
+    for key in ("ingest_timestamp", "uploaded_at", "created_at", "upload_date"):
+        value = meta.get(key)
+        if value:
+            return str(value)
+    return None
 
 
 async def _ingest_dataset_bytes(content: bytes, filename: str) -> DatasetUpload:
@@ -335,10 +346,12 @@ async def list_datasets():
             try:
                 with open(meta_path, "r") as f:
                     meta = json.load(f)
+                    uploaded_at = _normalize_dataset_timestamp(meta)
                     datasets.append({
                         "id": dataset_id, 
                         "filename": meta.get("original_filename", "unknown"),
-                        "created_at": meta.get("ingest_timestamp")
+                        "uploaded_at": uploaded_at,
+                        "created_at": uploaded_at,
                     })
                 continue
             except:
@@ -347,13 +360,13 @@ async def list_datasets():
         # Fallback to old flat structure (Migration support)
         files = [f for f in os.listdir(ds_dir) if not f.endswith('.json') and f != "processed.csv" and not os.path.isdir(os.path.join(ds_dir, f))]
         if files:
-            datasets.append({"id": dataset_id, "filename": files[0]})
+            datasets.append({"id": dataset_id, "filename": files[0], "uploaded_at": None, "created_at": None})
             
     return datasets
 
 
 @router.delete("/{dataset_id}")
-async def delete_dataset(dataset_id: str):
+async def delete_dataset(dataset_id: str, _user: dict = Depends(require_roles(["admin"]))):
     data_root = os.path.realpath(DATA_DIR)
     ds_dir = os.path.realpath(os.path.join(DATA_DIR, str(dataset_id)))
     if not ds_dir.startswith(data_root + os.sep):

@@ -195,3 +195,88 @@ class MixedEffectsResult(BaseModel):
     
     fit: Dict[str, Any]
     coefficients: List[Dict[str, Any]]
+
+
+class OmniReportVisit(BaseModel):
+    id: str = Field(..., min_length=1)
+    label: str = Field(..., min_length=1)
+    order: int = Field(..., ge=0)
+
+
+class OmniReportEndpoint(BaseModel):
+    id: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1)
+    primary: bool = False
+    direction: Optional[Literal["increase", "decrease"]] = None
+    baseline_visit_id: Optional[str] = None
+    columns_by_visit: Dict[str, str] = Field(default_factory=dict)
+    include_visits: List[str] = Field(default_factory=list)
+    exclude_visits: List[str] = Field(default_factory=list)
+    method: Optional[str] = None
+    alternative: Optional[Literal["two-sided", "less", "greater"]] = None
+    post_hoc: Optional[Literal["none", "auto", "tukey", "games_howell", "dunn"]] = None
+    post_hoc_correction: Optional[Literal["none", "fdr_bh", "fdr_by", "fdr_tsbky", "fdr_bky", "bonferroni", "holm", "sidak", "holm-sidak"]] = None
+    responder_threshold: Optional[float] = None
+
+
+class OmniReportTimeSpec(BaseModel):
+    format: Literal["wide", "long"] = "wide"
+    baseline_visit_id: Optional[str] = None
+    visits: List[OmniReportVisit] = Field(default_factory=list)
+
+
+class OmniReportSurvivalSpec(BaseModel):
+    time_column: str = Field(..., min_length=1)
+    event_column: str = Field(..., min_length=1)
+
+
+class OmniReportOptions(BaseModel):
+    include_baseline_descriptives: bool = True
+    include_between_groups: bool = True
+    include_change_from_baseline: bool = True
+    include_longitudinal_model: bool = True
+    include_responders: bool = True
+    include_correlations: bool = True
+    include_regression: bool = True
+    include_survival: bool = True
+    multiplicity_correction: Optional[Literal["none", "fdr_bh", "fdr_by", "fdr_tsbky", "fdr_bky", "bonferroni", "holm", "sidak", "holm-sidak"]] = "fdr_bh"
+    multiplicity_scope: Literal["task", "global"] = "task"
+    post_hoc_correction: Optional[Literal["none", "fdr_bh", "fdr_by", "fdr_tsbky", "fdr_bky", "bonferroni", "holm", "sidak", "holm-sidak"]] = None
+
+
+class OmniReportDesignSpec(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+    subject_id_column: Optional[str] = None
+    group_column: Optional[str] = None
+    include_visits: List[str] = Field(default_factory=list)
+    exclude_visits: List[str] = Field(default_factory=list)
+    time: OmniReportTimeSpec
+    endpoints: List[OmniReportEndpoint] = Field(default_factory=list)
+    covariates: List[str] = Field(default_factory=list)
+    survival: Optional[OmniReportSurvivalSpec] = None
+    options: OmniReportOptions = Field(default_factory=OmniReportOptions)
+
+
+class OmniReportDesignSuggestRequest(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+
+
+class OmniReportDesignParseRequest(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
+
+
+class OmniReportDesignSuggestResponse(BaseModel):
+    design_spec: OmniReportDesignSpec
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    issues: List[str] = Field(default_factory=list)
+
+
+class OmniReportProtocolBuildRequest(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+    design_spec: OmniReportDesignSpec
+    alpha: float = Field(default=0.05, ge=0.001, le=0.25)
+
+
+class OmniReportProtocolBuildResponse(BaseModel):
+    protocol: Dict[str, Any]

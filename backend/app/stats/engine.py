@@ -52,6 +52,38 @@ def _extract_ci_bounds(ci_value):
     return None, None
 
 
+def _safe_float(value: Any) -> Optional[float]:
+    try:
+        num = float(value)
+        if not np.isfinite(num):
+            return None
+        return num
+    except Exception:
+        return None
+
+
+def _clean_numeric_series(series: pd.Series) -> pd.Series:
+    cleaned = pd.to_numeric(series, errors="coerce")
+    cleaned = cleaned.replace([np.inf, -np.inf], np.nan).dropna()
+    return cleaned
+
+
+def _fallback_ttest_ind(series_a: pd.Series, series_b: pd.Series, equal_var: bool, alternative: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        res = stats.ttest_ind(series_a, series_b, equal_var=equal_var, nan_policy="omit", alternative=alternative)
+    except TypeError:
+        res = stats.ttest_ind(series_a, series_b, equal_var=equal_var, nan_policy="omit")
+    return _safe_float(res.statistic), _safe_float(res.pvalue)
+
+
+def _fallback_ttest_rel(series_a: pd.Series, series_b: pd.Series, alternative: str) -> tuple[Optional[float], Optional[float]]:
+    try:
+        res = stats.ttest_rel(series_a, series_b, nan_policy="omit", alternative=alternative)
+    except TypeError:
+        res = stats.ttest_rel(series_a, series_b, nan_policy="omit")
+    return _safe_float(res.statistic), _safe_float(res.pvalue)
+
+
 def _bf10_from_p_value_bound(p_value: Any) -> Optional[float]:
     try:
         if p_value is None:
@@ -278,7 +310,7 @@ def _apply_posthoc_correction(post_hoc: Optional[List[Dict[str, Any]]], alpha: f
     method = None
     if corr in {'bh', 'fdr_bh'}:
         method = 'fdr_bh'
-    elif corr in {'bky', 'fdr_tsbky'}:
+    elif corr in {'bky', 'fdr_tsbky', 'fdr_bky'}:
         method = 'fdr_tsbky'
     elif corr in {'by', 'fdr_by'}:
         method = 'fdr_by'
@@ -643,7 +675,7 @@ def run_analysis(
     elif method_id == "roc_analysis":
         return _handle_roc_analysis(clean_df, method_id, col_a, col_b)
 
-    elif method_id == "mixed_model":
+    elif method_id in ["mixed_model", "mixed_effects"]:
         return _handle_mixed_effects(df, col_a, col_b, kwargs)
 
     elif method_id == "rm_anova":
@@ -662,11 +694,12 @@ def run_analysis(
 
 
 def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b: str, kwargs: Dict) -> Dict[str, Any]:
-    groups = df[col_b].unique()
+    groups = df[col_b].dropna().unique()
     groups = sorted(groups)
-    data_groups = [df[df[col_b] == g][col_a] for g in groups]
+    data_groups = [_clean_numeric_series(df[df[col_b] == g][col_a]) for g in groups]
     
-    stat_val, p_val = 0.0, 1.0
+    stat_val = None
+    p_val = None
     alt = kwargs.get("alternative", "two-sided")
     eff_size = None
     eff_size_name = None
@@ -675,33 +708,54 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
     power = None
     bf10 = None
     post_hoc_results = None
+    post_hoc_method = None
     method_str = str(method_id).strip()
 
     if method_str == "t_test_ind" and len(groups) == 2:
-        res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=False)
-        stat_val = float(res["T"].iloc[0])
-        p_val = float(res["p-val"].iloc[0])
-        eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
-        eff_size_name = "cohen-d"
-        eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
-        power = float(res["power"].iloc[0]) if "power" in res.columns else None
         try:
-            bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+            res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=False)
+            stat_val = _safe_float(res["T"].iloc[0]) if "T" in res.columns else None
+            p_val = _safe_float(res["p-val"].iloc[0]) if "p-val" in res.columns else None
+            eff_size = _safe_float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+            eff_size_name = "cohen-d"
+            eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+            power = _safe_float(res["power"].iloc[0]) if "power" in res.columns else None
+            bf10 = _safe_float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
         except Exception:
-            bf10 = None
+            stat_val = None
+            p_val = None
+
+        if stat_val is None or p_val is None:
+            stat_fb, p_fb = _fallback_ttest_ind(data_groups[0], data_groups[1], equal_var=True, alternative=alt)
+            if stat_val is None:
+                stat_val = stat_fb
+            if p_val is None:
+                p_val = p_fb
+        stat_val = _safe_float(stat_val)
+        p_val = _safe_float(p_val)
         
     elif method_str == "t_test_welch" and len(groups) == 2:
-        res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=True)
-        stat_val = float(res["T"].iloc[0])
-        p_val = float(res["p-val"].iloc[0])
-        eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
-        eff_size_name = "cohen-d"
-        eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
-        power = float(res["power"].iloc[0]) if "power" in res.columns else None
         try:
-            bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+            res = pg.ttest(data_groups[0], data_groups[1], paired=False, alternative=alt, correction=True)
+            stat_val = _safe_float(res["T"].iloc[0]) if "T" in res.columns else None
+            p_val = _safe_float(res["p-val"].iloc[0]) if "p-val" in res.columns else None
+            eff_size = _safe_float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+            eff_size_name = "cohen-d"
+            eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+            power = _safe_float(res["power"].iloc[0]) if "power" in res.columns else None
+            bf10 = _safe_float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
         except Exception:
-            bf10 = None
+            stat_val = None
+            p_val = None
+
+        if stat_val is None or p_val is None:
+            stat_fb, p_fb = _fallback_ttest_ind(data_groups[0], data_groups[1], equal_var=False, alternative=alt)
+            if stat_val is None:
+                stat_val = stat_fb
+            if p_val is None:
+                p_val = p_fb
+        stat_val = _safe_float(stat_val)
+        p_val = _safe_float(p_val)
         
     elif method_id == "mann_whitney" and len(groups) == 2:
         res = pg.mwu(data_groups[0], data_groups[1], alternative=alt)
@@ -715,7 +769,24 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         row = aov[aov["Source"] == col_b].iloc[0] if "Source" in aov.columns and (aov["Source"] == col_b).any() else aov.iloc[0]
         stat_val = float(row.get("F"))
         p_val = float(row.get("p-unc"))
-        if "np2" in row:
+        eta_squared = None
+        try:
+            all_values = [float(x) for g in data_groups for x in g if np.isfinite(x)]
+            if all_values:
+                grand_mean = float(np.mean(all_values))
+                group_stats = [(len(g), float(np.mean(g))) for g in data_groups if len(g) > 0]
+                if group_stats:
+                    ss_between = sum(n * (mean - grand_mean) ** 2 for n, mean in group_stats)
+                    ss_total = sum((x - grand_mean) ** 2 for x in all_values)
+                    if ss_total > 0:
+                        eta_squared = float(ss_between / ss_total)
+        except Exception:
+            eta_squared = None
+
+        if eta_squared is not None:
+            eff_size = eta_squared
+            eff_size_name = "eta_squared"
+        elif "np2" in row:
             eff_size = float(row.get("np2"))
             eff_size_name = "np2"
         elif "eta2" in row:
@@ -725,6 +796,18 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         alpha = kwargs.get("alpha", 0.05)
         post_hoc = str(kwargs.get('post_hoc', 'tukey') or '').strip().lower()
         post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if post_hoc == "auto":
+            try:
+                from app.stats.assumptions import check_homogeneity
+
+                equal_var, _, _ = check_homogeneity([pd.Series(g) for g in data_groups])
+                if equal_var is False:
+                    post_hoc = "games_howell"
+                else:
+                    post_hoc = "tukey"
+            except Exception:
+                post_hoc = "tukey"
+        post_hoc_method = post_hoc
         if p_val < alpha and post_hoc and post_hoc != 'none':
             if post_hoc == 'tukey':
                 try:
@@ -758,6 +841,9 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         alpha = kwargs.get("alpha", 0.05)
         post_hoc = str(kwargs.get('post_hoc', 'games_howell') or '').strip().lower()
         post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if post_hoc == "auto":
+            post_hoc = "games_howell"
+        post_hoc_method = post_hoc
         if p_val < alpha and post_hoc and post_hoc != 'none':
             if post_hoc == 'games_howell':
                 post = pg.pairwise_gameshowell(data=df, dv=col_a, between=col_b)
@@ -787,6 +873,9 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         alpha = kwargs.get("alpha", 0.05)
         post_hoc = str(kwargs.get('post_hoc', 'none') or '').strip().lower()
         post_hoc_correction = kwargs.get('post_hoc_correction', None)
+        if post_hoc == "auto":
+            post_hoc = "dunn"
+        post_hoc_method = post_hoc
         if p_val < alpha and post_hoc and post_hoc != 'none':
             if post_hoc == 'dunn':
                 post_hoc_results = _run_dunn_posthoc(data_groups, groups, alpha=alpha)
@@ -806,17 +895,27 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
             post_hoc_results = _apply_posthoc_correction(post_hoc_results, alpha=alpha, correction=post_hoc_correction)
 
     elif method_id == "t_test_rel" and len(groups) == 2:
-         res = pg.ttest(data_groups[0], data_groups[1], paired=True, alternative=alt)
-         stat_val = float(res["T"].iloc[0])
-         p_val = float(res["p-val"].iloc[0])
-         eff_size = float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
-         eff_size_name = "cohen-d"
-         eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
-         power = float(res["power"].iloc[0]) if "power" in res.columns else None
          try:
-             bf10 = float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
+             res = pg.ttest(data_groups[0], data_groups[1], paired=True, alternative=alt)
+             stat_val = _safe_float(res["T"].iloc[0]) if "T" in res.columns else None
+             p_val = _safe_float(res["p-val"].iloc[0]) if "p-val" in res.columns else None
+             eff_size = _safe_float(res["cohen-d"].iloc[0]) if "cohen-d" in res.columns else None
+             eff_size_name = "cohen-d"
+             eff_ci_lower, eff_ci_upper = _extract_ci_bounds(res["CI95%"].iloc[0] if "CI95%" in res.columns else None)
+             power = _safe_float(res["power"].iloc[0]) if "power" in res.columns else None
+             bf10 = _safe_float(res["BF10"].iloc[0]) if "BF10" in res.columns else None
          except Exception:
-             bf10 = None
+             stat_val = None
+             p_val = None
+
+         if stat_val is None or p_val is None:
+             stat_fb, p_fb = _fallback_ttest_rel(data_groups[0], data_groups[1], alternative=alt)
+             if stat_val is None:
+                 stat_val = stat_fb
+             if p_val is None:
+                 p_val = p_fb
+         stat_val = _safe_float(stat_val)
+         p_val = _safe_float(p_val)
 
     elif method_id == "wilcoxon" and len(groups) == 2:
          res = pg.wilcoxon(data_groups[0], data_groups[1], alternative=alt)
@@ -825,6 +924,11 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
          eff_size = float(res["RBC"].iloc[0]) if "RBC" in res.columns else eff_size
          eff_size_name = "rbc" if eff_size is not None else None
          
+    if p_val is None:
+        p_val = float("nan")
+    if stat_val is None:
+        stat_val = float("nan")
+
     if bf10 is None:
         bf10 = _bf10_from_p_value_bound(p_val)
 
@@ -852,10 +956,10 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
                 raw_p = r.get("p_value")
                 adj_p = r.get("p_value_adj")
                 p = adj_p if isinstance(adj_p, (int, float)) else raw_p
-                if a is None or b is None or p is None:
+                if a is None or b is None or p is None or not np.isfinite(p):
                     continue
                 comparisons.append({"a": str(a), "b": str(b), "p_value": float(p), "p_value_raw": float(raw_p) if raw_p is not None else None, "p_value_adj": float(adj_p) if adj_p is not None else None})
-        elif len(groups) == 2 and isinstance(p_val, (int, float)):
+        elif len(groups) == 2 and isinstance(p_val, (int, float)) and np.isfinite(p_val):
             comparisons.append({"a": str(groups[0]), "b": str(groups[1]), "p_value": float(p_val)})
     except Exception:
         comparisons = None
@@ -865,6 +969,7 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         "stat_value": float(stat_val),
         "p_value": float(p_val),
         "effect_size": float(eff_size) if eff_size is not None else None,
+        "effect_size_type": eff_size_name,
         "effect_size_name": eff_size_name,
         "effect_size_interpretation": effect_interpretation,
         "effect_size_ci_lower": eff_ci_lower,
@@ -878,6 +983,7 @@ def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b
         "assumptions": assumptions,
         "warnings": warnings,
         "post_hoc": post_hoc_results,
+        "post_hoc_method": post_hoc_method,
         "comparisons": comparisons
     }
 
@@ -1438,6 +1544,12 @@ def run_batch_analysis(
     corr = str(multiplicity_correction or "").strip().lower()
     if not corr:
         corr = "fdr_bh"
+    if corr in {"bh", "fdr"}:
+        corr = "fdr_bh"
+    if corr in {"bky", "fdr_bky"}:
+        corr = "fdr_tsbky"
+    if corr == "by":
+        corr = "fdr_by"
     
     # 1. Run Analysis for each target
     for target in targets:
@@ -1584,9 +1696,9 @@ def _handle_mixed_effects(df: pd.DataFrame, outcome: str, group_col: str, kwargs
     alpha = kwargs.get("alpha", 0.05)
     
     if not time_col:
-        return {"error": "time_col is required for mixed_model"}
+        return {"error": "time_col is required for mixed_effects"}
     if not subject_col:
-        return {"error": "subject_col is required for mixed_model"}
+        return {"error": "subject_col is required for mixed_effects"}
     
     engine = MixedEffectsEngine()
     result = engine.fit(
@@ -1601,7 +1713,7 @@ def _handle_mixed_effects(df: pd.DataFrame, outcome: str, group_col: str, kwargs
     )
     
     if "error" not in result:
-        result["method"] = "mixed_model"
+        result["method"] = "mixed_effects"
         result["significant"] = result.get("interaction", {}).get("significant", False)
         result["p_value"] = result.get("interaction", {}).get("min_p_value", 1.0)
     

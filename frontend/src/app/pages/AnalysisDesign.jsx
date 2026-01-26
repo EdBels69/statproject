@@ -9,6 +9,7 @@ import ProtocolBuilder from '../components/analysis/ProtocolBuilder';
 import TestConfigModal from '../components/TestConfigModal';
 import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
 import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
+import SearchableSelect from '../components/SearchableSelect';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 import VariableWorkspace from '../components/VariableWorkspace';
 import SaveProtocolModal, { ProtocolLibraryModal, exportProtocolAsJsonFile } from '../components/SaveProtocolModal';
@@ -16,7 +17,7 @@ import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { useTranslation } from '../../hooks/useTranslation';
-import { API_URL, getAlphaSetting, getDataset, getDatasets, getScanReport, getVariableMapping } from '../../lib/api';
+import { API_V2_URL, getAlphaSetting, getDataset, getDatasets, getScanReport, getVariableMapping } from '../../lib/api';
 import { parseError } from '../utils/errorMessages';
 
 const ClusteredHeatmap = lazy(() => import('../components/ClusteredHeatmap'));
@@ -626,17 +627,16 @@ function MassDynamicsModal({
 
             <div>
               <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Субъект (ID){method === 'rm_anova' ? '' : ' (опц.)'}</label>
-              <select
-                value={subjectCol}
-                onChange={(e) => setSubjectCol(e.target.value)}
-                disabled={method !== 'rm_anova'}
-                className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)] disabled:bg-[color:var(--bg-secondary)]"
-              >
-                <option value="">—</option>
-                {subjectColOptions.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SearchableSelect
+                  value={subjectCol}
+                  onChange={(next) => setSubjectCol(next)}
+                  options={subjectColOptions}
+                  placeholder="—"
+                  disabled={method !== 'rm_anova'}
+                  countLabel="переменных"
+                />
+              </div>
               {method === 'rm_anova' && !subjectCol ? (
                 <div className="mt-1 text-xs text-[color:var(--accent)]">Нужен ID для rm_anova</div>
               ) : null}
@@ -646,19 +646,18 @@ function MassDynamicsModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[color:var(--text-secondary)]">Группа (фильтр)</label>
-              <select
-                value={groupCol}
-                onChange={(e) => {
-                  setGroupCol(e.target.value);
-                  setGroupValues([]);
-                }}
-                className="mt-1 w-full h-10 px-3 bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] text-sm focus:outline-none focus:border-[color:var(--accent)]"
-              >
-                <option value="">—</option>
-                {groupColOptions.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SearchableSelect
+                  value={groupCol}
+                  onChange={(next) => {
+                    setGroupCol(next);
+                    setGroupValues([]);
+                  }}
+                  options={groupColOptions}
+                  placeholder="—"
+                  countLabel="переменных"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -846,6 +845,8 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
   const [workspaceRoles, setWorkspaceRoles] = useState({ target: '', group: '', covariates: [] });
   const [aiRecommendations, setAIRecommendations] = useState([]);
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState(null);
+  const [aiHasRequested, setAiHasRequested] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -925,6 +926,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
         setSelectedTemplateId('');
         setTemplateVars({ target: '', group: '', predictor: '' });
         setWorkspaceRoles({ target: '', group: '', covariates: [] });
+        setAiHasRequested(false);
         resetProtocolHistory([]);
         setResults(null);
         setIsResultsOpen(false);
@@ -989,7 +991,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
       setTemplatesError(null);
       setTemplatesLoading(true);
       try {
-        const response = await fetch(`${API_URL}/v2/analysis/templates`);
+        const response = await fetch(`${API_V2_URL}/analysis/templates`);
         if (!response.ok) {
           const text = await response.text().catch(() => '');
           throw new Error(text || 'Не удалось загрузить шаблоны');
@@ -1011,6 +1013,11 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const path = typeof window !== 'undefined' ? String(window.location?.pathname || '') : '';
+    if (path === '/ai') setRightPane('ai');
   }, []);
 
   useEffect(() => {
@@ -1118,14 +1125,21 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
     });
   };
 
-  const handleAISuggest = async () => {
-    if (protocol.length === 0) return;
-
+  const handleAISuggest = useCallback(async () => {
     setIsAIAnalyzing(true);
+    setAiError(null);
+    setAiHasRequested(true);
     setRightPane('ai');
 
+    if (!datasetIdResolved) {
+      setIsAIAnalyzing(false);
+      setAIRecommendations([]);
+      setAiError('Сначала выберите файл данных');
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_URL}/v2/ai/suggest-tests`, {
+      const response = await fetch(`${API_V2_URL}/ai/suggest-tests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1139,19 +1153,37 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
       });
 
       if (!response.ok) {
-        const text = await response.text().catch(() => '');
+        let text = '';
+        try {
+          const payload = await response.json();
+          if (typeof payload?.detail === 'string') {
+            text = payload.detail;
+          } else if (payload?.detail) {
+            text = JSON.stringify(payload.detail);
+          }
+        } catch {
+          text = await response.text().catch(() => '');
+        }
         throw new Error(text || 'Не удалось получить рекомендации ИИ');
       }
 
       const data = await response.json();
       setAIRecommendations(Array.isArray(data?.recommendations) ? data.recommendations : []);
     } catch (error) {
-      console.error('AI suggestion failed:', error);
+      const parsed = parseError(error?.message || String(error || ''));
       setAIRecommendations([]);
+      setAiError(parsed?.title || 'Ошибка при получении рекомендаций ИИ');
     } finally {
       setIsAIAnalyzing(false);
     }
-  };
+  }, [datasetIdResolved, protocol]);
+
+  useEffect(() => {
+    if (rightPane !== 'ai') return;
+    if (aiHasRequested) return;
+    if (!datasetIdResolved) return;
+    handleAISuggest();
+  }, [rightPane, aiHasRequested, datasetIdResolved, handleAISuggest]);
 
   const handleAddRecommendation = (recommendation) => {
     const newTest = {
@@ -1278,7 +1310,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
     setIsExecuting(true);
 
     try {
-      const response = await fetch(`${API_URL}/v2/analysis/execute`, {
+      const response = await fetch(`${API_V2_URL}/analysis/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1329,7 +1361,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
     setIsVibeLoading(true);
     setVibeError(null);
     try {
-      const response = await fetch(`${API_URL}/v2/ai/analyze-design`, {
+      const response = await fetch(`${API_V2_URL}/ai/analyze-design`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1369,7 +1401,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
     setVibeError(null);
 
     try {
-      const response = await fetch(`${API_URL}/v2/ai/analyze-design`, {
+      const response = await fetch(`${API_V2_URL}/ai/analyze-design`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1692,7 +1724,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
       : { target: templateVars.target, group: templateVars.group };
 
     try {
-      const response = await fetch(`${API_URL}/v2/analysis/design`, {
+      const response = await fetch(`${API_V2_URL}/analysis/design`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2030,6 +2062,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
                   onTestSelect={handleTestSelect}
                   datasetId={datasetIdResolved}
                   suggestedConfig={workspaceRoles}
+                  columns={columns}
                   disabled={isExecuting}
                 />
               </div>
@@ -2312,14 +2345,44 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
                           <button
                             type="button"
                             onClick={handleAISuggest}
-                            disabled={isAIAnalyzing || protocol.length === 0}
+                            disabled={isAIAnalyzing}
                             className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isAIAnalyzing ? t('ai_analyzing') : t('ai_suggest_tests')}
                           </button>
                         </div>
                         <div className="mt-2 text-xs text-[color:var(--text-secondary)]">ИИ предлагает шаги поверх твоего текущего пайплайна.</div>
+                        {protocol.length === 0 ? (
+                          <div className="mt-2 text-xs text-[color:var(--text-muted)]">{t('ai_empty_protocol_hint')}</div>
+                        ) : null}
                       </div>
+
+                      {aiError ? (
+                        <div className="bg-[color:var(--white)] border border-red-200 rounded-[2px] p-3 text-xs text-red-700">
+                          {aiError}
+                        </div>
+                      ) : null}
+
+                      {aiError ? (
+                        <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-3 text-xs text-[color:var(--text-secondary)]">
+                          <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">
+                            {t('ai_error_help_title')}
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            <div>1. {t('ai_error_help_item_dataset')}</div>
+                            <div>2. {t('ai_error_help_item_backend')}</div>
+                            <div>3. {t('ai_error_help_item_auth')}</div>
+                            <div>4. {t('ai_error_help_item_format')}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => window.open(`${API_V2_URL.replace(/\/v2$/, '')}/health`, '_blank', 'noopener,noreferrer')}
+                            className="mt-3 h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black"
+                          >
+                            {t('ai_check_api')}
+                          </button>
+                        </div>
+                      ) : null}
 
                       <AIRecommendationsPanel
                         recommendations={aiRecommendations}
@@ -2328,8 +2391,11 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
                         isAnalyzing={isAIAnalyzing}
                       />
 
-                      {!isAIAnalyzing && aiRecommendations.length === 0 ? (
+                      {!isAIAnalyzing && aiRecommendations.length === 0 && !aiHasRequested ? (
                         <div className="text-xs text-[color:var(--text-muted)]">Нажми «{t('ai_suggest_tests')}» чтобы получить предложения.</div>
+                      ) : null}
+                      {!isAIAnalyzing && aiRecommendations.length === 0 && aiHasRequested && !aiError ? (
+                        <div className="text-xs text-[color:var(--text-muted)]">{t('ai_no_recommendations')}</div>
                       ) : null}
                     </div>
                   ) : (

@@ -53,5 +53,11 @@ def test_batch_fdr():
     
     print("SUCCESS: FDR correction verified.")
 
+    results_bky = run_batch_analysis(df, targets, "group", method_id="t_test_ind", multiplicity_correction="fdr_bky")
+    assert len(results_bky) == 10
+    for res in results_bky:
+        assert res.get("p_value_adj") is not None
+        assert res.get("multiplicity_correction") == "fdr_tsbky"
+
 if __name__ == "__main__":
     test_batch_fdr()

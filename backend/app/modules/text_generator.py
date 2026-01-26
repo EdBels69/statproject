@@ -5,12 +5,268 @@ class TextGenerator:
     Rule-based expert system to generate dissertation-style interpretation of statistical results.
     Mimics a human statistician's writing style.
     """
+
+    INTERPRETATION_TEMPLATES = {
+        "t_test_one": {
+            "significant": "Обнаружено статистически значимое отличие {target} от заданного значения ({method_name}, {p_display}). Среднее значение {target} = {mean1:.2f}.",
+            "not_significant": "Статистически значимых отличий {target} от заданного значения не выявлено ({method_name}, {p_display})."
+        },
+        "t_test_ind": {
+            "significant": "Выявлены статистически значимые различия между группами {group1} и {group2} ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.2f} ({effect_interpretation}). {group_higher} показала {higher_lower} значения (M = {mean1:.2f} vs M = {mean2:.2f}).",
+            "not_significant": "Статистически значимых различий между группами {group1} и {group2} не выявлено ({method_name}, {p_display})."
+        },
+        "t_test_welch": {
+            "significant": "Обнаружены статистически значимые различия между группами {group1} и {group2} ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.2f} ({effect_interpretation}).",
+            "not_significant": "Статистически значимых различий между группами {group1} и {group2} не выявлено ({method_name}, {p_display})."
+        },
+        "t_test_rel": {
+            "significant": "Выявлены статистически значимые различия между связанными условиями {group1} и {group2} ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.2f} ({effect_interpretation}).",
+            "not_significant": "Статистически значимых различий между условиями {group1} и {group2} не выявлено ({method_name}, {p_display})."
+        },
+        "mann_whitney": {
+            "significant": "Непараметрический анализ выявил значимые различия между группами {group1} и {group2} ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.2f} ({effect_interpretation}).",
+            "not_significant": "Непараметрический анализ не выявил значимых различий между группами {group1} и {group2} ({method_name}, {p_display})."
+        },
+        "wilcoxon": {
+            "significant": "Тест выявил значимые различия между условиями {group1} и {group2} ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.2f} ({effect_interpretation}).",
+            "not_significant": "Тест не выявил значимых различий между условиями {group1} и {group2} ({method_name}, {p_display})."
+        },
+        "anova": {
+            "significant": "Обнаружены статистически значимые различия по {target} между группами ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.3f} ({effect_interpretation}).",
+            "not_significant": "Статистически значимых различий по {target} между группами не выявлено ({method_name}, {p_display})."
+        },
+        "anova_welch": {
+            "significant": "Robust-анализ выявил статистически значимые различия по {target} между группами ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.3f} ({effect_interpretation}).",
+            "not_significant": "Robust-анализ не выявил значимых различий по {target} между группами ({method_name}, {p_display})."
+        },
+        "kruskal": {
+            "significant": "Непараметрический анализ выявил значимые различия по {target} между группами ({method_name}, {p_display}). Размер эффекта {effect_name} = {effect_value:.3f} ({effect_interpretation}).",
+            "not_significant": "Непараметрический анализ не выявил значимых различий по {target} между группами ({method_name}, {p_display})."
+        },
+        "rm_anova": {
+            "significant": "Выявлены статистически значимые различия во времени для {target} ({method_name}, {p_display}).",
+            "not_significant": "Статистически значимых различий во времени для {target} не выявлено ({method_name}, {p_display})."
+        },
+        "friedman": {
+            "significant": "Непараметрический анализ выявил значимые различия между условиями по {target} ({method_name}, {p_display}).",
+            "not_significant": "Непараметрический анализ не выявил значимых различий между условиями по {target} ({method_name}, {p_display})."
+        },
+        "chi_square": {
+            "significant": "Выявлена статистически значимая связь между {target} и {group} ({method_name}, {p_display}).",
+            "not_significant": "Статистически значимой связи между {target} и {group} не выявлено ({method_name}, {p_display})."
+        },
+        "fisher": {
+            "significant": "Точный тест выявил значимую связь между {target} и {group} ({method_name}, {p_display}).",
+            "not_significant": "Точный тест не выявил значимой связи между {target} и {group} ({method_name}, {p_display})."
+        },
+        "pearson": {
+            "significant": "Обнаружена статистически значимая связь между {target} и {group} (r = {r_value:.2f}, {p_display}).",
+            "not_significant": "Статистически значимой связи между {target} и {group} не выявлено ({p_display})."
+        },
+        "spearman": {
+            "significant": "Обнаружена статистически значимая связь между {target} и {group} (ρ = {r_value:.2f}, {p_display}).",
+            "not_significant": "Статистически значимой связи между {target} и {group} не выявлено ({p_display})."
+        },
+        "clustered_correlation": {
+            "significant": "Кластерный анализ выявил статистически значимую связь между переменными ({p_display}).",
+            "not_significant": "Кластерный анализ не выявил статистически значимой связи между переменными ({p_display})."
+        },
+        "mixed_model": {
+            "significant": "Смешанная модель выявила статистически значимые эффекты по {target} ({p_display}).",
+            "not_significant": "Смешанная модель не выявила статистически значимых эффектов по {target} ({p_display})."
+        },
+        "mixed_effects": {
+            "significant": "Смешанная модель выявила статистически значимые эффекты по {target} ({p_display}).",
+            "not_significant": "Смешанная модель не выявила статистически значимых эффектов по {target} ({p_display})."
+        },
+        "survival_km": {
+            "significant": "Кривые выживаемости различаются статистически значимо ({p_display}).",
+            "not_significant": "Статистически значимых различий в кривых выживаемости не выявлено ({p_display})."
+        },
+        "linear_regression": {
+            "significant": "Регрессионная модель выявила статистически значимую связь между переменными ({p_display}).",
+            "not_significant": "Регрессионная модель не выявила статистически значимой связи между переменными ({p_display})."
+        },
+        "logistic_regression": {
+            "significant": "Логистическая регрессия выявила статистически значимые предикторы ({p_display}).",
+            "not_significant": "Логистическая регрессия не выявила статистически значимых предикторов ({p_display})."
+        },
+        "roc_analysis": {
+            "significant": "ROC-анализ показал статистически значимую диагностическую точность ({p_display}).",
+            "not_significant": "ROC-анализ не выявил статистически значимой диагностической точности ({p_display})."
+        },
+        "shapiro_wilk": {
+            "significant": "Тест нормальности выявил отклонения от нормального распределения ({p_display}).",
+            "not_significant": "Тест нормальности не выявил значимых отклонений от нормального распределения ({p_display})."
+        },
+        "levene": {
+            "significant": "Тест Левена показал неоднородность дисперсий между группами ({p_display}).",
+            "not_significant": "Тест Левена не выявил неоднородности дисперсий ({p_display})."
+        },
+        "bland_altman": {
+            "significant": "Анализ Бланда–Олтмана выявил систематические различия между методами ({p_display}).",
+            "not_significant": "Анализ Бланда–Олтмана не выявил статистически значимых различий между методами ({p_display})."
+        },
+        "icc": {
+            "significant": "ICC показывает статистически значимую согласованность измерений ({p_display}).",
+            "not_significant": "ICC не выявил статистически значимой согласованности измерений ({p_display})."
+        },
+        "cohens_kappa": {
+            "significant": "Каппа Коэна показывает статистически значимое согласие между оценками ({p_display}).",
+            "not_significant": "Каппа Коэна не выявила статистически значимого согласия между оценками ({p_display})."
+        },
+        "mcnemar": {
+            "significant": "Тест Мак-Немара выявил статистически значимые изменения долей ({p_display}).",
+            "not_significant": "Тест Мак-Немара не выявил статистически значимых изменений долей ({p_display})."
+        },
+        "cochran_q": {
+            "significant": "Тест Кохрана Q выявил статистически значимые различия долей ({p_display}).",
+            "not_significant": "Тест Кохрана Q не выявил статистически значимых различий долей ({p_display})."
+        },
+        "anova_twoway": {
+            "significant": "Двухфакторный анализ выявил статистически значимые эффекты факторов по {target} ({p_display}).",
+            "not_significant": "Двухфакторный анализ не выявил статистически значимых эффектов факторов по {target} ({p_display})."
+        },
+        "ancova": {
+            "significant": "ANCOVA выявила статистически значимые различия по {target} с учетом ковариат ({p_display}).",
+            "not_significant": "ANCOVA не выявила статистически значимых различий по {target} с учетом ковариат ({p_display})."
+        },
+        "pca": {
+            "significant": "PCA выполнен для выявления латентной структуры данных.",
+            "not_significant": "PCA выполнен для выявления латентной структуры данных."
+        },
+        "efa": {
+            "significant": "EFA выполнен для выявления латентных факторов в данных.",
+            "not_significant": "EFA выполнен для выявления латентных факторов в данных."
+        },
+        "cronbach_alpha": {
+            "significant": "Расчет альфы Кронбаха показывает надежность шкалы.",
+            "not_significant": "Расчет альфы Кронбаха показывает надежность шкалы."
+        },
+        "kmeans": {
+            "significant": "Кластеризация выполнена, получены группы наблюдений.",
+            "not_significant": "Кластеризация выполнена, получены группы наблюдений."
+        }
+    }
     
     @staticmethod
     def format_p_value(p: float) -> str:
         if p < 0.001:
             return "p < 0.001"
+        if p < 0.01:
+            return "p < 0.01"
+        if p < 0.05:
+            return "p < 0.05"
         return f"p = {p:.3f}"
+
+    @staticmethod
+    def _resolve_method_name(method_obj: Any) -> str:
+        if hasattr(method_obj, "name"):
+            return method_obj.name
+        if isinstance(method_obj, dict):
+            return method_obj.get("name") or method_obj.get("id") or "test"
+        return str(method_obj).replace("_", " ")
+
+    @staticmethod
+    def _effect_label(effect_name: str) -> str:
+        name = str(effect_name or "").lower().replace("-", "_").replace(" ", "_")
+        if name in ["cohen_d", "cohens_d", "d"]:
+            return "d"
+        if name in ["hedges_g", "g"]:
+            return "g"
+        if name in ["glass_delta", "delta"]:
+            return "Δ"
+        if name in ["eta2", "eta_sq", "eta_squared", "np2", "partial_eta2"]:
+            return "η²"
+        if name in ["eps_sq", "epsilon_squared"]:
+            return "ε²"
+        if name in ["r", "pearson", "spearman", "rbc"]:
+            return "r"
+        if name in ["cramers_v", "cramer_v"]:
+            return "V"
+        return name or "эффект"
+
+    @staticmethod
+    def _build_template_context(results: Dict[str, Any], variables: Dict[str, str]) -> Dict[str, Any]:
+        method_name = TextGenerator._resolve_method_name(results.get("method"))
+        target = variables.get("target", "переменной")
+        group = variables.get("group", "группой")
+        groups = results.get("groups") or []
+        group1 = str(groups[0]) if len(groups) > 0 else "Группа 1"
+        group2 = str(groups[1]) if len(groups) > 1 else "Группа 2"
+        plot_stats = results.get("plot_stats") or {}
+        m1 = float(plot_stats.get(group1, {}).get("mean", 0) or 0)
+        m2 = float(plot_stats.get(group2, {}).get("mean", 0) or 0)
+        if m1 >= m2:
+            group_higher = group1
+            higher_lower = "более высокие"
+        else:
+            group_higher = group2
+            higher_lower = "более низкие"
+
+        p_value = results.get("p_value")
+        try:
+            p_value_f = float(p_value)
+            p_display = TextGenerator.format_p_value(p_value_f) if p_value_f == p_value_f else "p = н/д"
+        except Exception:
+            p_value_f = 1.0
+            p_display = "p = н/д"
+
+        stat_value = results.get("stat_value")
+        try:
+            stat_value_f = float(stat_value)
+        except Exception:
+            stat_value_f = 0.0
+
+        effect_size = results.get("effect_size")
+        effect_name = TextGenerator._effect_label(results.get("effect_size_name"))
+        try:
+            effect_value = float(effect_size)
+        except Exception:
+            effect_value = 0.0
+
+        effect_interpretation = ""
+        eff_interp = results.get("effect_size_interpretation")
+        if isinstance(eff_interp, dict):
+            effect_interpretation = eff_interp.get("description_ru") or eff_interp.get("label_ru") or ""
+        if not effect_interpretation and effect_size is not None:
+            effect_interpretation = TextGenerator.interpret_effect_size(effect_size, results.get("effect_size_name"))
+
+        r_value = stat_value_f
+        return {
+            "method_name": method_name,
+            "target": target,
+            "group": group,
+            "group1": group1,
+            "group2": group2,
+            "p_display": p_display,
+            "p_value": p_value_f,
+            "stat_value": stat_value_f,
+            "effect_name": effect_name,
+            "effect_value": effect_value,
+            "effect_interpretation": effect_interpretation,
+            "mean1": m1,
+            "mean2": m2,
+            "group_higher": group_higher,
+            "higher_lower": higher_lower,
+            "r_value": r_value
+        }
+
+    @staticmethod
+    def _render_template(method_id: str, results: Dict[str, Any], variables: Dict[str, str]) -> str:
+        templates = TextGenerator.INTERPRETATION_TEMPLATES.get(method_id)
+        if not templates:
+            return ""
+        is_significant = bool(results.get("significant"))
+        key = "significant" if is_significant else "not_significant"
+        template = templates.get(key) or templates.get("default")
+        if not template:
+            return ""
+        ctx = TextGenerator._build_template_context(results, variables)
+        try:
+            return template.format(**ctx)
+        except Exception:
+            return ""
 
     @staticmethod
     def interpret_effect_size(effect_size: float, effect_size_name: str = "cohen-d") -> str:
@@ -76,6 +332,11 @@ class TextGenerator:
             method_id = method_obj.get("id")
         else:
             method_id = str(method_obj)
+
+        if style == "ru":
+            rendered = TextGenerator._render_template(method_id, results, variables)
+            if rendered:
+                return rendered
             
         # 1. Group Comparisons (Independent/Paired)
         if method_id in ["t_test_ind", "t_test_welch", "t_test_rel", "mann_whitney", "wilcoxon"]:

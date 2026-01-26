@@ -1,4 +1,55 @@
 export const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
+const API_BASE = String(API_URL || '').replace(/\/+$/, '');
+const API_BASE_NO_V2 = API_BASE.replace(/\/v2$/, '');
+export const API_V2_URL = `${API_BASE_NO_V2}/v2`;
+
+function uniqueStrings(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const value = String(item);
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function buildKnowledgeUrls(path) {
+  const normalizedBase = String(API_URL || '').replace(/\/+$/, '');
+  const baseNoV1 = normalizedBase.replace(/\/v1$/, '');
+  const baseNoV2 = normalizedBase.replace(/\/v2$/, '');
+  const hasV1 = /\/v1(\/|$)/.test(normalizedBase);
+  const baseWithV1 = hasV1 ? null : `${normalizedBase}/v1`;
+  const bases = uniqueStrings([normalizedBase, baseNoV1, baseNoV2, baseWithV1].filter((x) => x));
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  const urls = [];
+  bases.forEach((base) => {
+    urls.push(`${base}/v2/knowledge${suffix}`);
+    urls.push(`${base}/knowledge${suffix}`);
+  });
+  return uniqueStrings(urls);
+}
+
+async function requestKnowledgeJson(path, options = {}, requestOptions = {}, errorMessage = '') {
+  const urls = buildKnowledgeUrls(path);
+  let lastError = null;
+
+  for (const url of urls) {
+    let response;
+    try {
+      response = await request(url, options, requestOptions);
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+
+    if (response.ok) return response.json();
+    const detail = await readError(response);
+    lastError = new Error(detail || errorMessage || `Request failed with status ${response.status}`);
+  }
+
+  if (lastError) throw lastError;
+  throw new Error(errorMessage || 'Не удалось выполнить запрос');
+}
 
 async function request(url, options = {}, { timeoutMs = 30000, timeoutError } = {}) {
   const externalSignal = options?.signal;
@@ -114,7 +165,10 @@ export async function getWizardRecommendation(data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   }, { timeoutMs: 60000, timeoutError: 'Рекомендация строится слишком долго' });
-  if (!response.ok) throw new Error("Не удалось получить рекомендацию");
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Не удалось получить рекомендацию");
+  }
   return response.json();
 }
 
@@ -124,7 +178,10 @@ export async function applyStrategy(data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   }, { timeoutMs: 180000, timeoutError: 'Анализ занимает слишком много времени' });
-  if (!response.ok) throw new Error("Не удалось применить стратегию");
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Не удалось применить стратегию");
+  }
   return response.json();
 }
 
@@ -469,27 +526,18 @@ export async function downloadBatchReport(datasetId, batchResult, selectedVar) {
 /* -- KNOWLEDGE API -- */
 
 export async function getKnowledgeTerms() {
-  const response = await request(`${API_URL}/v2/knowledge/terms`, {}, { timeoutMs: 30000 });
-  if (!response.ok) throw new Error("Не удалось загрузить термины справки");
-  return response.json();
+  return requestKnowledgeJson('/terms', {}, { timeoutMs: 30000 }, "Не удалось загрузить термины справки");
 }
 
 export async function getKnowledgeTerm(term, level = 'junior') {
   const params = new URLSearchParams();
   if (level) params.set('level', level);
-
-  const response = await request(`${API_URL}/v2/knowledge/terms/${encodeURIComponent(term)}?${params.toString()}`, {}, { timeoutMs: 30000 });
-  if (!response.ok) {
-    const detail = await readError(response);
-    throw new Error(detail || "Не удалось загрузить объяснение термина");
-  }
-  return response.json();
+  const path = `/terms/${encodeURIComponent(term)}?${params.toString()}`;
+  return requestKnowledgeJson(path, {}, { timeoutMs: 30000 }, "Не удалось загрузить объяснение термина");
 }
 
 export async function getKnowledgeTests() {
-  const response = await request(`${API_URL}/v2/knowledge/tests`, {}, { timeoutMs: 30000 });
-  if (!response.ok) throw new Error("Не удалось загрузить список тестов справки");
-  return response.json();
+  return requestKnowledgeJson('/tests', {}, { timeoutMs: 30000 }, "Не удалось загрузить список тестов справки");
 }
 
 export async function getKnowledgeTest(testId, { level = 'junior', shapiro_p, levene_p, signal } = {}) {
@@ -497,30 +545,23 @@ export async function getKnowledgeTest(testId, { level = 'junior', shapiro_p, le
   if (level) params.set('level', level);
   if (shapiro_p !== undefined && shapiro_p !== null) params.set('shapiro_p', String(shapiro_p));
   if (levene_p !== undefined && levene_p !== null) params.set('levene_p', String(levene_p));
-
-  const response = await request(`${API_URL}/v2/knowledge/tests/${encodeURIComponent(testId)}?${params.toString()}`, { signal }, { timeoutMs: 30000 });
-  if (!response.ok) {
-    const detail = await readError(response);
-    throw new Error(detail || "Не удалось загрузить объяснение теста");
-  }
-  return response.json();
+  const path = `/tests/${encodeURIComponent(testId)}?${params.toString()}`;
+  return requestKnowledgeJson(path, { signal }, { timeoutMs: 30000 }, "Не удалось загрузить объяснение теста");
 }
 
 export async function interpretEffectSize(type, value) {
   const params = new URLSearchParams();
   params.set('type', type);
   params.set('value', String(value));
-
-  const response = await request(`${API_URL}/v2/knowledge/effect-size?${params.toString()}`, {}, { timeoutMs: 30000 });
-  if (!response.ok) throw new Error("Не удалось интерпретировать размер эффекта");
-  return response.json();
+  const path = `/effect-size?${params.toString()}`;
+  return requestKnowledgeJson(path, {}, { timeoutMs: 30000 }, "Не удалось интерпретировать размер эффекта");
 }
 
 export async function getPowerInfo(power) {
   const params = new URLSearchParams();
   params.set('power', String(power));
 
-  const response = await request(`${API_URL}/v2/knowledge/power?${params.toString()}`, {}, { timeoutMs: 30000 });
+  const response = await request(`${API_V2_URL}/knowledge/power?${params.toString()}`, {}, { timeoutMs: 30000 });
   if (!response.ok) throw new Error("Не удалось загрузить справку по мощности");
   return response.json();
 }
@@ -551,7 +592,6 @@ export async function runBatchAnalysis(datasetId, targets, groupColumn) {
    API v2: Advanced Statistical Methods
    ============================================================ */
 
-const API_V2_URL = `${API_URL}/v2`;
 
 /**
  * Run Linear Mixed Model with Time×Group interaction

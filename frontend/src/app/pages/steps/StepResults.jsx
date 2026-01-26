@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, lazy, Suspense } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { applyStrategy, downloadProtocolReport, getAnalysisResults, getProtocolReportUrl } from '../../../lib/api';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -1053,7 +1053,7 @@ const StepResults = ({ runId, datasetId, mode = 'results' }) => {
         return getProtocolReportUrl(datasetId, runId, 'html', reportParams);
     }, [datasetId, reportParams, runId]);
 
-    const handleDownloadReport = async () => {
+    const handleDownloadReport = useCallback(async () => {
         try {
             const fmt = String(reportFormat || 'pdf').toLowerCase();
             const filename = `protocol_report_${runId}.${fmt}`;
@@ -1072,7 +1072,7 @@ const StepResults = ({ runId, datasetId, mode = 'results' }) => {
         } catch {
             alert('Не удалось скачать отчёт');
         }
-    };
+    }, [datasetId, reportFormat, reportParams, runId]);
 
     const moveSection = (id, direction) => {
         setSectionOrder((prev) => {

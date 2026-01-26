@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import { XMarkIcon, CogIcon, InformationCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import WhyThisTest from './education/WhyThisTest';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -192,96 +194,175 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     default: []
   };
 
+  const covariatesField = {
+    id: 'covariates',
+    type: 'variable_multi',
+    label: 'Ковариаты',
+    description: 'Дополнительные переменные для коррекции',
+    default: []
+  };
+
+  const alphaField = {
+    id: 'alpha',
+    type: 'range',
+    label: 'Уровень значимости',
+    description: 'Уровень альфа для статистической значимости',
+    default: 0.05,
+    min: 0.01,
+    max: 0.10,
+    step: 0.01
+  };
+
+  const confidenceIntervalField = {
+    id: 'confidence_interval',
+    type: 'boolean',
+    label: 'Доверительный интервал',
+    description: 'Показывать доверительный интервал',
+    default: true
+  };
+
+  const descriptivesField = {
+    id: 'descriptives',
+    type: 'boolean',
+    label: 'Описательные статистики',
+    description: 'Показывать описательные статистики',
+    default: true
+  };
+
+  const effectSizeField = {
+    id: 'effect_size',
+    type: 'select',
+    label: 'Размер эффекта',
+    options: [
+      { value: 'cohen_d', label: "Cohen's d" },
+      { value: 'hedges_g', label: "Hedges' g" },
+      { value: 'glass_delta', label: "Glass' delta" }
+    ],
+    default: 'cohen_d'
+  };
+
+  const missingValuesField = {
+    id: 'missing_values',
+    type: 'select',
+    label: 'Пропуски',
+    options: [
+      { value: 'listwise', label: 'Listwise' },
+      { value: 'pairwise', label: 'Pairwise' }
+    ],
+    default: 'listwise'
+  };
+
+  const pairedBinaryColsField = {
+    id: 'outcome_cols',
+    type: 'variable_multi',
+    label: 'Бинарные измерения',
+    description: 'Выберите 2+ бинарных колонок (до/после/условия)',
+    minItems: 2,
+    default: []
+  };
+
+  const repeatedBinaryColsField = {
+    id: 'outcome_cols',
+    type: 'variable_multi',
+    label: 'Бинарные измерения (3+)',
+    description: 'Выберите 3+ бинарных колонок (повторные условия)',
+    minItems: 3,
+    default: []
+  };
+
+  const withBasics = (vars) => [...vars, alphaField, confidenceIntervalField, descriptivesField];
+  const withAdvanced = (adv = []) => [...adv, effectSizeField, missingValuesField];
+
+  const mixedEffectsTemplate = {
+    variables: withBasics([
+      targetField,
+      groupField,
+      {
+        id: 'time',
+        type: 'variable_single',
+        label: 'Время/Условие (Time)',
+        description: 'Переменная повторных измерений',
+        default: ''
+      },
+      {
+        id: 'covariates',
+        type: 'variable_multi',
+        label: 'Ковариаты',
+        description: 'Дополнительные переменные для коррекции',
+        default: []
+      }
+    ]),
+    advanced: withAdvanced([
+      {
+        id: 'random_slope',
+        type: 'boolean',
+        label: 'Случайные наклоны',
+        description: 'Включить случайные наклоны в модель',
+        default: false
+      }
+    ])
+  };
+
   // Method-specific configuration templates
   const methodTemplates = {
     // Mixed Effects Models & Related
-    mixed_model: {
-      variables: [
+    mixed_effects: mixedEffectsTemplate,
+    mixed_model: mixedEffectsTemplate,
+
+    // Group Comparison (t-test, etc.)
+    t_test_one: {
+      variables: withBasics([
         targetField,
-        groupField,
         {
-          id: 'time',
-          type: 'variable_single',
-          label: 'Время/Условие (Time)',
-          description: 'Переменная повторных измерений',
-          default: ''
+          id: 'test_value',
+          type: 'number',
+          label: 'Эталонное значение (μ₀)',
+          description: 'Среднее значение, с которым сравнивается выборка',
+          default: 0,
+          step: 0.1,
+          required: true,
+        },
+      ]),
+      advanced: withAdvanced([])
+    },
+    t_test_welch: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    t_test_ind: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    mann_whitney: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    anova: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([]),
+      postHoc: [
+        {
+          id: 'post_hoc_tukey',
+          type: 'boolean',
+          label: 'Tukey HSD',
+          default: true
         },
         {
-          id: 'covariates',
-          type: 'variable_multi',
-          label: 'Ковариаты',
-          description: 'Дополнительные переменные для коррекции',
-          default: []
-        }
-      ],
-      advanced: [
-        {
-          id: 'random_slope',
+          id: 'post_hoc_bonferroni',
           type: 'boolean',
-          label: 'Случайные наклоны',
-          description: 'Включить случайные наклоны в модель',
+          label: 'Bonferroni',
           default: false
         },
         {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          description: 'Уровень альфа для статистической значимости',
-          default: 0.05,
-          min: 0.01,
-          max: 0.10,
-          step: 0.01
+          id: 'post_hoc_holm',
+          type: 'boolean',
+          label: 'Holm',
+          default: false
         }
       ]
     },
-
-    // Group Comparison (t-test, etc.)
-    t_test_ind: {
-      variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }]
-    },
-    mann_whitney: {
-      variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }]
-    },
-    anova: {
-      variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05,
-        min: 0.01,
-        max: 0.10,
-        step: 0.01
-      }],
-      postHoc: [{
-        id: 'post_hoc',
-        type: 'select',
-        label: 'Post-hoc тест',
-        options: [{ value: 'tukey', label: 'Tukey HSD' }, { value: 'games_howell', label: 'Games-Howell' }, { value: 'dunn', label: 'Dunn (rank)' }, { value: 'none', label: 'Нет' }],
-        default: 'tukey'
-      },
-      {
-        id: 'post_hoc_correction',
-        type: 'select',
-        label: 'Поправка для post-hoc',
-        options: [{ value: 'bky', label: 'Benjamini-Krieger-Yekutieli (BKY)' }, { value: 'bh', label: 'Benjamini-Hochberg (BH)' }, { value: 'none', label: 'Нет' }],
-        default: 'bky'
-      }]
-    },
     anova_twoway: {
-      variables: [
+      variables: withBasics([
         targetField,
         {
           id: 'group1',
@@ -297,27 +378,12 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           description: 'Второй фактор',
           default: ''
         }
-      ],
-      advanced: [
-        {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          default: 0.05,
-          min: 0.01,
-          max: 0.10,
-          step: 0.01
-        }
-      ]
+      ]),
+      advanced: withAdvanced([])
     },
     kruskal: {
-      variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }],
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([]),
       postHoc: [{
         id: 'post_hoc',
         type: 'select',
@@ -334,16 +400,8 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
       }]
     },
     anova_welch: {
-      variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05,
-        min: 0.01,
-        max: 0.10,
-        step: 0.01
-      }],
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([]),
       postHoc: [{
         id: 'post_hoc',
         type: 'select',
@@ -362,15 +420,23 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
 
     // Paired
     t_test_rel: {
-      variables: [targetField, groupField], // Assuming long format or change to paired inputs? keeping simple used case
-      advanced: []
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
     },
     wilcoxon: {
-      variables: [targetField, groupField],
-      advanced: []
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    mcnemar: {
+      variables: withBasics([pairedBinaryColsField]),
+      advanced: withAdvanced([])
+    },
+    cochran_q: {
+      variables: withBasics([repeatedBinaryColsField]),
+      advanced: withAdvanced([])
     },
     rm_anova: {
-      variables: [
+      variables: withBasics([
         {
           id: 'outcome_cols',
           type: 'variable_multi',
@@ -393,12 +459,12 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           description: 'Дополнительная группировка (если есть)',
           default: ''
         }
-      ],
-      advanced: []
+      ]),
+      advanced: withAdvanced([])
     },
 
     friedman: {
-      variables: [
+      variables: withBasics([
         {
           id: 'outcome_cols',
           type: 'variable_multi',
@@ -407,23 +473,13 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           minItems: 3,
           default: []
         }
-      ],
-      advanced: [
-        {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          default: 0.05,
-          min: 0.01,
-          max: 0.10,
-          step: 0.01
-        }
-      ]
+      ]),
+      advanced: withAdvanced([])
     },
 
     // Correlation
     clustered_correlation: {
-      variables: [targetsField],
+      variables: withBasics([targetsField]),
       advanced: [
         {
           id: 'method',
@@ -445,17 +501,77 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
       ]
     },
     pearson: {
-      variables: [targetsField],
+      variables: withBasics([targetsField]),
       advanced: []
     },
     spearman: {
-      variables: [targetsField],
+      variables: withBasics([targetsField]),
       advanced: []
+    },
+    point_biserial: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    partial_correlation: {
+      variables: withBasics([targetsField, covariatesField]),
+      advanced: withAdvanced([])
+    },
+
+    chi_square: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    fisher: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+
+    bland_altman: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    icc: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([])
+    },
+    cohens_kappa: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    cronbach_alpha: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([])
+    },
+
+    pca: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([])
+    },
+    efa: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([])
+    },
+    kmeans: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([
+        {
+          id: 'n_clusters',
+          type: 'number',
+          label: 'Количество кластеров',
+          default: 3,
+          min: 2,
+          max: 20
+        }
+      ])
+    },
+    hierarchical_clustering: {
+      variables: withBasics([targetsField]),
+      advanced: withAdvanced([])
     },
 
     // Survival
     survival_km: {
-      variables: [
+      variables: withBasics([
         {
           id: 'time',
           type: 'variable_single',
@@ -471,74 +587,44 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           default: ''
         },
         groupField
-      ],
+      ]),
       advanced: []
     },
 
     linear_regression: {
-      variables: [outcomeField, predictorsField, {
-        id: 'covariates',
-        type: 'variable_multi',
-        label: 'Ковариаты',
-        description: 'Дополнительные переменные для коррекции',
-        default: []
-      }],
-      advanced: [
-        {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          default: 0.05,
-          min: 0.01,
-          max: 0.10,
-          step: 0.01
-        }
-      ]
+      variables: withBasics([outcomeField, predictorsField, covariatesField]),
+      advanced: withAdvanced([])
     },
 
     logistic_regression: {
-      variables: [
+      variables: withBasics([
         {
           ...outcomeField,
           label: 'Исход (бинарный)',
           description: 'Бинарная переменная исхода (0/1 или Да/Нет)'
         },
         predictorsField,
-        {
-          id: 'covariates',
-          type: 'variable_multi',
-          label: 'Ковариаты',
-          description: 'Дополнительные переменные для коррекции',
-          default: []
-        }
-      ],
-      advanced: [
+        covariatesField
+      ]),
+      advanced: withAdvanced([
         { id: 'show_or', type: 'boolean', label: 'Показать OR', default: true },
-        { id: 'show_roc', type: 'boolean', label: 'ROC-кривая', default: true },
-        {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          default: 0.05,
-          min: 0.01,
-          max: 0.10,
-          step: 0.01
-        }
-      ]
+        { id: 'show_roc', type: 'boolean', label: 'ROC-кривая', default: true }
+      ])
+    },
+
+    roc_analysis: {
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
+    },
+    ancova: {
+      variables: withBasics([targetField, groupField, covariatesField]),
+      advanced: withAdvanced([])
     },
 
     // Default template for others
     default: {
-      variables: [targetField, groupField],
-      advanced: [
-        {
-          id: 'alpha',
-          type: 'number',
-          label: 'Уровень значимости',
-          default: 0.05,
-          min: 0.01, max: 0.10, step: 0.01
-        }
-      ]
+      variables: withBasics([targetField, groupField]),
+      advanced: withAdvanced([])
     }
   };
 
@@ -667,8 +753,31 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     }
   };
 
+  const normalizeConfigForSave = (raw) => {
+    const next = (raw && typeof raw === 'object') ? { ...raw } : {};
+
+    if (method === 'anova') {
+      const bonferroni = Boolean(next.post_hoc_bonferroni);
+      const holm = Boolean(next.post_hoc_holm);
+      const wantsCorrection = bonferroni || holm;
+      const useTukey = next.post_hoc_tukey !== false || wantsCorrection;
+
+      next.post_hoc = useTukey ? 'tukey' : 'none';
+
+      if (holm) {
+        next.post_hoc_correction = 'holm';
+      } else if (bonferroni) {
+        next.post_hoc_correction = 'bonferroni';
+      } else {
+        next.post_hoc_correction = 'none';
+      }
+    }
+
+    return next;
+  };
+
   const handleSave = () => {
-    onConfigSave(effectiveConfig);
+    onConfigSave(normalizeConfigForSave(effectiveConfig));
     onClose();
   };
 
@@ -676,8 +785,13 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     const fields = [];
     const vars = Array.isArray(methodTemplate?.variables) ? methodTemplate.variables : [];
     for (const f of vars) {
-      if (f?.type === 'variable_single') fields.push({ ...f, required: true });
-      if (f?.type === 'variable_multi') fields.push({ ...f, required: true });
+      if (!f) continue;
+      if (f.required === true) {
+        fields.push(f);
+        continue;
+      }
+      if (f.type === 'variable_single') fields.push({ ...f, required: true });
+      if (f.type === 'variable_multi') fields.push({ ...f, required: true });
     }
     return fields;
   })();
@@ -686,6 +800,10 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     const missing = [];
     for (const f of requiredFields) {
       const v = effectiveConfig?.[f.id];
+      if (f.type === 'number') {
+        if (typeof v !== 'number' || Number.isNaN(v) || !Number.isFinite(v)) missing.push(f);
+        continue;
+      }
       if (f.type === 'variable_single') {
         if (!String(v || '').trim()) missing.push(f);
         continue;
@@ -719,6 +837,7 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
         return hit?.label || String(v || '—');
       }
       if (field.type === 'number') return typeof v === 'number' && Number.isFinite(v) ? String(v) : '—';
+      if (field.type === 'range') return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : '—';
       return String(v ?? '—');
     };
 
@@ -797,6 +916,34 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
             />
           </div>
         );
+
+      case 'range': {
+        const numericValue = typeof value === 'number' && !Number.isNaN(value)
+          ? value
+          : (typeof field.default === 'number' ? field.default : field.min ?? 0);
+
+        return (
+          <div>
+            <label className="block text-sm font-medium text-[color:var(--text-primary)] mb-1">
+              {field.label}
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                value={numericValue}
+                onChange={(e) => handleConfigChange(field.id, parseFloat(e.target.value))}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                className="w-full accent-[color:var(--accent)]"
+              />
+              <span className="text-xs text-[color:var(--text-muted)] min-w-[48px] text-right">
+                {numericValue.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        );
+      }
 
       case 'select':
         return (
@@ -1422,30 +1569,62 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
                             <div className="text-xs text-[color:var(--text-muted)] font-mono">{filtered.length}</div>
                           </div>
                         </div>
-                        <div className="max-h-[52vh] overflow-y-auto">
-                          {filtered.length > 0 ? filtered.map((name) => {
-                            const role = roleByName?.[name] || 'unused';
-                            const roleLabel = role === 'target' ? 'Исход' : role === 'group' ? 'Группа' : role === 'covariate' ? 'Ковариата' : '—';
-                            const checked = isMulti ? multiSet.has(name) : currentSingle === name;
-                            return (
-                              <label
-                                key={name}
-                                className={`flex items-center gap-3 px-3 py-2 border-b border-[color:var(--border-color)] cursor-pointer ${checked ? 'bg-[color:var(--bg-secondary)]' : 'hover:bg-[color:var(--bg-secondary)]'}`}
-                              >
-                                <input
-                                  type={isMulti ? 'checkbox' : 'radio'}
-                                  name="var_picker"
-                                  checked={checked}
-                                  onChange={() => toggle(name)}
-                                  className="text-[color:var(--accent)] rounded-[2px]"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div className={`text-sm truncate ${checked ? 'font-semibold text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{name}</div>
-                                  <div className="mt-0.5 text-[10px] tracking-[0.22em] uppercase text-[color:var(--text-muted)]">{roleLabel}</div>
-                                </div>
-                              </label>
-                            );
-                          }) : (
+                        <div className="h-[52vh]">
+                          {filtered.length > 0 ? (
+                            <AutoSizer>
+                              {({ height, width }) => {
+                                const listData = {
+                                  items: filtered,
+                                  isMulti,
+                                  multiSet,
+                                  currentSingle,
+                                  toggle,
+                                  roleByName
+                                };
+
+                                const Row = ({ index, style, data }) => {
+                                  const name = data.items[index];
+                                  if (!name) return null;
+                                  const role = data.roleByName?.[name] || 'unused';
+                                  const roleLabel = role === 'target' ? 'Исход' : role === 'group' ? 'Группа' : role === 'covariate' ? 'Ковариата' : '—';
+                                  const checked = data.isMulti ? data.multiSet.has(name) : data.currentSingle === name;
+
+                                  return (
+                                    <div style={style}>
+                                      <label
+                                        className={`flex items-center gap-3 px-3 py-2 border-b border-[color:var(--border-color)] cursor-pointer ${checked ? 'bg-[color:var(--bg-secondary)]' : 'hover:bg-[color:var(--bg-secondary)]'}`}
+                                      >
+                                        <input
+                                          type={data.isMulti ? 'checkbox' : 'radio'}
+                                          name="var_picker"
+                                          checked={checked}
+                                          onChange={() => data.toggle(name)}
+                                          className="text-[color:var(--accent)] rounded-[2px]"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                          <div className={`text-sm truncate ${checked ? 'font-semibold text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{name}</div>
+                                          <div className="mt-0.5 text-[10px] tracking-[0.22em] uppercase text-[color:var(--text-muted)]">{roleLabel}</div>
+                                        </div>
+                                      </label>
+                                    </div>
+                                  );
+                                };
+
+                                return (
+                                  <List
+                                    height={height}
+                                    width={width}
+                                    itemCount={filtered.length}
+                                    itemSize={42}
+                                    itemData={listData}
+                                    overscanCount={10}
+                                  >
+                                    {Row}
+                                  </List>
+                                );
+                              }}
+                            </AutoSizer>
+                          ) : (
                             <div className="p-6 text-sm text-[color:var(--text-muted)] text-center italic">Ничего не найдено</div>
                           )}
                         </div>
@@ -1969,15 +2148,20 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
 const getMethodName = (methodId) => {
   const methodNames = {
     // Basic
+    t_test_one: 't-критерия одной выборки',
     t_test_ind: 't-критерия Стьюдента (независимые)',
     t_test_welch: 'Welch t-test',
     t_test_rel: 'Парного t-критерия',
     mann_whitney: 'Mann-Whitney U',
     wilcoxon: 'Wilcoxon Signed-Rank',
+      mcnemar: 'Теста Мак-Немара',
+      cochran_q: 'Q-теста Кохрана',
 
     // ANOVA family
     anova: 'ANOVA',
+      anova_welch: 'ANOVA Уэлча',
     anova_twoway: 'Двухфакторной ANOVA',
+      ancova: 'ANCOVA',
     kruskal: 'Kruskal-Wallis',
     rm_anova: 'RM-ANOVA (повторные измерения)',
     friedman: 'Теста Фридмана',
@@ -1985,17 +2169,29 @@ const getMethodName = (methodId) => {
     // Correlation
     pearson: 'Корреляции Пирсона',
     spearman: 'Корреляции Спирмена',
+      point_biserial: 'Точечно-бисериальной корреляции',
+      partial_correlation: 'Частной корреляции',
     clustered_correlation: 'Кластерной корреляции',
 
     // Categorical
     chi_square: 'Хи-квадрат',
     fisher: 'Точного теста Фишера',
+      cohens_kappa: 'Каппы Коэна',
 
     // Advanced
+    mixed_effects: 'Смешанной модели (LMM)',
     mixed_model: 'Смешанной модели (LMM)',
     survival_km: 'Анализа выживаемости (Kaplan-Meier)',
     linear_regression: 'Линейной регрессии',
-    logistic_regression: 'Логистической регрессии'
+      logistic_regression: 'Логистической регрессии',
+      roc_analysis: 'ROC-анализа',
+      bland_altman: 'Бланда—Олтмана',
+      icc: 'ICC',
+      cronbach_alpha: 'α Кронбаха',
+      pca: 'PCA (компоненты)',
+      efa: 'EFA (факторы)',
+      kmeans: 'K-Means',
+      hierarchical_clustering: 'Иерархической кластеризации'
   };
 
   return methodNames[methodId] || methodId;

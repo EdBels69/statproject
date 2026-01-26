@@ -62,10 +62,10 @@
 
 **Backend:**
 
-- ❌ Pingouin не установлен (нет готовых effect sizes)
-- ❌ CSV вместо Parquet (медленно)
-- ❌ Нет AI interpretations engine
-- ❌ Нет PDF/DOCX export
+- ✅ Pingouin установлен (effect sizes доступны)
+- ✅ Parquet используется для processed data
+- 🟡 AI interpretations engine — частично (template-based)
+- ✅ PDF/DOCX export доступен через protocol/report endpoints
 
 **Frontend:**
 

@@ -122,10 +122,24 @@ async def ai_suggest_tests(request: AISuggestTestsRequest):
                 }
             )
 
-        current_methods = {test.get("method") for test in request.protocol}
-        recommendations = [rec for rec in recommendations if rec.get("test", {}).get("id") not in current_methods]
+        current_methods = set()
+        for test in (request.protocol or []):
+            if not isinstance(test, dict):
+                continue
+            m = test.get("method")
+            if isinstance(m, str) and m.strip():
+                current_methods.add(m.strip())
+        recommendations = [
+            rec
+            for rec in recommendations
+            if rec.get("test", {}).get("id") not in current_methods
+        ]
 
         return {"status": "completed", "recommendations": recommendations}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"AI suggestion failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Не удалось получить рекомендации ИИ: {str(e)}")

@@ -17,7 +17,7 @@ from app.llm import scan_data_quality
 from app.schemas.dataset import QualityReport
 from app.core.pipeline import PipelineManager
 
-router = APIRouter(prefix="/quality", tags=["quality"])
+router = APIRouter()
 
 pipeline = PipelineManager(DATA_DIR)
 

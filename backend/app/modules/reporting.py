@@ -921,6 +921,172 @@ class ProtocolReport:
         html += "</div>"
         self.html_parts.append(html)
 
+        design_spec = None
+        if isinstance(self.data, dict):
+            ds_obj = self.data.get("design_spec")
+            if ds_obj is not None and hasattr(ds_obj, "model_dump"):
+                try:
+                    ds_obj = ds_obj.model_dump()
+                except Exception:
+                    pass
+            if isinstance(ds_obj, dict):
+                design_spec = ds_obj
+            if not isinstance(design_spec, dict) or not design_spec:
+                proto_obj = self.data.get("protocol")
+                if proto_obj is not None and hasattr(proto_obj, "model_dump"):
+                    try:
+                        proto_obj = proto_obj.model_dump()
+                    except Exception:
+                        pass
+                if isinstance(proto_obj, dict) and isinstance(proto_obj.get("design_spec"), dict):
+                    design_spec = proto_obj.get("design_spec")
+
+        if isinstance(design_spec, dict) and design_spec:
+            def _fmt_list(values: Any) -> str:
+                if not isinstance(values, list):
+                    return ""
+                items = []
+                for v in values:
+                    if v is None:
+                        continue
+                    s = str(v).strip()
+                    if s:
+                        items.append(s)
+                return ", ".join(items)
+
+            sid_col = design_spec.get("subject_id_column")
+            grp_col = design_spec.get("group_column")
+            covariates = design_spec.get("covariates")
+            include_visits = design_spec.get("include_visits")
+            exclude_visits = design_spec.get("exclude_visits")
+
+            time_spec = design_spec.get("time") if isinstance(design_spec.get("time"), dict) else {}
+            base_visit = time_spec.get("baseline_visit_id")
+            visits = time_spec.get("visits") if isinstance(time_spec.get("visits"), list) else []
+            visit_ids: List[str] = []
+            for v in visits:
+                if not isinstance(v, dict):
+                    continue
+                vid = v.get("id")
+                if isinstance(vid, str) and vid.strip():
+                    visit_ids.append(vid.strip())
+
+            design_rows = []
+            if isinstance(sid_col, str) and sid_col.strip():
+                design_rows.append(("Идентификатор субъекта" if is_ru else "Subject ID", sid_col.strip()))
+            if isinstance(grp_col, str) and grp_col.strip():
+                design_rows.append(("Колонка группы" if is_ru else "Group column", grp_col.strip()))
+            if isinstance(base_visit, str) and base_visit.strip():
+                design_rows.append(("Baseline визит" if is_ru else "Baseline visit", base_visit.strip()))
+            if visit_ids:
+                design_rows.append(("Визиты" if is_ru else "Visits", ", ".join(visit_ids)))
+            cov_text = _fmt_list(covariates)
+            if cov_text:
+                design_rows.append(("Ковариаты" if is_ru else "Covariates", cov_text))
+            inc_text = _fmt_list(include_visits)
+            if inc_text:
+                design_rows.append(("Глобально: include_visits" if is_ru else "Global: include_visits", inc_text))
+            exc_text = _fmt_list(exclude_visits)
+            if exc_text:
+                design_rows.append(("Глобально: exclude_visits" if is_ru else "Global: exclude_visits", exc_text))
+
+            rows_html = "".join(
+                [
+                    f"<tr><td><strong>{html.escape(k)}</strong></td><td>{html.escape(v)}</td></tr>"
+                    for (k, v) in design_rows
+                ]
+            )
+
+            design_html = f"""
+            <div class="card" id="design-spec">
+                <h2>{'Дизайн и переменные' if is_ru else 'Design and Variables'}</h2>
+                <table>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+            """
+
+            endpoints = design_spec.get("endpoints") if isinstance(design_spec.get("endpoints"), list) else []
+            ep_rows = []
+            for ep in endpoints:
+                if not isinstance(ep, dict):
+                    continue
+                ep_name = ep.get("name") or ep.get("id")
+                if not isinstance(ep_name, str) or not ep_name.strip():
+                    continue
+                primary = bool(ep.get("primary"))
+                direction = ep.get("direction")
+                ep_base = ep.get("baseline_visit_id")
+                cols_by_visit = ep.get("columns_by_visit") if isinstance(ep.get("columns_by_visit"), dict) else {}
+                ep_visits = sorted([str(k) for k in cols_by_visit.keys() if str(k).strip()])
+                ep_method = ep.get("method")
+                ep_alt = ep.get("alternative")
+                ep_ph = ep.get("post_hoc")
+                ep_ph_corr = ep.get("post_hoc_correction")
+                ep_inc = _fmt_list(ep.get("include_visits"))
+                ep_exc = _fmt_list(ep.get("exclude_visits"))
+                thr = ep.get("responder_threshold")
+
+                notes: List[str] = []
+                if primary:
+                    notes.append("primary")
+                if isinstance(direction, str) and direction.strip():
+                    notes.append(f"dir={direction.strip()}")
+                if isinstance(ep_base, str) and ep_base.strip():
+                    notes.append(f"baseline={ep_base.strip()}")
+                if isinstance(ep_method, str) and ep_method.strip():
+                    notes.append(f"method={ep_method.strip()}")
+                if isinstance(ep_alt, str) and ep_alt.strip():
+                    notes.append(f"alt={ep_alt.strip()}")
+                if isinstance(ep_ph, str) and ep_ph.strip():
+                    notes.append(f"post_hoc={ep_ph.strip()}")
+                if isinstance(ep_ph_corr, str) and ep_ph_corr.strip():
+                    notes.append(f"post_hoc_corr={ep_ph_corr.strip()}")
+                if ep_inc:
+                    notes.append(f"include_visits={ep_inc}")
+                if ep_exc:
+                    notes.append(f"exclude_visits={ep_exc}")
+                if thr is not None:
+                    try:
+                        notes.append(f"responder_threshold={float(thr)}")
+                    except Exception:
+                        notes.append(f"responder_threshold={thr}")
+
+                ep_rows.append(
+                    {
+                        "name": ep_name.strip(),
+                        "visits": ", ".join(ep_visits) if ep_visits else "-",
+                        "notes": "; ".join(notes) if notes else "-",
+                    }
+                )
+
+            if ep_rows:
+                body = "".join(
+                    [
+                        f"<tr><td>{html.escape(r['name'])}</td><td>{html.escape(r['visits'])}</td><td>{html.escape(r['notes'])}</td></tr>"
+                        for r in ep_rows
+                    ]
+                )
+                design_html += f"""
+                <h3>{'Эндпоинты' if is_ru else 'Endpoints'}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>{'Эндпоинт' if is_ru else 'Endpoint'}</th>
+                            <th>{'Визиты' if is_ru else 'Visits'}</th>
+                            <th>{'Настройки' if is_ru else 'Settings'}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {body}
+                    </tbody>
+                </table>
+                """
+
+            design_html += "</div>"
+            self.html_parts.append(design_html)
+
     def _add_toc(self, results: Dict[str, Any]):
         is_ru = bool(getattr(self, "is_ru", False))
         if not results:
@@ -1256,6 +1422,12 @@ class ProtocolReport:
         p_val = float(p_raw) if isinstance(p_raw, (int, float)) and np.isfinite(float(p_raw)) else None
         p_display = "< 0.001" if (p_val is not None and p_val < 0.001) else (f"{p_val:.4f}" if p_val is not None else "-")
 
+        p_adj_raw = res.get('p_value_adj')
+        p_adj_val = float(p_adj_raw) if isinstance(p_adj_raw, (int, float)) and np.isfinite(float(p_adj_raw)) else None
+        p_adj_display = "< 0.001" if (p_adj_val is not None and p_adj_val < 0.001) else (f"{p_adj_val:.4f}" if p_adj_val is not None else "-")
+        corr_raw = res.get('correction')
+        corr_label = str(corr_raw) if isinstance(corr_raw, str) and corr_raw.strip() else None
+
         stat_raw = res.get('stat_value', res.get('stats'))
         stat_val = float(stat_raw) if isinstance(stat_raw, (int, float)) and np.isfinite(float(stat_raw)) else None
         
@@ -1322,6 +1494,11 @@ class ProtocolReport:
                             <td><strong>p-value:</strong></td>
                             <td><span class="stat-val {sig_class}">{p_display}</span></td>
                         </tr>
+                        {(
+                            f"<tr><td><strong>p(adj){(' (' + html.escape(corr_label) + ')') if corr_label else ''}:</strong></td><td>{p_adj_display}</td></tr>"
+                            if p_adj_val is not None
+                            else ""
+                        )}
                         <tr>
                             <td><strong>{'Статистика' if is_ru else 'Statistic'}:</strong></td>
                             <td>{(f"{stat_val:.3f}" if stat_val is not None else "-")}</td>
@@ -1941,6 +2118,53 @@ def generate_protocol_docx_report(
     if protocol_name:
         doc.add_paragraph(("Протокол" if is_ru else "Protocol") + f": {protocol_name}")
     doc.add_paragraph(("Дата" if is_ru else "Date") + f": {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}")
+
+    design_spec = None
+    if isinstance(run_data, dict):
+        design_spec = run_data.get("design_spec")
+        if not isinstance(design_spec, dict):
+            proto = run_data.get("protocol")
+            if isinstance(proto, dict) and isinstance(proto.get("design_spec"), dict):
+                design_spec = proto.get("design_spec")
+
+    if isinstance(design_spec, dict) and design_spec:
+        doc.add_heading("Дизайн и переменные" if is_ru else "Design and Variables", level=1)
+        sid_col = design_spec.get("subject_id_column")
+        grp_col = design_spec.get("group_column")
+        if isinstance(sid_col, str) and sid_col:
+            doc.add_paragraph(("Идентификатор субъекта" if is_ru else "Subject ID") + f": {sid_col}")
+        if isinstance(grp_col, str) and grp_col:
+            doc.add_paragraph(("Колонка группы" if is_ru else "Group column") + f": {grp_col}")
+
+        time_spec = design_spec.get("time") if isinstance(design_spec.get("time"), dict) else {}
+        base_visit = time_spec.get("baseline_visit_id")
+        if isinstance(base_visit, str) and base_visit:
+            doc.add_paragraph(("Baseline визит" if is_ru else "Baseline visit") + f": {base_visit}")
+        visits = time_spec.get("visits") if isinstance(time_spec.get("visits"), list) else []
+        if visits:
+            visit_labels = []
+            for v in visits:
+                if not isinstance(v, dict):
+                    continue
+                vid = v.get("id")
+                if isinstance(vid, str) and vid:
+                    visit_labels.append(vid)
+            if visit_labels:
+                doc.add_paragraph(("Визиты" if is_ru else "Visits") + f": {', '.join(visit_labels)}")
+
+        endpoints = design_spec.get("endpoints") if isinstance(design_spec.get("endpoints"), list) else []
+        if endpoints:
+            doc.add_paragraph(("Эндпоинты" if is_ru else "Endpoints") + ":")
+            for ep in endpoints:
+                if not isinstance(ep, dict):
+                    continue
+                name = ep.get("name") or ep.get("id")
+                if not isinstance(name, str) or not name:
+                    continue
+                cols_by_visit = ep.get("columns_by_visit") if isinstance(ep.get("columns_by_visit"), dict) else {}
+                vkeys = sorted([str(k) for k in cols_by_visit.keys()])
+                suffix = f" ({', '.join(vkeys)})" if vkeys else ""
+                doc.add_paragraph(f"- {name}{suffix}")
 
     try:
         from app.core.pipeline import PipelineManager

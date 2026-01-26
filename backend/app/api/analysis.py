@@ -354,6 +354,37 @@ async def get_protocol_report_html(
     """
     from fastapi.responses import HTMLResponse
     from app.modules.reporting import render_protocol_report
+
+    def _enrich_run_data_for_report(run_data: Any) -> Any:
+        if not isinstance(run_data, dict):
+            return run_data
+        enriched = dict(run_data)
+        enriched["run_id"] = run_id
+        try:
+            run_dir = pipeline.get_run_dir(dataset_id, run_id)
+            proto_path = os.path.join(run_dir, "protocol.json")
+            if os.path.exists(proto_path):
+                with open(proto_path, "r") as f:
+                    protocol = json.load(f)
+                if isinstance(protocol, dict):
+                    enriched["protocol"] = protocol
+                    if isinstance(protocol.get("goal"), str) and protocol.get("goal"):
+                        enriched["protocol_goal"] = protocol.get("goal")
+                    steps = protocol.get("steps")
+                    if isinstance(steps, list) and steps:
+                        step_meta: Dict[str, Any] = {}
+                        for s in steps:
+                            if not isinstance(s, dict):
+                                continue
+                            sid = s.get("id")
+                            if sid is None:
+                                continue
+                            step_meta[str(sid)] = s
+                        if step_meta:
+                            enriched["step_meta"] = step_meta
+        except Exception:
+            pass
+        return enriched
     
     try:
         artifact_name = _artifact_basename(
@@ -371,7 +402,24 @@ async def get_protocol_report_html(
                 10.0,
                 "",
             )
-            return HTMLResponse(content=cached.decode("utf-8", errors="replace"))
+            cached_text = cached.decode("utf-8", errors="replace")
+            if 'id="design-spec"' in cached_text:
+                return HTMLResponse(content=cached_text)
+
+            try:
+                run_dir = pipeline.get_run_dir(dataset_id, run_id)
+                proto_path = os.path.join(run_dir, "protocol.json")
+                if os.path.exists(proto_path):
+                    with open(proto_path, "r") as f:
+                        protocol = json.load(f)
+                    if isinstance(protocol, dict):
+                        ds = protocol.get("design_spec")
+                        if isinstance(ds, dict) and ds:
+                            raise RuntimeError("Cached HTML report is outdated")
+            except Exception:
+                pass
+
+            return HTMLResponse(content=cached_text)
         except Exception:
             pass
 
@@ -384,6 +432,7 @@ async def get_protocol_report_html(
             raise HTTPException(status_code=404, detail="Результаты не найдены")
 
         res = _apply_report_customization(res, sections, order)
+        res = _enrich_run_data_for_report(res)
 
         html = await _run_in_threadpool_with_timeout(
             lambda: render_protocol_report(

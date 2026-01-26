@@ -18,16 +18,28 @@ import json
 import math
 
 from app.core.logging import logger
-from app.modules.parsers import get_dataframe
+from app.modules.parsers import get_dataframe, get_dataset_columns, get_dataframe_window
 from app.core.pipeline import PipelineManager
+from app.core.protocol_engine import ProtocolEngine
 from app.stats.mixed_effects import MixedEffectsEngine
 from app.stats.clustered_correlation import ClusteredCorrelationEngine
 from app.stats.engine import run_analysis, select_test, compute_descriptive_compare
 from app.core.study_designer import StudyDesignEngine
+from app.core.study_designer import OmniReportDesignEngine, OmniReportPlanner
 from app.modules.text_generator import TextGenerator
 from app.api.datasets import DATA_DIR
+from app.schemas.analysis import (
+    OmniReportDesignSuggestRequest,
+    OmniReportDesignParseRequest,
+    OmniReportDesignSuggestResponse,
+    OmniReportProtocolBuildRequest,
+    OmniReportProtocolBuildResponse,
+    OmniReportDesignSpec,
+)
 
 pipeline = PipelineManager(DATA_DIR)
+
+_protocol_engine_v1 = ProtocolEngine(pipeline)
 
 _text_generator = TextGenerator()
 
@@ -880,3 +892,107 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
     except Exception as e:
         logger.error(f"Protocol execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Не удалось выполнить протокол: {str(e)}")
+
+
+@router.post("/omnireport/design/suggest", response_model=OmniReportDesignSuggestResponse)
+async def omnireport_design_suggest(request: OmniReportDesignSuggestRequest):
+    try:
+        columns = get_dataset_columns(request.dataset_id, DATA_DIR)
+        sample_cols = []
+        for c in columns:
+            lc = str(c).lower()
+            if any(k in lc for k in ["id", "subject", "patient", "group", "arm", "treat", "cohort", "группа", "пациент", "субъект"]):
+                sample_cols.append(str(c))
+        sample_cols = list(dict.fromkeys(sample_cols))
+        sample_df = get_dataframe_window(request.dataset_id, DATA_DIR, sample_cols[:50], 0, 5000) if sample_cols else get_dataframe_window(request.dataset_id, DATA_DIR, [], 0, 200)
+
+        engine = OmniReportDesignEngine()
+        out = engine.suggest_design_spec(request.dataset_id, sample_df, columns)
+        design_spec = OmniReportDesignSpec(**out.get("design_spec"))
+        confidence = float(out.get("confidence") or 0.0)
+        issues = out.get("issues") if isinstance(out.get("issues"), list) else []
+        return {"design_spec": design_spec, "confidence": confidence, "issues": [str(x) for x in issues if x is not None]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport design suggest failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось предложить дизайн: {str(e)}")
+
+
+@router.post("/omnireport/design/parse", response_model=OmniReportDesignSuggestResponse)
+async def omnireport_design_parse(request: OmniReportDesignParseRequest):
+    try:
+        columns = get_dataset_columns(request.dataset_id, DATA_DIR)
+        sample_df = get_dataframe_window(request.dataset_id, DATA_DIR, [], 0, 5000)
+
+        engine = OmniReportDesignEngine()
+        out = engine.parse_design_spec(request.dataset_id, sample_df, columns, request.text)
+        design_spec = OmniReportDesignSpec(**out.get("design_spec"))
+        confidence = float(out.get("confidence") or 0.0)
+        issues = out.get("issues") if isinstance(out.get("issues"), list) else []
+        return {"design_spec": design_spec, "confidence": confidence, "issues": [str(x) for x in issues if x is not None]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport design parse failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось распознать дизайн: {str(e)}")
+
+
+@router.post("/omnireport/protocol/build", response_model=OmniReportProtocolBuildResponse)
+async def omnireport_protocol_build(request: OmniReportProtocolBuildRequest):
+    try:
+        planner = OmniReportPlanner()
+        protocol = planner.build_protocol(request.dataset_id, request.design_spec.model_dump(), alpha=float(request.alpha))
+        return {"protocol": protocol}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport protocol build failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось собрать протокол OmniReport: {str(e)}")
+
+
+class OmniReportRunRequest(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+    design_spec: Optional[OmniReportDesignSpec] = None
+    alpha: float = Field(default=0.05, ge=0.001, le=0.25)
+
+
+@router.post("/omnireport/run", response_model=Dict[str, Any])
+async def omnireport_run(request: OmniReportRunRequest):
+    try:
+        df = await load_dataset_async(request.dataset_id)
+
+        if request.design_spec is None:
+            columns = list(df.columns)
+            engine = OmniReportDesignEngine()
+            suggest = engine.suggest_design_spec(request.dataset_id, df.iloc[:5000], [str(c) for c in columns])
+            design_spec = OmniReportDesignSpec(**suggest.get("design_spec"))
+        else:
+            design_spec = request.design_spec
+
+        planner = OmniReportPlanner()
+        protocol = planner.build_protocol(request.dataset_id, design_spec.model_dump(), alpha=float(request.alpha))
+
+        run_id = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: _protocol_engine_v1.execute_protocol(request.dataset_id, df, protocol, alpha=float(request.alpha)),
+        )
+
+        return {
+            "status": "success",
+            "run_id": run_id,
+            "dataset_id": request.dataset_id,
+            "protocol_name": protocol.get("name"),
+            "design_spec": design_spec,
+            "links": {
+                "results": f"/api/v1/analysis/run/{run_id}?dataset_id={request.dataset_id}",
+                "docx": f"/api/v1/analysis/protocol/report/{run_id}/docx?dataset_id={request.dataset_id}",
+                "pdf": f"/api/v1/analysis/protocol/report/{run_id}/pdf?dataset_id={request.dataset_id}",
+                "artifacts": f"/api/v1/analysis/protocol/artifacts/{run_id}?dataset_id={request.dataset_id}",
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport run failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось запустить OmniReport: {str(e)}")

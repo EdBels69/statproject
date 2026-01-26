@@ -56,5 +56,25 @@ def test_anova_tukey():
     any_adj = any((c.get("p_value_adj") is not None) for c in post_hoc_bky)
     assert any_adj, "Expected adjusted p-values in post-hoc results"
 
+    # 5. Auto post-hoc: equal variances -> Tukey
+    results_auto_equal = run_analysis(df, "anova", "value", "group", post_hoc="auto")
+    assert results_auto_equal.get("post_hoc_method") == "tukey"
+
+    # 6. Auto post-hoc: unequal variances -> Games-Howell
+    df_unequal = pd.DataFrame({
+        "value": np.concatenate([
+            np.random.normal(10, 1, 30),
+            np.random.normal(12, 5, 30),
+            np.random.normal(20, 10, 30)
+        ]),
+        "group": np.concatenate([
+            ["A"] * 30,
+            ["B"] * 30,
+            ["C"] * 30
+        ])
+    })
+    results_auto_unequal = run_analysis(df_unequal, "anova", "value", "group", post_hoc="auto")
+    assert results_auto_unequal.get("post_hoc_method") == "games_howell"
+
 if __name__ == "__main__":
     test_anova_tukey()

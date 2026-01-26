@@ -72,6 +72,15 @@ class ProtocolEngine:
         
         results_map = {}
         log = []
+
+        step_meta_map: Dict[str, Dict[str, Any]] = {}
+        for s in protocol.get("steps", []):
+            if not isinstance(s, dict):
+                continue
+            sid = s.get("id")
+            if sid is None:
+                continue
+            step_meta_map[str(sid)] = s
         
         # 2. Iterate Steps
         for step in protocol.get("steps", []):
@@ -116,6 +125,79 @@ class ProtocolEngine:
                 error_msg = f"Step {step_id} failed: {str(e)}"
                 log.append(error_msg)
                 results_map[step_id] = {"type": str(step_type), "error": error_msg}
+
+        try:
+            from statsmodels.stats.multitest import multipletests
+
+            ds = protocol.get("design_spec") if isinstance(protocol.get("design_spec"), dict) else {}
+            opts = ds.get("options") if isinstance(ds.get("options"), dict) else {}
+            corr_raw = opts.get("multiplicity_correction")
+            corr = str(corr_raw or "fdr_bh").strip().lower()
+            if not corr:
+                corr = "fdr_bh"
+            if corr in {"bh", "fdr"}:
+                corr = "fdr_bh"
+            if corr in {"bky", "fdr_bky"}:
+                corr = "fdr_tsbky"
+            if corr == "fdr_tsbky":
+                corr = "fdr_tsbky"
+            if corr == "by":
+                corr = "fdr_by"
+            if corr in {"none", "off", "false", "0"}:
+                corr = "none"
+
+            scope_raw = opts.get("multiplicity_scope")
+            scope = str(scope_raw or "task").strip().lower()
+            if scope not in {"task", "global"}:
+                scope = "task"
+
+            if corr == "none":
+                raise RuntimeError("Multiplicity correction disabled")
+
+            families: Dict[str, List[str]] = {}
+            pvals_by_step: Dict[str, float] = {}
+
+            for sid, payload in results_map.items():
+                if not isinstance(sid, str):
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                if payload.get("error"):
+                    continue
+                rtype = payload.get("type")
+                if rtype not in {"compare", "hypothesis_test"}:
+                    continue
+                p = payload.get("p_value")
+                try:
+                    pf = float(p)
+                    if not np.isfinite(pf):
+                        continue
+                except Exception:
+                    continue
+
+                step_meta = step_meta_map.get(sid, {})
+                task = step_meta.get("task") if isinstance(step_meta, dict) else None
+                task_key = "global" if scope == "global" else (str(task) if isinstance(task, str) and task.strip() else str(rtype))
+                families.setdefault(task_key, []).append(sid)
+                pvals_by_step[sid] = pf
+
+            for task_key, step_ids in families.items():
+                if not step_ids or len(step_ids) < 2:
+                    continue
+                pvals = [pvals_by_step[sid] for sid in step_ids if sid in pvals_by_step]
+                if len(pvals) != len(step_ids):
+                    continue
+                reject, pvals_corrected, _, _ = multipletests(pvals, alpha=alpha, method=corr)
+                for i, sid in enumerate(step_ids):
+                    payload = results_map.get(sid)
+                    if not isinstance(payload, dict):
+                        continue
+                    payload["p_value_adj"] = float(pvals_corrected[i])
+                    payload["significant_adj"] = bool(reject[i])
+                    payload["correction"] = str(corr)
+                    payload["correction_family"] = str(task_key)
+        except Exception:
+            pass
 
         # 3. Save Results
         sanitized_results = self._sanitize(results_map)
@@ -481,6 +563,37 @@ class ProtocolEngine:
         target_label = step.get("target_label") or step.get("outcome_label") or target
         group_label = step.get("group_label") or step.get("group_column_label") or group
         unit = step.get("unit") or step.get("units")
+
+        baseline_col = step.get("baseline_column")
+        follow_col = step.get("followup_column")
+        direction = step.get("direction")
+        if isinstance(baseline_col, str) and isinstance(follow_col, str) and baseline_col and follow_col:
+            if not group or group not in df.columns:
+                return {"error": "Missing group column"}
+            if baseline_col not in df.columns or follow_col not in df.columns:
+                return {"error": "Baseline/follow-up columns not found"}
+            cols = [group, baseline_col, follow_col]
+            subject_col = step.get("subject") or step.get("subject_column")
+            if isinstance(subject_col, str) and subject_col in df.columns:
+                cols = [subject_col, *cols]
+
+            tmp = df[cols].copy()
+            tmp[baseline_col] = pd.to_numeric(tmp[baseline_col], errors="coerce")
+            tmp[follow_col] = pd.to_numeric(tmp[follow_col], errors="coerce")
+            tmp = tmp.dropna(subset=[group, baseline_col, follow_col])
+            if tmp.empty:
+                return {"error": "No data for change-from-baseline"}
+
+            dir_s = str(direction or "").strip().lower()
+            if dir_s == "decrease":
+                tmp["__delta__"] = tmp[baseline_col] - tmp[follow_col]
+            else:
+                tmp["__delta__"] = tmp[follow_col] - tmp[baseline_col]
+
+            df = tmp
+            target = "__delta__"
+            if not target_label:
+                target_label = f"Δ({baseline_col}→{follow_col})"
         
         # Auto-detect method if not provided
         if not step.get("method"):
@@ -531,6 +644,13 @@ class ProtocolEngine:
             "unit": unit,
             "group": group,
             "group_label": group_label,
+            "task": step.get("task"),
+            "endpoint": step.get("endpoint"),
+            "visit": step.get("visit"),
+            "baseline_visit": step.get("baseline_visit"),
+            "baseline_column": baseline_col if isinstance(baseline_col, str) else None,
+            "followup_column": follow_col if isinstance(follow_col, str) else None,
+            "direction": direction if isinstance(direction, str) else None,
             "alpha": alpha,
             "p_value": raw_res.get("p_value"),
             "significant": raw_res.get("significant"),
@@ -569,6 +689,7 @@ class ProtocolEngine:
         raw_res = run_analysis(df, "survival_km", time_col, event_col, group_col=group_col, alpha=alpha)
         
         return {
+            "type": "survival",
             "method": get_method("survival_km"),
             "p_value": raw_res.get("p_value"),
             "significant": raw_res.get("significant"),
