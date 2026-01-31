@@ -1,0 +1,5050 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Stat Analyzer",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/datasets": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "List Datasets",
+        "operationId": "list_datasets_api_v1_datasets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Datasets Api V1 Datasets Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Upload Dataset",
+        "operationId": "upload_dataset_api_v1_datasets_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_dataset_api_v1_datasets_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetUpload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}": {
+      "delete": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Delete Dataset",
+        "operationId": "delete_dataset_api_v1_datasets__dataset_id__delete",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Get Dataset",
+        "operationId": "get_dataset_api_v1_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "head_col_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Head Col Offset"
+            }
+          },
+          {
+            "name": "head_col_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 400,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head Col Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/sheets": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "List Dataset Sheets",
+        "operationId": "list_dataset_sheets_api_v1_datasets__dataset_id__sheets_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Dataset Sheets Api V1 Datasets  Dataset Id  Sheets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/prepare/clone": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Clone Dataset For Preparation",
+        "operationId": "clone_dataset_for_preparation_api_v1_datasets__dataset_id__prepare_clone_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetUpload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/prepare/history": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Get Prepare History",
+        "operationId": "get_prepare_history_api_v1_datasets__dataset_id__prepare_history_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepareHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/prepare/undo": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Undo Prepare Change",
+        "operationId": "undo_prepare_change_api_v1_datasets__dataset_id__prepare_undo_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/demo/primary": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Upload Primary Demo Dataset",
+        "operationId": "upload_primary_demo_dataset_api_v1_datasets_demo_primary_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetUpload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/variable_mapping": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Get Variable Mapping",
+        "operationId": "get_variable_mapping_api_v1_datasets__dataset_id__variable_mapping_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableMappingDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Put Variable Mapping",
+        "operationId": "put_variable_mapping_api_v1_datasets__dataset_id__variable_mapping_put",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableMappingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableMappingDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/reparse": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Reparse Dataset",
+        "operationId": "reparse_dataset_api_v1_datasets__dataset_id__reparse_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetReparse"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/modify": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Modify Dataset",
+        "operationId": "modify_dataset_api_v1_datasets__dataset_id__modify_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetModification"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/impute_mice": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Impute Mice Api",
+        "operationId": "impute_mice_api_api_v1_datasets__dataset_id__impute_mice_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MiceImputeCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/clean_column": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Clean Column Api",
+        "description": "Apply a cleaning action to a column.",
+        "operationId": "clean_column_api_api_v1_datasets__dataset_id__clean_column_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/compute_column": {
+      "post": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Compute Column Api",
+        "operationId": "compute_column_api_api_v1_datasets__dataset_id__compute_column_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeColumnCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/scan_report": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Get Scan Report",
+        "operationId": "get_scan_report_api_v1_datasets__dataset_id__scan_report_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/columns": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "List Dataset Columns",
+        "operationId": "list_dataset_columns_api_v1_datasets__dataset_id__columns_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/content": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Get Dataset Content",
+        "description": "Returns the dataset content (rows) with pagination.\nUsed by the Data View component.",
+        "operationId": "get_dataset_content_api_v1_datasets__dataset_id__content_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "col_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Col Offset"
+            }
+          },
+          {
+            "name": "col_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 400,
+              "minimum": 1,
+              "default": 120,
+              "title": "Col Limit"
+            }
+          },
+          {
+            "name": "sheet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Sheet"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/assumptions": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Check Assumptions",
+        "operationId": "check_assumptions_api_v1_analysis_assumptions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssumptionsCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/templates": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "List Design Templates",
+        "operationId": "list_design_templates_api_v1_analysis_templates_get",
+        "parameters": [
+          {
+            "name": "goal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response List Design Templates Api V1 Analysis Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/design": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Suggest Design",
+        "description": "Uses StudyDesignEngine to generate an Analysis Protocol based on user inputs.",
+        "operationId": "suggest_design_api_v1_analysis_design_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Suggest Design Api V1 Analysis Design Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/run/{run_id}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Run Results",
+        "description": "Retrieves the results of a specific analysis run.",
+        "operationId": "get_run_results_api_v1_analysis_run__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/report/{run_id}/html": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Protocol Report Html",
+        "description": "Generates a printable HTML report for the analysis run.",
+        "operationId": "get_protocol_report_html_api_v1_analysis_protocol_report__run_id__html_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "sections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sections"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order"
+            }
+          },
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Style"
+            }
+          },
+          {
+            "name": "density",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Density"
+            }
+          },
+          {
+            "name": "accent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accent"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/report/{run_id}/pdf": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Protocol Report Pdf",
+        "operationId": "get_protocol_report_pdf_api_v1_analysis_protocol_report__run_id__pdf_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "sections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sections"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order"
+            }
+          },
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Style"
+            }
+          },
+          {
+            "name": "density",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Density"
+            }
+          },
+          {
+            "name": "accent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accent"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/report/{run_id}/docx": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Protocol Report Docx",
+        "operationId": "get_protocol_report_docx_api_v1_analysis_protocol_report__run_id__docx_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "sections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sections"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order"
+            }
+          },
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Style"
+            }
+          },
+          {
+            "name": "density",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Density"
+            }
+          },
+          {
+            "name": "accent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accent"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/artifacts/{run_id}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "List Protocol Artifacts",
+        "operationId": "list_protocol_artifacts_api_v1_analysis_protocol_artifacts__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/artifacts/{run_id}/download": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Download Protocol Artifact",
+        "operationId": "download_protocol_artifact_api_v1_analysis_protocol_artifacts__run_id__download_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/export/docx": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Export Docx",
+        "operationId": "export_docx_api_v1_analysis_export_docx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportDocxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/protocol/run": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Run Protocol Api",
+        "description": "Executes a multi-step analysis protocol.\nReturns the run_id (analysis container ID).",
+        "operationId": "run_protocol_api_api_v1_analysis_protocol_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/run": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Run Method Api",
+        "operationId": "run_method_api_api_v1_analysis_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/report/{dataset_id}": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Download Report",
+        "operationId": "download_report_api_v1_analysis_report__dataset_id__get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "target_col",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target Col"
+            }
+          },
+          {
+            "name": "group_col",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Col"
+            }
+          },
+          {
+            "name": "method_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Method Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/report/{dataset_id}/pdf": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Download Report Pdf",
+        "operationId": "download_report_pdf_api_v1_analysis_report__dataset_id__pdf_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "target_col",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Target Col"
+            }
+          },
+          {
+            "name": "group_col",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Col"
+            }
+          },
+          {
+            "name": "method_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Method Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/report/pdf": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Export Report Pdf",
+        "operationId": "export_report_pdf_api_v1_analysis_report_pdf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdfExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/batch": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Run Batch Analysis",
+        "operationId": "run_batch_analysis_api_v1_analysis_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quality/quality/{dataset_id}/scan": {
+      "get": {
+        "tags": [
+          "quality",
+          "quality"
+        ],
+        "summary": "Scan Dataset Quality",
+        "operationId": "scan_dataset_quality_api_v1_quality_quality__dataset_id__scan_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quality/quality/{dataset_id}/clean": {
+      "post": {
+        "tags": [
+          "quality",
+          "quality"
+        ],
+        "summary": "Auto Clean Dataset",
+        "operationId": "auto_clean_dataset_api_v1_quality_quality__dataset_id__clean_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "strategy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "mean",
+              "title": "Strategy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wizard/recommend": {
+      "post": {
+        "tags": [
+          "wizard"
+        ],
+        "summary": "Recommend",
+        "operationId": "recommend_api_v1_wizard_recommend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WizardRecommendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WizardRecommendation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wizard/apply": {
+      "post": {
+        "tags": [
+          "wizard"
+        ],
+        "summary": "Apply",
+        "operationId": "apply_api_v1_wizard_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WizardApplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Apply Api V1 Wizard Apply Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/analysis/templates": {
+      "get": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "List Analysis Templates",
+        "operationId": "list_analysis_templates_api_v1_v2_analysis_templates_get",
+        "parameters": [
+          {
+            "name": "goal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisTemplateListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/analysis/design": {
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Design Analysis From Template",
+        "operationId": "design_analysis_from_template_api_v1_v2_analysis_design_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisTemplateDesignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Design Analysis From Template Api V1 V2 Analysis Design Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/mixed-effects": {
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Run Mixed Effects",
+        "description": "Run Linear Mixed Model with Time×Group interaction.\n\nSupports random intercept and random slope models with covariates.\nMemory-optimized for large longitudinal datasets.",
+        "operationId": "run_mixed_effects_api_v1_v2_mixed_effects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixedEffectsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Run Mixed Effects Api V1 V2 Mixed Effects Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/clustered-correlation": {
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Run Clustered Correlation",
+        "description": "Run jYS-style hierarchical clustering on correlation matrix.\n\nReturns reordered correlation matrix, dendrogram, and cluster assignments.\nMemory-optimized for large variable sets.",
+        "operationId": "run_clustered_correlation_api_v1_v2_clustered_correlation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClusteredCorrelationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Run Clustered Correlation Api V1 V2 Clustered Correlation Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/protocol": {
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Run Protocol V2",
+        "description": "Execute v2 analysis protocol with support for advanced methods.\n\nSupports mixed effects, clustered correlation, and all standard methods.",
+        "operationId": "run_protocol_v2_api_v1_v2_protocol_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProtocolV2Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Run Protocol V2 Api V1 V2 Protocol Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/analysis/execute": {
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Execute Protocol",
+        "description": "Execute analysis protocol with batch processing.\n\nRuns multiple statistical tests in sequence with memory management.\nSupports mixed effects, clustered correlation, and all standard methods.",
+        "operationId": "execute_protocol_api_v1_v2_analysis_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteProtocolRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Execute Protocol Api V1 V2 Analysis Execute Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/ai/suggest-tests": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Ai Suggest Tests",
+        "operationId": "ai_suggest_tests_api_v1_v2_ai_suggest_tests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AISuggestTestsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Ai Suggest Tests Api V1 V2 Ai Suggest Tests Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/ai/analyze-design": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Ai Analyze Design",
+        "operationId": "ai_analyze_design_api_v1_v2_ai_analyze_design_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIAnalyzeDesignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Ai Analyze Design Api V1 V2 Ai Analyze Design Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/terms": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "List Terms",
+        "description": "Get list of all available statistical terms.",
+        "operationId": "list_terms_api_v1_v2_knowledge_terms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/terms/{term}": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "Get Term Explanation",
+        "description": "Get explanation for a statistical term.\n\nArgs:\n    term: Term key (e.g., \"p_value\", \"effect_size\", \"power\")\n    level: Explanation depth - \"junior\", \"mid\", or \"senior\"",
+        "operationId": "get_term_explanation_api_v1_v2_knowledge_terms__term__get",
+        "parameters": [
+          {
+            "name": "term",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Term"
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(junior|mid|senior)$",
+              "default": "junior",
+              "title": "Level"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/tests": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "List Tests",
+        "description": "Get list of all available statistical tests with info.",
+        "operationId": "list_tests_api_v1_v2_knowledge_tests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/tests/{test_id}": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "Get Test Info",
+        "description": "Get rationale for why a test is appropriate.\n\nArgs:\n    test_id: Test identifier (e.g., \"t_test_ind\", \"anova\", \"mann_whitney\")\n    level: Explanation depth\n    shapiro_p: Optional Shapiro-Wilk p-value for normality check\n    levene_p: Optional Levene's test p-value for homogeneity check",
+        "operationId": "get_test_info_api_v1_v2_knowledge_tests__test_id__get",
+        "parameters": [
+          {
+            "name": "test_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Test Id"
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(junior|mid|senior)$",
+              "default": "junior",
+              "title": "Level"
+            }
+          },
+          {
+            "name": "shapiro_p",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Shapiro P"
+            }
+          },
+          {
+            "name": "levene_p",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Levene P"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/effect-size": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "Interpret Effect Size",
+        "description": "Get interpretation of an effect size value.\n\nArgs:\n    type: Effect size type (cohens_d, partial_eta_squared, r, etc.)\n    value: Numeric effect size value",
+        "operationId": "interpret_effect_size_api_v1_v2_knowledge_effect_size_get",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Effect size type: cohens_d, eta_squared, r",
+              "title": "Type"
+            },
+            "description": "Effect size type: cohens_d, eta_squared, r"
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "description": "Effect size value",
+              "title": "Value"
+            },
+            "description": "Effect size value"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v2/knowledge/power": {
+      "get": {
+        "tags": [
+          "knowledge",
+          "Knowledge"
+        ],
+        "summary": "Get Power Info",
+        "description": "Get recommendation based on statistical power.\n\nArgs:\n    power: Power value between 0 and 1",
+        "operationId": "get_power_info_api_v1_v2_knowledge_power_get",
+        "parameters": [
+          {
+            "name": "power",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "description": "Statistical power (0-1)",
+              "title": "Power"
+            },
+            "description": "Statistical power (0-1)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v1/study/{dataset_id}/config": {
+      "get": {
+        "tags": [
+          "study",
+          "study"
+        ],
+        "summary": "Get Study Config",
+        "description": "Get study configuration for a specific dataset.",
+        "operationId": "get_study_config_api_v1_v1_study__dataset_id__config_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "study",
+          "study"
+        ],
+        "summary": "Save Study Config",
+        "description": "Save or update study configuration.",
+        "operationId": "save_study_config_api_v1_v1_study__dataset_id__config_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudyConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/v1/study/{dataset_id}/suggest-hypotheses": {
+      "post": {
+        "tags": [
+          "study",
+          "study"
+        ],
+        "summary": "Suggest Hypotheses",
+        "description": "Generate hypothesis suggestions from dataset structure (Mock/AI).",
+        "operationId": "suggest_hypotheses_api_v1_v1_study__dataset_id__suggest_hypotheses_post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AIAnalyzeDesignRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Research design description"
+          },
+          "protocol": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol",
+            "description": "Current protocol for context"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences",
+            "description": "Global preferences"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "text"
+        ],
+        "title": "AIAnalyzeDesignRequest"
+      },
+      "AISuggestTestsRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "protocol": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Protocol",
+            "description": "Current protocol for context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "protocol"
+        ],
+        "title": "AISuggestTestsRequest"
+      },
+      "AnalysisRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id",
+            "description": "Unique identifier for the dataset"
+          },
+          "target_column": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Target Column",
+            "description": "Target column for analysis"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Features",
+            "description": "List of feature columns (at least one required)"
+          },
+          "method_override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Override",
+            "description": "Override auto-selected statistical method"
+          },
+          "is_paired": {
+            "type": "boolean",
+            "title": "Is Paired",
+            "description": "Whether data is paired",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "target_column",
+          "features"
+        ],
+        "title": "AnalysisRequest"
+      },
+      "AnalysisResult": {
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/StatMethod"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "effect_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size"
+          },
+          "effect_size_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size Name"
+          },
+          "effect_size_ci_lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size Ci Lower"
+          },
+          "effect_size_ci_upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size Ci Upper"
+          },
+          "power": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power"
+          },
+          "bf10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bf10"
+          },
+          "stat_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stat Value"
+          },
+          "significant": {
+            "type": "boolean",
+            "title": "Significant",
+            "default": false
+          },
+          "adjusted_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted P Value"
+          },
+          "significant_adj": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Significant Adj"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
+          },
+          "r_squared": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R Squared"
+          },
+          "coefficients": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coefficients"
+          },
+          "groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groups"
+          },
+          "plot_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plot Data"
+          },
+          "plot_stats": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plot Stats"
+          },
+          "conclusion": {
+            "type": "string",
+            "title": "Conclusion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "conclusion"
+        ],
+        "title": "AnalysisResult"
+      },
+      "AnalysisTemplateDesignRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "description": "Study goal"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id",
+            "description": "Template identifier"
+          },
+          "variables": {
+            "type": "object",
+            "title": "Variables",
+            "description": "Variable mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "goal"
+        ],
+        "title": "AnalysisTemplateDesignRequest"
+      },
+      "AnalysisTemplateListResponse": {
+        "properties": {
+          "templates": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "templates"
+        ],
+        "title": "AnalysisTemplateListResponse"
+      },
+      "AssumptionsCheckRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "method_id": {
+            "type": "string",
+            "title": "Method Id"
+          },
+          "config": {
+            "type": "object",
+            "title": "Config",
+            "default": {}
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "method_id"
+        ],
+        "title": "AssumptionsCheckRequest"
+      },
+      "BatchAnalysisRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id",
+            "description": "Unique identifier for the dataset"
+          },
+          "target_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Target Columns",
+            "description": "List of target columns (at least one required)"
+          },
+          "group_column": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Group Column",
+            "description": "Group column for comparison"
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.25,
+            "minimum": 0.001,
+            "title": "Alpha",
+            "description": "Significance level (alpha) for p-value threshold",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "target_columns",
+          "group_column"
+        ],
+        "title": "BatchAnalysisRequest"
+      },
+      "BatchAnalysisResponse": {
+        "properties": {
+          "descriptives": {
+            "items": {
+              "$ref": "#/components/schemas/DescriptiveStat"
+            },
+            "type": "array",
+            "title": "Descriptives"
+          },
+          "results": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnalysisResult"
+            },
+            "type": "object",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descriptives",
+          "results"
+        ],
+        "title": "BatchAnalysisResponse"
+      },
+      "Body_upload_dataset_api_v1_datasets_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_dataset_api_v1_datasets_post"
+      },
+      "CleanCommand": {
+        "properties": {
+          "column": {
+            "type": "string",
+            "title": "Column"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "action"
+        ],
+        "title": "CleanCommand"
+      },
+      "ClusteredCorrelationRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variables",
+            "description": "Variables to include in correlation matrix"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pearson",
+              "spearman"
+            ],
+            "title": "Method",
+            "description": "Correlation method",
+            "default": "pearson"
+          },
+          "linkage_method": {
+            "type": "string",
+            "enum": [
+              "ward",
+              "complete",
+              "average",
+              "single"
+            ],
+            "title": "Linkage Method",
+            "description": "Clustering linkage",
+            "default": "ward"
+          },
+          "n_clusters": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Clusters",
+            "description": "Number of clusters (auto-detect if None)"
+          },
+          "distance_threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Threshold",
+            "description": "Distance threshold for clustering"
+          },
+          "show_p_values": {
+            "type": "boolean",
+            "title": "Show P Values",
+            "description": "Include p-values in results",
+            "default": true
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.1,
+            "minimum": 0.01,
+            "title": "Alpha",
+            "description": "Significance level",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "variables"
+        ],
+        "title": "ClusteredCorrelationRequest",
+        "description": "Request model for jYS-style clustered correlation."
+      },
+      "ColumnInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "missing_count": {
+            "type": "integer",
+            "title": "Missing Count"
+          },
+          "unique_count": {
+            "type": "integer",
+            "title": "Unique Count"
+          },
+          "example": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "missing_count",
+          "unique_count"
+        ],
+        "title": "ColumnInfo"
+      },
+      "ComputeColumnCommand": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "difference",
+              "indicator"
+            ],
+            "title": "Op"
+          },
+          "a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "op"
+        ],
+        "title": "ComputeColumnCommand"
+      },
+      "DatasetModification": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ModificationAction"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actions"
+        ],
+        "title": "DatasetModification"
+      },
+      "DatasetProfile": {
+        "properties": {
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "col_count": {
+            "type": "integer",
+            "title": "Col Count"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnInfo"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "head": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Head"
+          },
+          "head_col_offset": {
+            "type": "integer",
+            "title": "Head Col Offset",
+            "default": 0
+          },
+          "head_col_limit": {
+            "type": "integer",
+            "title": "Head Col Limit",
+            "default": 0
+          },
+          "stats_sampled": {
+            "type": "boolean",
+            "title": "Stats Sampled",
+            "default": false
+          },
+          "stats_sample_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats Sample Rows"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "default": 1
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "row_count",
+          "col_count",
+          "columns",
+          "head"
+        ],
+        "title": "DatasetProfile"
+      },
+      "DatasetReparse": {
+        "properties": {
+          "header_row": {
+            "type": "integer",
+            "title": "Header Row",
+            "default": 0
+          },
+          "sheet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheet Name"
+          }
+        },
+        "type": "object",
+        "title": "DatasetReparse"
+      },
+      "DatasetUpload": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/DatasetProfile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "profile"
+        ],
+        "title": "DatasetUpload"
+      },
+      "DescriptiveStat": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "sd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sd"
+          },
+          "se": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Se"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance"
+          },
+          "cv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cv"
+          },
+          "geometric_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometric Mean"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range"
+          },
+          "iqr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iqr"
+          },
+          "skewness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skewness"
+          },
+          "kurtosis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kurtosis"
+          },
+          "ci_95_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci 95 Low"
+          },
+          "ci_95_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci 95 High"
+          },
+          "shapiro_w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shapiro W"
+          },
+          "shapiro_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shapiro P"
+          },
+          "is_normal": {
+            "type": "boolean",
+            "title": "Is Normal",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "group",
+          "count"
+        ],
+        "title": "DescriptiveStat"
+      },
+      "DesignRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id",
+            "description": "Unique identifier for the dataset"
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Goal",
+            "description": "Analysis goal: 'compare_groups', 'relationship', etc."
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id",
+            "description": "Optional template identifier"
+          },
+          "variables": {
+            "type": "object",
+            "title": "Variables",
+            "description": "Variable mapping: {'target': 'Hb', 'group': 'Treat'}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "goal",
+          "variables"
+        ],
+        "title": "DesignRequest"
+      },
+      "ExecuteProtocolRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "protocol": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Protocol",
+            "description": "List of analysis steps"
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.1,
+            "minimum": 0.01,
+            "title": "Alpha",
+            "description": "Significance level",
+            "default": 0.05
+          },
+          "protocol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Name",
+            "description": "Human-readable protocol name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "protocol"
+        ],
+        "title": "ExecuteProtocolRequest",
+        "description": "Request model for batch protocol execution."
+      },
+      "ExportDocxRequest": {
+        "properties": {
+          "results": {
+            "type": "object",
+            "title": "Results"
+          },
+          "dataset_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Name"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "format_options": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "ExportDocxRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Hypothesis": {
+        "properties": {
+          "h0": {
+            "type": "string",
+            "title": "H0",
+            "description": "Null hypothesis"
+          },
+          "h1": {
+            "type": "string",
+            "title": "H1",
+            "description": "Alternative hypothesis"
+          },
+          "primary": {
+            "type": "boolean",
+            "title": "Primary",
+            "description": "Is this the primary hypothesis?",
+            "default": false
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale",
+            "description": "Why this hypothesis is important"
+          }
+        },
+        "type": "object",
+        "required": [
+          "h0",
+          "h1"
+        ],
+        "title": "Hypothesis"
+      },
+      "MiceImputeCommand": {
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "max_iter": {
+            "type": "integer",
+            "title": "Max Iter",
+            "default": 10
+          },
+          "n_imputations": {
+            "type": "integer",
+            "title": "N Imputations",
+            "default": 5
+          },
+          "random_state": {
+            "type": "integer",
+            "title": "Random State",
+            "default": 42
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns"
+        ],
+        "title": "MiceImputeCommand"
+      },
+      "MixedEffectsRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome",
+            "description": "Dependent variable column"
+          },
+          "time_col": {
+            "type": "string",
+            "title": "Time Col",
+            "description": "Time variable column"
+          },
+          "group_col": {
+            "type": "string",
+            "title": "Group Col",
+            "description": "Group variable column"
+          },
+          "subject_col": {
+            "type": "string",
+            "title": "Subject Col",
+            "description": "Subject ID column"
+          },
+          "covariates": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Covariates",
+            "description": "Covariate columns",
+            "default": []
+          },
+          "random_slope": {
+            "type": "boolean",
+            "title": "Random Slope",
+            "description": "Include random slopes",
+            "default": false
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.1,
+            "minimum": 0.01,
+            "title": "Alpha",
+            "description": "Significance level",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "outcome",
+          "time_col",
+          "group_col",
+          "subject_col"
+        ],
+        "title": "MixedEffectsRequest",
+        "description": "Request model for Linear Mixed Models."
+      },
+      "ModificationAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "rename_col, drop_col, change_type, update_cell, drop_row"
+          },
+          "column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "new_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Name"
+          },
+          "new_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Type"
+          },
+          "row_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Index"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "ModificationAction"
+      },
+      "PdfExportRequest": {
+        "properties": {
+          "results": {
+            "type": "object",
+            "title": "Results"
+          },
+          "variables": {
+            "type": "object",
+            "title": "Variables"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "format_options": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "variables",
+          "dataset_id"
+        ],
+        "title": "PdfExportRequest"
+      },
+      "PrepareHistoryResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "PrepareHistoryResponse"
+      },
+      "ProtocolRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id",
+            "description": "Unique identifier for the dataset"
+          },
+          "protocol": {
+            "type": "object",
+            "title": "Protocol",
+            "description": "Analysis protocol configuration"
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.25,
+            "minimum": 0.001,
+            "title": "Alpha",
+            "description": "Significance level (alpha) for p-value threshold",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "protocol"
+        ],
+        "title": "ProtocolRequest"
+      },
+      "ProtocolV2Request": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id",
+            "description": "Dataset identifier"
+          },
+          "protocol": {
+            "type": "object",
+            "title": "Protocol",
+            "description": "Analysis protocol configuration"
+          },
+          "alpha": {
+            "type": "number",
+            "maximum": 0.1,
+            "minimum": 0.01,
+            "title": "Alpha",
+            "description": "Significance level",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "protocol"
+        ],
+        "title": "ProtocolV2Request",
+        "description": "Request model for v2 analysis protocol."
+      },
+      "QualityIssue": {
+        "properties": {
+          "column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "severity",
+          "message"
+        ],
+        "title": "QualityIssue"
+      },
+      "QualityReport": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/QualityIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "issues"
+        ],
+        "title": "QualityReport"
+      },
+      "StatMethod": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "parametric",
+              "non-parametric",
+              "correlation",
+              "categorical",
+              "survival",
+              "diagnostic",
+              "assumption",
+              "agreement",
+              "reliability",
+              "dimension_reduction",
+              "clustering"
+            ],
+            "title": "Type"
+          },
+          "min_groups": {
+            "type": "integer",
+            "title": "Min Groups",
+            "default": 1
+          },
+          "max_groups": {
+            "type": "integer",
+            "title": "Max Groups",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "type"
+        ],
+        "title": "StatMethod"
+      },
+      "StudyConfig": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Full title of the study"
+          },
+          "objective": {
+            "type": "string",
+            "title": "Objective",
+            "description": "Main objective of the study"
+          },
+          "study_type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudyType"
+              }
+            ],
+            "description": "Type of the study design",
+            "default": "rct"
+          },
+          "hypotheses": {
+            "items": {
+              "$ref": "#/components/schemas/Hypothesis"
+            },
+            "type": "array",
+            "title": "Hypotheses",
+            "description": "List of study hypotheses"
+          },
+          "group_column": {
+            "type": "string",
+            "title": "Group Column",
+            "description": "Column name for grouping (e.g. 'Group')"
+          },
+          "subject_id_column": {
+            "type": "string",
+            "title": "Subject Id Column",
+            "description": "Column name for subject ID"
+          },
+          "visits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Visits",
+            "description": "List of visits in order (e.g. ['V1', 'V2'])"
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha",
+            "description": "Significance level",
+            "default": 0.05
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "objective",
+          "group_column",
+          "subject_id_column"
+        ],
+        "title": "StudyConfig"
+      },
+      "StudyType": {
+        "type": "string",
+        "enum": [
+          "rct",
+          "observational",
+          "meta"
+        ],
+        "title": "StudyType"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VariableMappingDocument": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "mapping": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VariableMappingEntry"
+            },
+            "type": "object",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id"
+        ],
+        "title": "VariableMappingDocument"
+      },
+      "VariableMappingEntry": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "group_var": {
+            "type": "boolean",
+            "title": "Group Var",
+            "default": false
+          },
+          "subgroup": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subgroup"
+          },
+          "timepoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timepoint"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type"
+          },
+          "include_descriptive": {
+            "type": "boolean",
+            "title": "Include Descriptive",
+            "default": true
+          },
+          "include_comparison": {
+            "type": "boolean",
+            "title": "Include Comparison",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "VariableMappingEntry"
+      },
+      "VariableMappingUpdate": {
+        "properties": {
+          "mapping": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VariableMappingEntry"
+            },
+            "type": "object",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "title": "VariableMappingUpdate"
+      },
+      "WizardApplyRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "recommendation": {
+            "type": "object",
+            "title": "Recommendation"
+          },
+          "variables": {
+            "type": "object",
+            "title": "Variables"
+          },
+          "test_config": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Config"
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "recommendation",
+          "variables"
+        ],
+        "title": "WizardApplyRequest"
+      },
+      "WizardRecommendRequest": {
+        "properties": {
+          "goal": {
+            "type": "string",
+            "enum": [
+              "compare_groups",
+              "compare_timepoints",
+              "relationship",
+              "survival",
+              "prediction"
+            ],
+            "title": "Goal",
+            "description": "High-level research goal"
+          },
+          "structure": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "independent",
+                  "paired"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure",
+            "description": "Group structure for compare_groups"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "numeric",
+                  "categorical"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type",
+            "description": "Outcome data type"
+          },
+          "groups": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "2",
+                  ">2"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groups",
+            "description": "Group count bucket"
+          },
+          "normal_distribution": {
+            "type": "boolean",
+            "title": "Normal Distribution",
+            "description": "User assumption about normality for numeric outcomes",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "title": "WizardRecommendRequest"
+      },
+      "WizardRecommendation": {
+        "properties": {
+          "method_id": {
+            "type": "string",
+            "title": "Method Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method_id",
+          "name",
+          "description"
+        ],
+        "title": "WizardRecommendation"
+      }
+    }
+  }
+}

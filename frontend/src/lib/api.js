@@ -492,6 +492,17 @@ export async function getKnowledgeTests() {
   return response.json();
 }
 
+export async function getKnowledgeManual(lang = 'ru') {
+  const params = new URLSearchParams();
+  if (lang) params.set('lang', lang);
+  const response = await request(`${API_URL}/v2/knowledge/manual?${params.toString()}`, {}, { timeoutMs: 30000 });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось загрузить мануал');
+  }
+  return response.json();
+}
+
 export async function getKnowledgeTest(testId, { level = 'junior', shapiro_p, levene_p, signal } = {}) {
   const params = new URLSearchParams();
   if (level) params.set('level', level);

@@ -7,7 +7,7 @@ import Button from '../components/ui/Button';
 import TestSelectionPanel from '../components/analysis/TestSelectionPanel';
 import ProtocolBuilder from '../components/analysis/ProtocolBuilder';
 import TestConfigModal from '../components/TestConfigModal';
-import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
+import AISuggestionsPane from '../components/analysis/AISuggestionsPane';
 import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 import VariableWorkspace from '../components/VariableWorkspace';
@@ -2305,33 +2305,15 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
 
                 <div className="flex-1 overflow-y-auto p-3 bg-[color:var(--bg-secondary)]">
                   {rightPane === 'ai' ? (
-                    <div className="space-y-3">
-                      <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Рекомендации</div>
-                          <button
-                            type="button"
-                            onClick={handleAISuggest}
-                            disabled={isAIAnalyzing || protocol.length === 0}
-                            className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] text-xs font-semibold text-[color:var(--text-primary)] hover:border-black disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isAIAnalyzing ? t('ai_analyzing') : t('ai_suggest_tests')}
-                          </button>
-                        </div>
-                        <div className="mt-2 text-xs text-[color:var(--text-secondary)]">ИИ предлагает шаги поверх твоего текущего пайплайна.</div>
-                      </div>
-
-                      <AIRecommendationsPanel
-                        recommendations={aiRecommendations}
-                        onAddRecommendation={handleAddRecommendation}
-                        onClose={() => setRightPane('inspector')}
-                        isAnalyzing={isAIAnalyzing}
-                      />
-
-                      {!isAIAnalyzing && aiRecommendations.length === 0 ? (
-                        <div className="text-xs text-[color:var(--text-muted)]">Нажми «{t('ai_suggest_tests')}» чтобы получить предложения.</div>
-                      ) : null}
-                    </div>
+                    <AISuggestionsPane
+                      t={t}
+                      protocol={protocol}
+                      recommendations={aiRecommendations}
+                      isAnalyzing={isAIAnalyzing}
+                      onSuggest={handleAISuggest}
+                      onAddRecommendation={handleAddRecommendation}
+                      onClose={() => setRightPane('inspector')}
+                    />
                   ) : (
                     <div className="space-y-3">
                       <div className="h-[540px]">

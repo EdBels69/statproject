@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
-import Input from '../components/ui/Input';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getKnowledgeTerm, getKnowledgeTerms, getKnowledgeTest, getKnowledgeTests } from '../../lib/api';
+import { getKnowledgeManual, getKnowledgeTerm, getKnowledgeTerms, getKnowledgeTest, getKnowledgeTests } from '../../lib/api';
 
 function createResource(load) {
   let status = 'pending';
@@ -86,11 +85,7 @@ export default function StatWiki() {
   const { educationLevel } = useLanguage();
 
   const [tab, setTab] = useState('terms');
-  const [query, setQuery] = useState('');
-  const [levelOverride, setLevelOverride] = useState(null);
-  const [selectedKey, setSelectedKey] = useState(null);
-
-  const level = levelOverride ?? (educationLevel || 'junior');
+  const level = educationLevel || 'junior';
 
   const listResource = useMemo(() => {
     return createResource(async () => {
@@ -114,29 +109,96 @@ export default function StatWiki() {
       <StatWikiContent
         tab={tab}
         setTab={setTab}
-        query={query}
-        setQuery={setQuery}
         level={level}
-        levelOverride={levelOverride}
-        setLevelOverride={setLevelOverride}
-        selectedKey={selectedKey}
-        setSelectedKey={setSelectedKey}
         listResource={listResource}
       />
     </React.Suspense>
   );
 }
 
+function renderMarkdownBlocks(markdown) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  const blocks = [];
+  let i = 0;
+  let key = 0;
+
+  const takeParagraph = () => {
+    const parts = [];
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) break;
+      if (/^#{1,6}\s+/.test(line)) break;
+      if (/^```/.test(line)) break;
+      if (/^\s*[-*+]\s+/.test(line)) break;
+      if (/^\s*\d+\.\s+/.test(line)) break;
+      parts.push(line.trim());
+      i += 1;
+    }
+    const text = parts.join(' ');
+    if (text) blocks.push({ type: 'p', key: key++, text });
+  };
+
+  const takeList = (ordered) => {
+    const items = [];
+    while (i < lines.length) {
+      const line = lines[i];
+      const m = ordered ? line.match(/^\s*(\d+)\.\s+(.+)$/) : line.match(/^\s*[-*+]\s+(.+)$/);
+      if (!m) break;
+      items.push((ordered ? m[2] : m[1]).trim());
+      i += 1;
+    }
+    if (items.length) blocks.push({ type: ordered ? 'ol' : 'ul', key: key++, items });
+  };
+
+  const takeCode = () => {
+    const fence = lines[i];
+    const lang = fence.replace(/^```\s*/, '').trim();
+    i += 1;
+    const body = [];
+    while (i < lines.length && !/^```\s*$/.test(lines[i])) {
+      body.push(lines[i]);
+      i += 1;
+    }
+    if (i < lines.length && /^```\s*$/.test(lines[i])) i += 1;
+    blocks.push({ type: 'code', key: key++, lang, text: body.join('\n') });
+  };
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const line = raw.trimEnd();
+    if (!line.trim()) {
+      i += 1;
+      continue;
+    }
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      const depth = heading[1].length;
+      blocks.push({ type: 'h', key: key++, depth, text: heading[2].trim() });
+      i += 1;
+      continue;
+    }
+    if (/^```/.test(line)) {
+      takeCode();
+      continue;
+    }
+    if (/^\s*[-*+]\s+/.test(raw)) {
+      takeList(false);
+      continue;
+    }
+    if (/^\s*\d+\.\s+/.test(raw)) {
+      takeList(true);
+      continue;
+    }
+    takeParagraph();
+  }
+
+  return blocks;
+}
+
 function StatWikiContent({
   tab,
   setTab,
-  query,
-  setQuery,
   level,
-  levelOverride,
-  setLevelOverride,
-  selectedKey,
-  setSelectedKey,
   listResource,
 }) {
   let lists;
@@ -157,13 +219,7 @@ function StatWikiContent({
     <StatWikiContentLoaded
       tab={tab}
       setTab={setTab}
-      query={query}
-      setQuery={setQuery}
       level={level}
-      levelOverride={levelOverride}
-      setLevelOverride={setLevelOverride}
-      selectedKey={selectedKey}
-      setSelectedKey={setSelectedKey}
       lists={lists}
     />
   );
@@ -172,198 +228,292 @@ function StatWikiContent({
 function StatWikiContentLoaded({
   tab,
   setTab,
-  query,
-  setQuery,
   level,
-  levelOverride,
-  setLevelOverride,
-  selectedKey,
-  setSelectedKey,
   lists,
 }) {
-  const terms = lists?.termList || [];
-  const tests = lists?.testList || [];
+  const isManual = tab === 'manual';
 
-  const activeList = tab === 'tests' ? tests : terms;
+  const manualResource = useMemo(() => {
+    if (!isManual) return null;
+    return createResource(() => getKnowledgeManual('ru'));
+  }, [isManual]);
 
-  const filtered = useMemo(() => {
-    const q = String(query || '').trim().toLowerCase();
-    if (!q) return activeList;
-    return activeList.filter((x) => {
-      const title = pickTitle(x, tab).toLowerCase();
-      return title.includes(q) || x.key.toLowerCase().includes(q);
-    });
-  }, [activeList, query, tab]);
+  const terms = useMemo(() => {
+    return Array.isArray(lists?.termList) ? lists.termList : [];
+  }, [lists]);
 
-  const effectiveSelectedKey = selectedKey && activeList.some((x) => x.key === selectedKey)
-    ? selectedKey
-    : (filtered[0]?.key || null);
-
-  const selectedMeta = useMemo(() => {
-    return activeList.find((x) => x.key === effectiveSelectedKey) || null;
-  }, [activeList, effectiveSelectedKey]);
-
-  const itemResource = useMemo(() => {
-    if (!effectiveSelectedKey) return null;
-    return createResource(() => {
-      return tab === 'tests'
-        ? getKnowledgeTest(effectiveSelectedKey, { level })
-        : getKnowledgeTerm(effectiveSelectedKey, level);
-    });
-  }, [effectiveSelectedKey, tab, level]);
+  const tests = useMemo(() => {
+    return Array.isArray(lists?.testList) ? lists.testList : [];
+  }, [lists]);
 
   const levelLabel = level === 'junior' ? 'Начальный' : level === 'mid' ? 'Средний' : 'Продвинутый';
 
+  const TEST_CATEGORIES = useMemo(() => {
+    return [
+      { id: 'compare_2', title: 'Сравнение 2 групп', keys: new Set(['t_test_ind', 't_test_welch', 'welch_t_test', 'mann_whitney']) },
+      { id: 'paired', title: 'Парные сравнения', keys: new Set(['t_test_rel', 'wilcoxon', 'mcnemar']) },
+      { id: 'compare_3_plus', title: 'Сравнение 3+ групп', keys: new Set(['anova', 'anova_welch', 'welch_anova', 'kruskal', 'kruskal_wallis', 'rm_anova', 'friedman']) },
+      { id: 'categorical', title: 'Категориальные данные', keys: new Set(['chi_square', 'fisher', 'fisher_exact', 'cochran_q']) },
+      { id: 'correlation', title: 'Связи и корреляции', keys: new Set(['pearson', 'spearman', 'clustered_correlation']) },
+      { id: 'models', title: 'Модели', keys: new Set(['linear_regression', 'logistic_regression', 'mixed_model', 'mixed_effects']) },
+      { id: 'ml', title: 'ML / предсказание', keys: new Set(['random_forest', 'gradient_boosting', 'knn', 'svm', 'roc_analysis']) },
+    ];
+  }, []);
+
+  const testsByCategory = useMemo(() => {
+    const out = new Map();
+    TEST_CATEGORIES.forEach((c) => out.set(c.id, []));
+    out.set('other', []);
+
+    tests.forEach((t) => {
+      const match = TEST_CATEGORIES.find((c) => c.keys.has(t.key));
+      const id = match ? match.id : 'other';
+      out.get(id).push(t);
+    });
+
+    return out;
+  }, [TEST_CATEGORIES, tests]);
+
+  const navigateToTerm = (termKey) => {
+    setTab('terms');
+    const id = `term-${String(termKey || '').trim()}`;
+    setTimeout(() => {
+      const el = typeof document !== 'undefined' ? document.getElementById(id) : null;
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 0);
+  };
+
   return (
     <div className="max-w-[1400px]">
-      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-8 items-start">
-        <div className="sticky top-20">
-          <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Справочник</div>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-[color:var(--text-primary)]">Мини‑вики</h1>
-          <div className="mt-2 text-sm text-[color:var(--text-secondary)] leading-relaxed">
-            Термины, методы и тесты: когда выбирать, как считать, как интерпретировать.
-          </div>
+      <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Справочник</div>
+      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-3xl font-black tracking-tight text-[color:var(--text-primary)]">Мини‑вики</h1>
+        <div className="text-xs font-mono text-[color:var(--text-muted)]">{levelLabel}</div>
+      </div>
+      <div className="mt-2 text-sm text-[color:var(--text-secondary)] leading-relaxed max-w-[900px]">
+        Термины, методы и тесты: когда выбирать, как считать, как интерпретировать.
+      </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3">
-            <label className="grid gap-1">
-              <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Глубина</div>
-              <select
-                value={levelOverride ?? level}
-                onChange={(e) => setLevelOverride(e.target.value)}
-                className="h-9 px-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-sm"
-                aria-label="Глубина объяснений"
-              >
-                <option value="junior">Начальный</option>
-                <option value="mid">Средний</option>
-                <option value="senior">Продвинутый</option>
-              </select>
-            </label>
+      <div className="mt-8">
+        <Tabs value={tab} onValueChange={(v) => setTab(v)}>
+          <TabsList>
+            <TabsTrigger value="terms">Определения</TabsTrigger>
+            <TabsTrigger value="tests">Тесты по категориям</TabsTrigger>
+            <TabsTrigger value="manual">Мануал</TabsTrigger>
+          </TabsList>
 
-            <label className="grid gap-1">
-              <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Поиск</div>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="p-value, ANOVA, нормальность…" />
-            </label>
-          </div>
+          <TabsContent value="terms" className="pt-6">
+            <div className="space-y-3">
+              {terms.map((m) => (
+                <StatWikiDetailsCard
+                  key={m.key}
+                  id={`term-${m.key}`}
+                  kindLabel="Определение"
+                  title={m.term_ru || m.term || m.key}
+                  code={m.key}
+                  emoji={m.emoji}
+                >
+                  <StatWikiInlineArticle kind="terms" itemKey={m.key} level={level} meta={m} onNavigateToTerm={navigateToTerm} />
+                </StatWikiDetailsCard>
+              ))}
+              {terms.length === 0 ? (
+                <div className="text-sm text-[color:var(--text-secondary)]">Ничего не найдено.</div>
+              ) : null}
+            </div>
+          </TabsContent>
 
-          <div className="mt-8">
-            <Tabs
-              value={tab}
-              onValueChange={(v) => {
-                setTab(v);
-                setQuery('');
-                setSelectedKey(null);
-              }}
-            >
-              <TabsList>
-                <TabsTrigger value="terms">Термины</TabsTrigger>
-                <TabsTrigger value="tests">Тесты</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="terms" className="pt-5">
-                <div className="border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] overflow-hidden">
-                  <div className="px-4 py-3 bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)]">
-                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Список</div>
-                  </div>
-                  <div className="max-h-[520px] overflow-auto">
-                    {filtered.map((x) => {
-                      const active = x.key === effectiveSelectedKey;
-                      return (
-                        <button
-                          key={x.key}
-                          type="button"
-                          onClick={() => setSelectedKey(x.key)}
-                          className={`w-full text-left px-4 py-3 border-b border-[color:var(--border-color)] transition ${active ? 'bg-[color:var(--bg-tertiary)]' : 'hover:bg-[color:var(--bg-secondary)]'}`}
+          <TabsContent value="tests" className="pt-6">
+            <div className="space-y-8">
+              {TEST_CATEGORIES.map((cat) => {
+                const list = testsByCategory.get(cat.id) || [];
+                if (!list.length) return null;
+                return (
+                  <section key={cat.id} className="space-y-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h2 className="text-xl font-black tracking-tight text-[color:var(--text-primary)]">{cat.title}</h2>
+                      <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">{list.length}</div>
+                    </div>
+                    <div className="space-y-3">
+                      {list.map((m) => (
+                        <StatWikiDetailsCard
+                          key={m.key}
+                          id={`test-${m.key}`}
+                          kindLabel="Тест"
+                          title={m.name_ru || m.name || m.key}
+                          code={m.key}
+                          emoji={m.emoji}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className={`text-sm font-semibold truncate ${active ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{x.term_ru || x.term || x.key}</div>
-                              <div className="mt-0.5 text-[10px] text-[color:var(--text-muted)] font-mono truncate">{x.key}</div>
-                            </div>
-                            <div className="text-lg" aria-hidden="true">{x.emoji}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {filtered.length === 0 ? (
-                      <div className="px-4 py-4 text-sm text-[color:var(--text-secondary)]">Ничего не найдено.</div>
-                    ) : null}
-                  </div>
-                </div>
-              </TabsContent>
+                          <StatWikiInlineArticle kind="tests" itemKey={m.key} level={level} meta={m} onNavigateToTerm={navigateToTerm} />
+                        </StatWikiDetailsCard>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
 
-              <TabsContent value="tests" className="pt-5">
-                <div className="border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] overflow-hidden">
-                  <div className="px-4 py-3 bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)]">
-                    <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Список</div>
+              {(testsByCategory.get('other') || []).length ? (
+                <section className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="text-xl font-black tracking-tight text-[color:var(--text-primary)]">Другое</h2>
+                    <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">{(testsByCategory.get('other') || []).length}</div>
                   </div>
-                  <div className="max-h-[520px] overflow-auto">
-                    {filtered.map((x) => {
-                      const active = x.key === effectiveSelectedKey;
-                      return (
-                        <button
-                          key={x.key}
-                          type="button"
-                          onClick={() => setSelectedKey(x.key)}
-                          className={`w-full text-left px-4 py-3 border-b border-[color:var(--border-color)] transition ${active ? 'bg-[color:var(--bg-tertiary)]' : 'hover:bg-[color:var(--bg-secondary)]'}`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className={`text-sm font-semibold truncate ${active ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{x.name_ru || x.name || x.key}</div>
-                              <div className="mt-0.5 text-[10px] text-[color:var(--text-muted)] font-mono truncate">{x.key}</div>
-                            </div>
-                            <div className="text-lg" aria-hidden="true">{x.emoji}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {filtered.length === 0 ? (
-                      <div className="px-4 py-4 text-sm text-[color:var(--text-secondary)]">Ничего не найдено.</div>
-                    ) : null}
+                  <div className="space-y-3">
+                    {(testsByCategory.get('other') || []).map((m) => (
+                      <StatWikiDetailsCard
+                        key={m.key}
+                        id={`test-${m.key}`}
+                        kindLabel="Тест"
+                        title={m.name_ru || m.name || m.key}
+                        code={m.key}
+                        emoji={m.emoji}
+                      >
+                        <StatWikiInlineArticle kind="tests" itemKey={m.key} level={level} meta={m} onNavigateToTerm={navigateToTerm} />
+                      </StatWikiDetailsCard>
+                    ))}
                   </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+                </section>
+              ) : null}
 
-        <div>
-          <div className="card overflow-hidden">
-            <div className="px-6 py-5 border-b border-[color:var(--border-color)] bg-[color:var(--white)]">
-              <div className="flex items-start justify-between gap-6">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">{tab === 'tests' ? 'Тест' : 'Термин'} · {levelLabel}</div>
-                  <div className="mt-2 text-2xl font-black tracking-tight text-[color:var(--text-primary)] truncate">{pickTitle(selectedMeta, tab) || '—'}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[11px] font-semibold text-[color:var(--text-secondary)]">id</div>
-                  <div className="font-mono text-sm text-[color:var(--text-muted)]">{effectiveSelectedKey || '—'}</div>
-                </div>
+              {tests.length === 0 ? (
+                <div className="text-sm text-[color:var(--text-secondary)]">Ничего не найдено.</div>
+              ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="manual" className="pt-6">
+            <div className="border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)]">
+                <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">Мануал</div>
+                <div className="mt-1 text-lg font-bold tracking-tight text-[color:var(--text-primary)]">Руководство пользователя</div>
+              </div>
+              <div className="px-5 py-5">
+                <React.Suspense fallback={<div className="text-sm text-[color:var(--text-secondary)]">Загрузка мануала…</div>}>
+                  <StatWikiManual manualResource={manualResource} />
+                </React.Suspense>
               </div>
             </div>
-
-            <div className="px-6 py-6 bg-[color:var(--white)]">
-              {!effectiveSelectedKey ? (
-                <div className="text-sm text-[color:var(--text-secondary)]">Выберите пункт слева.</div>
-              ) : (
-                <React.Suspense fallback={<div className="text-sm text-[color:var(--text-secondary)]">Загрузка статьи…</div>}>
-                  <StatWikiArticle
-                    tab={tab}
-                    level={level}
-                    itemResource={itemResource}
-                    meta={selectedMeta}
-                    onNavigateToTerm={(termKey) => {
-                      setTab('terms');
-                      setQuery('');
-                      setSelectedKey(termKey);
-                    }}
-                  />
-                </React.Suspense>
-              )}
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
+  );
+}
+
+function StatWikiDetailsCard({ id, kindLabel, title, code, emoji, children }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <details
+      id={id}
+      className="border border-[color:var(--border-color)] rounded-[2px] bg-[color:var(--white)] overflow-hidden"
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
+      <summary className="px-5 py-4 cursor-pointer list-none select-none">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">{kindLabel}</div>
+            <div className="mt-1 text-lg font-bold tracking-tight text-[color:var(--text-primary)] truncate">{title}</div>
+            <div className="mt-1 text-xs font-mono text-[color:var(--text-muted)] truncate">{code}</div>
+          </div>
+          <div className="text-xl" aria-hidden="true">{emoji}</div>
+        </div>
+      </summary>
+
+      {open ? (
+        <div className="px-5 py-5 border-t border-[color:var(--border-color)]">
+          {children}
+        </div>
+      ) : null}
+    </details>
+  );
+}
+
+function StatWikiInlineArticle({ kind, itemKey, level, meta, onNavigateToTerm }) {
+  const stableKey = String(itemKey || '').trim();
+
+  const itemResource = useMemo(() => {
+    return createResource(() => {
+      return kind === 'tests'
+        ? getKnowledgeTest(stableKey, { level })
+        : getKnowledgeTerm(stableKey, level);
+    });
+  }, [kind, stableKey, level]);
+
+  return (
+    <React.Suspense fallback={<div className="text-sm text-[color:var(--text-secondary)]">Загрузка статьи…</div>}>
+      <StatWikiArticle
+        tab={kind}
+        level={level}
+        itemResource={itemResource}
+        meta={meta}
+        onNavigateToTerm={onNavigateToTerm}
+      />
+    </React.Suspense>
+  );
+}
+
+function StatWikiManual({ manualResource }) {
+  if (!manualResource) {
+    return (
+      <div className="text-sm text-[color:var(--text-secondary)]">Загрузка мануала…</div>
+    );
+  }
+
+  let data;
+  try {
+    data = manualResource.read();
+  } catch (e) {
+    if (e?.then) throw e;
+    return (
+      <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--bg-tertiary)] text-sm text-[color:var(--text-secondary)]">
+        {e?.message || 'Не удалось загрузить мануал'}
+      </div>
+    );
+  }
+
+  const blocks = renderMarkdownBlocks(data?.markdown || '');
+
+  return (
+    <article className="max-w-[900px]">
+      <div className="space-y-4 text-[15px] leading-relaxed text-[color:var(--text-primary)]">
+        {blocks.map((b) => {
+          if (b.type === 'h') {
+            const Tag = b.depth === 1 ? 'h2' : b.depth === 2 ? 'h3' : 'h4';
+            const cls = b.depth === 1
+              ? 'text-2xl font-black tracking-tight'
+              : b.depth === 2
+                ? 'text-lg font-bold tracking-tight'
+                : 'text-base font-bold';
+            return <Tag key={b.key} className={cls}>{b.text}</Tag>;
+          }
+          if (b.type === 'p') return <p key={b.key}>{b.text}</p>;
+          if (b.type === 'ul') {
+            return (
+              <ul key={b.key} className="pl-5 list-disc space-y-1 text-[color:var(--text-secondary)]">
+                {b.items.map((x, idx) => <li key={idx}>{x}</li>)}
+              </ul>
+            );
+          }
+          if (b.type === 'ol') {
+            return (
+              <ol key={b.key} className="pl-5 list-decimal space-y-1 text-[color:var(--text-secondary)]">
+                {b.items.map((x, idx) => <li key={idx}>{x}</li>)}
+              </ol>
+            );
+          }
+          if (b.type === 'code') {
+            return (
+              <pre key={b.key} className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--bg-tertiary)] overflow-auto">
+                <code className="font-mono text-xs text-[color:var(--text-primary)] whitespace-pre">{b.text}</code>
+              </pre>
+            );
+          }
+          return null;
+        })}
+      </div>
+    </article>
   );
 }
 

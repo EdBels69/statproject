@@ -11,6 +11,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Query, HTTPException
+from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
 
@@ -133,3 +134,18 @@ async def get_power_info(
     """
     recommendation = get_power_recommendation(power)
     return recommendation
+
+
+@router.get("/manual")
+async def get_user_manual(
+    lang: str = Query("ru", pattern="^(ru|en)$")
+):
+    repo_root = Path(__file__).resolve().parents[3]
+    file_name = "USER_MANUAL.md" if lang == "ru" else "USER_MANUAL_EN.md"
+    manual_path = repo_root / "docs" / file_name
+    if not manual_path.exists():
+        if lang != "ru":
+            manual_path = repo_root / "docs" / "USER_MANUAL.md"
+        if not manual_path.exists():
+            raise HTTPException(status_code=404, detail="Мануал не найден")
+    return {"markdown": manual_path.read_text(encoding="utf-8")}

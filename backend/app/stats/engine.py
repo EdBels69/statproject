@@ -643,6 +643,9 @@ def run_analysis(
     elif method_id == "roc_analysis":
         return _handle_roc_analysis(clean_df, method_id, col_a, col_b)
 
+    elif method_id in ["random_forest", "gradient_boosting", "knn", "svm"]:
+        return _handle_ml(clean_df, method_id, col_a, col_b, kwargs)
+
     elif method_id == "mixed_model":
         return _handle_mixed_effects(df, col_a, col_b, kwargs)
 
@@ -659,6 +662,195 @@ def run_analysis(
         return _handle_clustered_correlation(df, kwargs)
 
     raise ValueError(f"Method {method_id} not implemented")
+
+
+def _roc_payload(y_true_bin: np.ndarray, y_score: np.ndarray) -> Dict[str, Any]:
+    fpr, tpr, thresholds = roc_curve(y_true_bin, y_score)
+    roc_auc = auc(fpr, tpr)
+
+    roc_data = []
+    step = max(1, len(fpr) // 500)
+    for i in range(0, len(fpr), step):
+        roc_data.append({
+            "x": float(fpr[i]),
+            "y": float(tpr[i]),
+            "threshold": float(thresholds[i]),
+        })
+    if roc_data and roc_data[-1]["x"] != float(fpr[-1]):
+        roc_data.append({"x": float(fpr[-1]), "y": float(tpr[-1]), "threshold": float(thresholds[-1])})
+
+    return {
+        "auc": float(roc_auc),
+        "plot_data": roc_data,
+        "plot_config": {"x_label": "False Positive Rate", "y_label": "True Positive Rate", "type": "line"},
+    }
+
+
+def _handle_ml(df: pd.DataFrame, method_id: str, col_a: str, col_b: str, kwargs: Dict) -> Dict[str, Any]:
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import (
+        r2_score,
+        mean_absolute_error,
+        mean_squared_error,
+        accuracy_score,
+        f1_score,
+        precision_score,
+        recall_score,
+    )
+    from sklearn.ensemble import (
+        RandomForestRegressor,
+        RandomForestClassifier,
+        GradientBoostingRegressor,
+        GradientBoostingClassifier,
+    )
+    from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
+    from sklearn.svm import SVR, SVC
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    predictors = kwargs.get("predictors")
+    if predictors is None:
+        predictors = [col_b] if col_b else []
+    if not isinstance(predictors, list):
+        predictors = [col_b] if col_b else []
+    predictors = [p for p in predictors if p]
+
+    task = str(kwargs.get("task") or "regression").strip().lower()
+    random_state = kwargs.get("random_state")
+    test_size = float(kwargs.get("test_size") or 0.25)
+    if not (0.05 <= test_size <= 0.8):
+        test_size = 0.25
+
+    cols = [c for c in [col_a, *predictors] if c and c in df.columns]
+    clean_df = df[cols].dropna()
+
+    if col_a not in clean_df.columns:
+        raise ValueError(f"Target column '{col_a}' not found")
+    if not predictors:
+        raise ValueError("predictors is required for ML methods")
+
+    y_raw = clean_df[col_a]
+    X_raw = clean_df[predictors]
+    X = pd.get_dummies(X_raw, drop_first=True)
+
+    if task == "classification":
+        y_non_na = y_raw.dropna()
+        uniq = list(pd.unique(y_non_na))
+        if len(uniq) != 2:
+            raise ValueError(f"Classification requires a binary target. Found {len(uniq)} unique values.")
+
+        if pd.api.types.is_numeric_dtype(y_non_na):
+            y_as_float = y_raw.astype(float)
+            uniq_num = sorted(set(float(v) for v in pd.unique(y_as_float.dropna())))
+            if set(uniq_num) == {0.0, 1.0}:
+                y_bin = y_as_float.to_numpy()
+                neg_label = "0"
+                pos_label = "1"
+            else:
+                mapping = {uniq_num[0]: 0.0, uniq_num[1]: 1.0}
+                y_bin = y_as_float.map(mapping).to_numpy()
+                neg_label = str(uniq_num[0])
+                pos_label = str(uniq_num[1])
+        else:
+            uniq_str = sorted(str(v) for v in uniq)
+            neg_label = uniq_str[0]
+            pos_label = uniq_str[1]
+            y_bin = y_raw.astype(str).map(lambda v: 1.0 if v == pos_label else 0.0).to_numpy()
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y_bin,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=y_bin if len(np.unique(y_bin)) == 2 else None,
+        )
+
+        if method_id == "random_forest":
+            model = RandomForestClassifier(n_estimators=200, random_state=random_state)
+        elif method_id == "gradient_boosting":
+            model = GradientBoostingClassifier(random_state=random_state)
+        elif method_id == "knn":
+            model = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=int(kwargs.get("n_neighbors") or 5)))
+        else:
+            model = make_pipeline(
+                StandardScaler(),
+                SVC(
+                    C=float(kwargs.get("C") or 1.0),
+                    kernel=str(kwargs.get("kernel") or "rbf"),
+                    probability=True,
+                    random_state=random_state,
+                ),
+            )
+
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+        acc = float(accuracy_score(y_test, y_pred))
+        f1 = float(f1_score(y_test, y_pred, zero_division=0))
+        precision = float(precision_score(y_test, y_pred, zero_division=0))
+        recall = float(recall_score(y_test, y_pred, zero_division=0))
+
+        y_score = None
+        if hasattr(model, "predict_proba"):
+            proba = model.predict_proba(X_test)
+            if isinstance(proba, np.ndarray) and proba.ndim == 2 and proba.shape[1] >= 2:
+                y_score = proba[:, 1]
+        if y_score is None and hasattr(model, "decision_function"):
+            y_score = model.decision_function(X_test)
+        if y_score is None:
+            y_score = y_pred
+
+        roc_out = _roc_payload(np.asarray(y_test).astype(int), np.asarray(y_score, dtype=float))
+        roc_out["pos_label"] = pos_label
+        roc_out["neg_label"] = neg_label
+
+        return {
+            "method": method_id,
+            "task": "classification",
+            "accuracy": acc,
+            "f1": f1,
+            "precision": precision,
+            "recall": recall,
+            "roc": roc_out,
+        }
+
+    y = pd.to_numeric(y_raw, errors="coerce")
+    if y.isna().any():
+        raise ValueError("Regression requires a numeric target")
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y.to_numpy(dtype=float),
+        test_size=test_size,
+        random_state=random_state,
+    )
+
+    if method_id == "random_forest":
+        model = RandomForestRegressor(n_estimators=300, random_state=random_state)
+    elif method_id == "gradient_boosting":
+        model = GradientBoostingRegressor(random_state=random_state)
+    elif method_id == "knn":
+        model = make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=int(kwargs.get("n_neighbors") or 5)))
+    else:
+        model = make_pipeline(
+            StandardScaler(),
+            SVR(C=float(kwargs.get("C") or 1.0), kernel=str(kwargs.get("kernel") or "rbf")),
+        )
+
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    r2 = float(r2_score(y_test, y_pred))
+    mae = float(mean_absolute_error(y_test, y_pred))
+    rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+
+    return {
+        "method": method_id,
+        "task": "regression",
+        "r_squared": r2,
+        "mae": mae,
+        "rmse": rmse,
+    }
 
 
 def _handle_group_comparison(df: pd.DataFrame, method_id: str, col_a: str, col_b: str, kwargs: Dict) -> Dict[str, Any]:
