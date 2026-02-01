@@ -634,6 +634,9 @@ def run_analysis(
     elif method_id == "chi_square":
         return _handle_chi_square(clean_df, method_id, col_a, col_b, kwargs)
 
+    elif method_id in ["fisher", "fisher_exact"]:
+        return _handle_fisher_exact(clean_df, method_id, col_a, col_b, kwargs)
+
     elif method_id == "survival_km":
         return _handle_survival(clean_df, method_id, col_a, col_b, kwargs)
 
@@ -1191,12 +1194,14 @@ def _handle_chi_square(df, method_id, col_a, col_b, kwargs):
     warning = None
     min_expected = np.min(expected)
     
+    switched_to_fisher = False
     if ct.shape == (2, 2) and min_expected < 5:
         # Switch to Fisher's Exact Test
         odds_ratio, p_val_fisher = stats.fisher_exact(ct)
         p_val = p_val_fisher
         warning = f"Low expected count ({min_expected:.2f} < 5). Auto-switched to Fisher's Exact Test."
-        method_id = "fisher_exact" # Or just annotation? Let's keep ID but note switch
+        method_id = "fisher_exact"
+        switched_to_fisher = True
 
     n_total = int(ct.to_numpy().sum()) if hasattr(ct, "to_numpy") else None
     cramers_v = None
@@ -1210,12 +1215,63 @@ def _handle_chi_square(df, method_id, col_a, col_b, kwargs):
     except Exception:
         cramers_v = None
 
+    effect_value = None
+    effect_name = None
+    effect_interpretation = None
+    if switched_to_fisher:
+        try:
+            effect_value = float(odds_ratio) if "odds_ratio" in locals() and odds_ratio is not None else None
+        except Exception:
+            effect_value = None
+        effect_name = "odds_ratio" if effect_value is not None else None
+        try:
+            if effect_value is not None:
+                effect_interpretation = interpret_effect_size(effect_value, "odds_ratio")
+        except Exception:
+            effect_interpretation = None
+    else:
+        try:
+            effect_value = float(cramers_v) if cramers_v is not None else None
+        except Exception:
+            effect_value = None
+        effect_name = "cramers_v" if effect_value is not None else None
+        try:
+            if effect_value is not None:
+                effect_interpretation = interpret_effect_size(effect_value, "cramers_v")
+        except Exception:
+            effect_interpretation = None
+
     contingency = {
         "rows": [str(x) for x in ct.index.tolist()],
         "cols": [str(x) for x in ct.columns.tolist()],
         "counts": ct.values.tolist(),
         "n": n_total,
     }
+
+    try:
+        groups = [str(x) for x in ct.columns.tolist()]
+    except Exception:
+        groups = None
+
+    plot_stats = None
+    try:
+        row_sums = ct.sum(axis=1)
+        col_sums = ct.sum(axis=0)
+        total = float(n_total or 0)
+        if total > 0:
+            row_pct = (row_sums / total * 100.0).round(2).to_dict()
+            col_pct = (col_sums / total * 100.0).round(2).to_dict()
+        else:
+            row_pct, col_pct = {}, {}
+
+        plot_stats = {
+            "row_totals": {str(k): int(v) for k, v in row_sums.to_dict().items()},
+            "col_totals": {str(k): int(v) for k, v in col_sums.to_dict().items()},
+            "row_pct_total": {str(k): float(v) for k, v in row_pct.items()},
+            "col_pct_total": {str(k): float(v) for k, v in col_pct.items()},
+        }
+    except Exception:
+        plot_stats = None
 
     out = {
         "method": method_id,
@@ -1226,11 +1282,91 @@ def _handle_chi_square(df, method_id, col_a, col_b, kwargs):
         "contingency": contingency,
         "expected_min": float(min_expected) if min_expected is not None else None,
         "odds_ratio": float(odds_ratio) if "odds_ratio" in locals() and odds_ratio is not None else None,
-        "effect_size": float(cramers_v) if cramers_v is not None else None,
-        "effect_size_name": "cramers_v" if cramers_v is not None else None,
+        "effect_size": effect_value,
+        "effect_size_name": effect_name,
+        "effect_size_interpretation": effect_interpretation,
+        "groups": groups,
+        "plot_stats": plot_stats,
     }
 
     return out
+
+def _handle_fisher_exact(df, method_id, col_a, col_b, kwargs):
+    ct = pd.crosstab(df[col_a], df[col_b])
+    alpha = kwargs.get("alpha", 0.05)
+
+    if ct.shape != (2, 2):
+        raise ValueError("Fisher's Exact Test requires a 2×2 contingency table")
+
+    odds_ratio, p_val = stats.fisher_exact(ct)
+
+    expected_min = None
+    try:
+        _, _, _, expected = stats.chi2_contingency(ct)
+        expected_min = float(np.min(expected))
+    except Exception:
+        expected_min = None
+
+    n_total = int(ct.to_numpy().sum()) if hasattr(ct, "to_numpy") else None
+    contingency = {
+        "rows": [str(x) for x in ct.index.tolist()],
+        "cols": [str(x) for x in ct.columns.tolist()],
+        "counts": ct.values.tolist(),
+        "n": n_total,
+    }
+
+    try:
+        groups = [str(x) for x in ct.columns.tolist()]
+    except Exception:
+        groups = None
+
+    plot_stats = None
+    try:
+        row_sums = ct.sum(axis=1)
+        col_sums = ct.sum(axis=0)
+        total = float(n_total or 0)
+        if total > 0:
+            row_pct = (row_sums / total * 100.0).round(2).to_dict()
+            col_pct = (col_sums / total * 100.0).round(2).to_dict()
+        else:
+            row_pct, col_pct = {}, {}
+
+        plot_stats = {
+            "row_totals": {str(k): int(v) for k, v in row_sums.to_dict().items()},
+            "col_totals": {str(k): int(v) for k, v in col_sums.to_dict().items()},
+            "row_pct_total": {str(k): float(v) for k, v in row_pct.items()},
+            "col_pct_total": {str(k): float(v) for k, v in col_pct.items()},
+        }
+    except Exception:
+        plot_stats = None
+
+    effect_value = None
+    effect_interpretation = None
+    try:
+        effect_value = float(odds_ratio) if odds_ratio is not None else None
+    except Exception:
+        effect_value = None
+    try:
+        if effect_value is not None:
+            effect_interpretation = interpret_effect_size(effect_value, "odds_ratio")
+    except Exception:
+        effect_interpretation = None
+
+    return {
+        "method": method_id,
+        "stat_value": float(odds_ratio) if odds_ratio is not None else 0.0,
+        "p_value": float(p_val),
+        "significant": float(p_val) < float(alpha),
+        "warning": None,
+        "contingency": contingency,
+        "expected_min": expected_min,
+        "odds_ratio": float(odds_ratio) if odds_ratio is not None else None,
+        "effect_size": effect_value,
+        "effect_size_name": "odds_ratio" if effect_value is not None else None,
+        "effect_size_interpretation": effect_interpretation,
+        "groups": groups,
+        "plot_stats": plot_stats,
+    }
 
 def _handle_survival(df, method_id, col_a, col_b, kwargs):
     duration = df[col_a]

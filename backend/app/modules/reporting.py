@@ -1,6 +1,7 @@
 import os
 import json
 import html
+import hashlib
 import pandas as pd
 import numpy as np
 import base64
@@ -10,6 +11,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, Any, List, Optional
+from collections import Counter
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from app.schemas.analysis import AnalysisResult
@@ -22,6 +24,37 @@ from app.modules.plot_config import apply_publication_config
 from fpdf import FPDF
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+
+def _result_fingerprint(res: Any) -> Optional[str]:
+    if not isinstance(res, dict):
+        return None
+    try:
+        payload = json.dumps(res, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(payload.encode("utf-8", errors="replace")).hexdigest()
+    except Exception:
+        return None
+
+
+def _dedupe_step_payloads(step_items: List[Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen: Dict[str, Dict[str, Any]] = {}
+    for item in step_items:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            continue
+        step_id, res = item
+        if not isinstance(step_id, str) or not isinstance(res, dict):
+            continue
+        fp = _result_fingerprint(res) or step_id
+        prev = seen.get(fp)
+        if prev is None:
+            cur = {"step_id": step_id, "res": res, "dup_ids": [], "dup_count": 1}
+            seen[fp] = cur
+            out.append(cur)
+            continue
+        prev["dup_count"] = int(prev.get("dup_count") or 1) + 1
+        prev.setdefault("dup_ids", []).append(step_id)
+    return out
 
 
 def _interpret_bf10_ru(value: Any) -> Optional[str]:
@@ -391,6 +424,85 @@ def _render_plot_png_bytes(res: Dict[str, Any], is_ru: bool = False) -> bytes:
         apply_publication_config()
         base_type = res.get("type") if isinstance(res, dict) else None
 
+        if base_type == "table_1":
+            stats = res.get("data") if isinstance(res, dict) else None
+            if isinstance(stats, dict) and stats:
+                groups = [k for k in stats.keys() if k != "overall"]
+                xs = []
+                ys = []
+                yerr_low = []
+                yerr_high = []
+                for g in groups:
+                    s = stats.get(g)
+                    if not isinstance(s, dict):
+                        continue
+                    mean = s.get("mean")
+                    try:
+                        mean_f = float(mean)
+                        if not np.isfinite(mean_f):
+                            continue
+                    except Exception:
+                        continue
+
+                    lo = s.get("ci_95_low")
+                    hi = s.get("ci_95_high")
+                    n = s.get("count")
+                    std = s.get("std")
+
+                    lo_f = None
+                    hi_f = None
+                    try:
+                        lo_f = float(lo) if lo is not None else None
+                        if lo_f is not None and not np.isfinite(lo_f):
+                            lo_f = None
+                    except Exception:
+                        lo_f = None
+                    try:
+                        hi_f = float(hi) if hi is not None else None
+                        if hi_f is not None and not np.isfinite(hi_f):
+                            hi_f = None
+                    except Exception:
+                        hi_f = None
+
+                    if lo_f is None or hi_f is None:
+                        try:
+                            n_f = float(n) if n is not None else None
+                            std_f = float(std) if std is not None else None
+                            if n_f is not None and std_f is not None and np.isfinite(n_f) and np.isfinite(std_f) and n_f > 1:
+                                sem = std_f / float(np.sqrt(n_f))
+                                lo_f = mean_f - 1.96 * sem
+                                hi_f = mean_f + 1.96 * sem
+                        except Exception:
+                            lo_f = None
+                            hi_f = None
+
+                    xs.append(str(g) + (f"\n(n={int(n)})" if isinstance(n, (int, float)) else ""))
+                    ys.append(mean_f)
+                    if lo_f is not None and hi_f is not None:
+                        yerr_low.append(max(0.0, mean_f - lo_f))
+                        yerr_high.append(max(0.0, hi_f - mean_f))
+                    else:
+                        yerr_low.append(0.0)
+                        yerr_high.append(0.0)
+
+                if xs and ys:
+                    plt.figure(figsize=(7.6, 4.4))
+                    x_pos = np.arange(len(xs))
+                    yerr = np.array([yerr_low, yerr_high])
+                    plt.bar(x_pos, ys, color="#93c5fd", edgecolor="#0f172a", linewidth=1.0, alpha=0.85)
+                    if yerr.size and np.any(yerr > 0):
+                        plt.errorbar(x_pos, ys, yerr=yerr, fmt="none", ecolor="#0f172a", elinewidth=1.2, capsize=4)
+                    plt.xticks(x_pos, xs)
+                    plt.title("Описательная статистика (среднее ± 95% ДИ)" if is_ru else "Descriptives (mean ± 95% CI)")
+                    plt.xlabel("Группа" if is_ru else "Group")
+                    plt.ylabel(_format_axis_label(res, is_ru))
+                    plt.grid(True, axis="y", alpha=0.25)
+                    buf = io.BytesIO()
+                    plt.tight_layout()
+                    plt.savefig(buf, format="png")
+                    plt.close()
+                    return bytes(buf.getvalue())
+
         cont = res.get("contingency") if isinstance(res, dict) else None
         if isinstance(cont, dict) and isinstance(cont.get("counts"), list) and cont.get("counts"):
             try:
@@ -610,8 +722,30 @@ def _render_plot_png_bytes(res: Dict[str, Any], is_ru: bool = False) -> bytes:
                     plt.xlabel("1 − специфичность" if is_ru else "1 − Specificity")
                     plt.ylabel("Чувствительность" if is_ru else "Sensitivity")
                 else:
-                    sns.scatterplot(x="x", y="y", data=df_plot)
-                    sns.regplot(x="x", y="y", data=df_plot, scatter=False, color="red")
+                    x_num = pd.to_numeric(df_plot["x"], errors="coerce")
+                    y_num = pd.to_numeric(df_plot["y"], errors="coerce")
+                    mask = np.isfinite(x_num) & np.isfinite(y_num)
+                    x_vals = x_num[mask]
+                    y_vals = y_num[mask]
+                    if len(x_vals) > 800:
+                        hb = plt.hexbin(
+                            x_vals,
+                            y_vals,
+                            gridsize=45,
+                            cmap="viridis",
+                            mincnt=1,
+                        )
+                        try:
+                            plt.colorbar(hb)
+                        except Exception:
+                            pass
+                    else:
+                        sns.scatterplot(x=x_vals, y=y_vals, s=18, alpha=0.7, color="#0f172a")
+
+                    try:
+                        sns.regplot(x=x_vals, y=y_vals, scatter=False, color="#ef4444", line_kws={"linewidth": 2})
+                    except Exception:
+                        pass
                     plt.title("Корреляция" if is_ru else "Correlation Analysis")
                     plt.xlabel(str(res.get("x_label") or "X"))
                     plt.ylabel(str(res.get("y_label") or "Y"))
@@ -722,11 +856,14 @@ class ProtocolReport:
             blocks = []
 
         results = self.data.get("results", {})
+        step_meta_map = self.data.get("step_meta") if isinstance(self.data, dict) else None
+        if not isinstance(step_meta_map, dict):
+            step_meta_map = {}
+
+        import re
 
         self._add_overview()
 
-        self._add_toc(blocks if blocks else results)
-        
         def iter_steps():
             if blocks:
                 for block in blocks:
@@ -742,14 +879,187 @@ class ProtocolReport:
                     if isinstance(step_id, str) and isinstance(res, dict):
                         yield step_id, res
 
-        for step_id, res in iter_steps():
-            if res.get("type") == "table_1":
-                self._add_table_one(res, step_id)
+        raw_steps = list(iter_steps())
+        deduped = _dedupe_step_payloads(raw_steps)
 
-        for step_id, res in iter_steps():
+        def _visit_sort_key(v: Optional[str]) -> tuple:
+            if not v:
+                return (1, 1_000_000, "")
+            s = str(v).strip()
+            m = re.search(r"\bV\s*(\d+)\b", s, flags=re.IGNORECASE)
+            if m:
+                try:
+                    return (0, int(m.group(1)), "")
+                except Exception:
+                    return (0, 1_000_000, s)
+            try:
+                return (0, int(float(s)), "")
+            except Exception:
+                return (0, 1_000_000, s)
+
+        def _extract_visit(step_id: str, meta: Dict[str, Any]) -> Optional[str]:
+            for k in ["visit", "timepoint", "time", "visit_label", "time_label", "v"]:
+                v = meta.get(k) if isinstance(meta, dict) else None
+                if isinstance(v, (int, float)):
+                    try:
+                        return f"V{int(v)}"
+                    except Exception:
+                        pass
+                if isinstance(v, str) and v.strip():
+                    s = v.strip()
+                    m = re.search(r"\bV\s*(\d+)\b", s, flags=re.IGNORECASE)
+                    if m:
+                        return f"V{m.group(1)}"
+                    return s
+
+            where = meta.get("filter") if isinstance(meta, dict) else None
+            if isinstance(where, dict):
+                col = str(where.get("col") or where.get("column") or "").strip().lower()
+                val = where.get("value") if "value" in where else where.get("val")
+                if col and any(x in col for x in ["visit", "визит", "time", "точк", "v"]):
+                    if isinstance(val, (int, float)):
+                        try:
+                            return f"V{int(val)}"
+                        except Exception:
+                            pass
+                    if isinstance(val, str) and val.strip():
+                        s = val.strip()
+                        m = re.search(r"\bV\s*(\d+)\b", s, flags=re.IGNORECASE)
+                        if m:
+                            return f"V{m.group(1)}"
+                        return s
+
+            m = re.search(r"(?:^|[_\-])v\s*(\d+)(?:$|[_\-])", step_id, flags=re.IGNORECASE)
+            if m:
+                return f"V{m.group(1)}"
+            m = re.search(r"\bV\s*(\d+)\b", step_id, flags=re.IGNORECASE)
+            if m:
+                return f"V{m.group(1)}"
+            return None
+
+        def _extract_target(res: Dict[str, Any], meta: Dict[str, Any]) -> Optional[str]:
+            cfg = meta.get("config") if isinstance(meta, dict) else None
+            if isinstance(cfg, dict):
+                for k in ["target", "outcome", "endpoint", "y"]:
+                    v = cfg.get(k)
+                    if isinstance(v, str) and v.strip():
+                        return v.strip()
+            for k in ["target", "outcome", "endpoint", "y"]:
+                v = meta.get(k) if isinstance(meta, dict) else None
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+            for k in ["target", "outcome", "endpoint", "y"]:
+                v = res.get(k) if isinstance(res, dict) else None
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+            return None
+
+        def _type_weight(t: Optional[str]) -> int:
+            m = {
+                "table_1": 0,
+                "compare": 1,
+                "hypothesis_test": 1,
+                "regression": 2,
+                "correlation": 3,
+                "clustered_correlation": 3,
+                "mixed_effects": 4,
+                "survival": 5,
+                "responders": 6,
+                "batch_compare_by_factor": 7,
+            }
+            return int(m.get(str(t or "").strip(), 99))
+
+        is_ru = bool(getattr(self, "is_ru", False))
+
+        enriched = []
+        for e in deduped:
+            step_id = e.get("step_id") if isinstance(e, dict) else None
+            payload = e.get("res") if isinstance(e, dict) else None
+            if not isinstance(step_id, str) or not isinstance(payload, dict):
+                continue
+            meta = step_meta_map.get(step_id)
+            meta = meta if isinstance(meta, dict) else {}
+            target = _extract_target(payload, meta)
+            visit = _extract_visit(step_id, meta)
+            enriched.append({"step_id": step_id, "res": payload, "dup_count": int(e.get("dup_count") or 1), "target": target, "visit": visit, "rtype": payload.get("type")})
+
+        grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+        for row in enriched:
+            t = row.get("target")
+            v = row.get("visit")
+            t_label = str(t) if t else ("Без показателя" if is_ru else "Unspecified target")
+            v_label = str(v) if v else ("Все визиты" if is_ru else "All visits")
+            grouped.setdefault(t_label, {}).setdefault(v_label, []).append(row)
+
+        def _target_sort_key(label: str) -> tuple:
+            if label in {"Без показателя", "Unspecified target"}:
+                return (1, "")
+            return (0, label.casefold())
+
+        ordered_targets = sorted(grouped.keys(), key=_target_sort_key)
+        ordered_deduped: List[Dict[str, Any]] = []
+        for t_label in ordered_targets:
+            visits_map = grouped.get(t_label) or {}
+            ordered_visits = sorted(visits_map.keys(), key=lambda vv: _visit_sort_key(None if vv in {"Все визиты", "All visits"} else vv))
+            for v_label in ordered_visits:
+                items = visits_map.get(v_label) or []
+                items_sorted = sorted(items, key=lambda r: (_type_weight(r.get("rtype")), str(r.get("step_id"))))
+                ordered_deduped.extend(items_sorted)
+
+        if grouped:
+            self._add_editorial_index(grouped, ordered_targets)
+
+        toc_map = {e["step_id"]: e["res"] for e in ordered_deduped if isinstance(e, dict) and isinstance(e.get("step_id"), str) and isinstance(e.get("res"), dict)}
+        self._add_toc(toc_map)
+
+        total_steps = len(raw_steps)
+        unique_steps = len(deduped)
+        removed = max(0, total_steps - unique_steps)
+        type_counts = Counter([str((e.get("res") or {}).get("type") or "result") for e in deduped if isinstance(e, dict)])
+        type_lines = "".join(
+            [
+                f"<tr><td>{html.escape(t)}</td><td class=\"stat-val\">{int(c)}</td></tr>"
+                for t, c in sorted(type_counts.items(), key=lambda x: (-int(x[1]), str(x[0])))
+            ]
+        )
+        self.html_parts.append(
+            f"""
+            <div class=\"card\" id=\"summary\">
+                <h2>{'Сводка отчёта' if is_ru else 'Report Summary'}</h2>
+                <table>
+                    <tbody>
+                        <tr><td><strong>{'Шагов (всего)' if is_ru else 'Steps (total)'}</strong></td><td class=\"stat-val\">{total_steps}</td></tr>
+                        <tr><td><strong>{'Шагов (уникальных)' if is_ru else 'Steps (unique)'}</strong></td><td class=\"stat-val\">{unique_steps}</td></tr>
+                        <tr><td><strong>{'Свернуто повторов' if is_ru else 'Duplicates collapsed'}</strong></td><td class=\"stat-val\">{removed}</td></tr>
+                    </tbody>
+                </table>
+                <h3 style=\"margin-top: 14px;\">{'Состав по типам' if is_ru else 'By type'}</h3>
+                <table>
+                    <thead><tr><th>{'Тип' if is_ru else 'Type'}</th><th>{'Количество' if is_ru else 'Count'}</th></tr></thead>
+                    <tbody>{type_lines}</tbody>
+                </table>
+            </div>
+            """
+        )
+        
+        for e in ordered_deduped:
+            res = e.get("res") if isinstance(e, dict) else None
+            step_id = e.get("step_id") if isinstance(e, dict) else None
+            dup_count = int(e.get("dup_count") or 1) if isinstance(e, dict) else 1
+            if not isinstance(res, dict) or not isinstance(step_id, str):
+                continue
+            if res.get("type") == "table_1":
+                self._add_table_one(res, step_id, dup_count=dup_count)
+
+        for e in ordered_deduped:
+            res = e.get("res") if isinstance(e, dict) else None
+            step_id = e.get("step_id") if isinstance(e, dict) else None
+            dup_count = int(e.get("dup_count") or 1) if isinstance(e, dict) else 1
+            if not isinstance(res, dict) or not isinstance(step_id, str):
+                continue
             rtype = res.get("type")
             if rtype in ["compare", "hypothesis_test", "correlation", "regression", "survival", "mixed_effects", "clustered_correlation"]:
-                self._add_analysis_section(res, step_id)
+                self._add_analysis_section(res, step_id, dup_count=dup_count)
             elif rtype == "batch_compare_by_factor":
                 self._add_longitudinal_section(res, step_id)
             elif rtype == "responders":
@@ -954,6 +1264,70 @@ class ProtocolReport:
         """
         self.html_parts.append(html)
 
+    def _add_editorial_index(self, grouped: Dict[str, Dict[str, List[Dict[str, Any]]]], ordered_targets: List[str]):
+        is_ru = bool(getattr(self, "is_ru", False))
+        if not isinstance(grouped, dict) or not grouped:
+            return
+
+        import re
+
+        def _visit_sort_key(v: str) -> tuple:
+            if v in {"Все визиты", "All visits"}:
+                return (1, 1_000_000, "")
+            s = str(v).strip()
+            m = re.search(r"\bV\s*(\d+)\b", s, flags=re.IGNORECASE)
+            if m:
+                try:
+                    return (0, int(m.group(1)), "")
+                except Exception:
+                    return (0, 1_000_000, s)
+            try:
+                return (0, int(float(s)), "")
+            except Exception:
+                return (0, 1_000_000, s)
+
+        parts = [
+            f"""
+            <div class=\"card\" id=\"editorial\">
+                <h2>{'Навигация по показателям' if is_ru else 'Editorial Index'}</h2>
+            """
+        ]
+
+        targets = ordered_targets if isinstance(ordered_targets, list) and ordered_targets else list(grouped.keys())
+        for t_label in targets:
+            visits_map = grouped.get(t_label)
+            if not isinstance(visits_map, dict) or not visits_map:
+                continue
+            parts.append(f"<h3 style=\"margin-top: 18px;\">{html.escape(str(t_label))}</h3>")
+            visits = sorted(visits_map.keys(), key=_visit_sort_key)
+            for v_label in visits:
+                items = visits_map.get(v_label)
+                if not isinstance(items, list) or not items:
+                    continue
+                links = []
+                for it in items:
+                    sid = it.get("step_id") if isinstance(it, dict) else None
+                    rtype = it.get("rtype") if isinstance(it, dict) else None
+                    if not isinstance(sid, str) or not sid:
+                        continue
+                    t = f"{html.escape(sid)}"
+                    if isinstance(rtype, str) and rtype:
+                        t += f" <span style=\"color:#64748b;\">({html.escape(rtype)})</span>"
+                    links.append(f"<li><a href=\"#step-{html.escape(sid)}\">{t}</a></li>")
+                if not links:
+                    continue
+                parts.append(
+                    f"""
+                    <div style=\"margin-top: 10px;\">
+                        <div style=\"color:#111; font-size: 12px; font-weight: 600;\">{html.escape(str(v_label))}</div>
+                        <ul style=\"margin: 6px 0 0; padding-left: 18px;\">{''.join(links)}</ul>
+                    </div>
+                    """
+                )
+
+        parts.append("</div>")
+        self.html_parts.append("\n".join(parts))
+
     def _add_unknown_section(self, res: Dict[str, Any], step_id: str):
         is_ru = bool(getattr(self, "is_ru", False))
         rtype = (res.get("type") if isinstance(res, dict) else None) or "result"
@@ -1138,7 +1512,7 @@ class ProtocolReport:
             </div>
         """)
 
-    def _add_table_one(self, res: Dict, step_id: str):
+    def _add_table_one(self, res: Dict, step_id: str, dup_count: int = 1):
         is_ru = bool(getattr(self, "is_ru", False))
         stats = res.get("data", {})
         if not stats: return
@@ -1166,10 +1540,15 @@ class ProtocolReport:
                 return "-"
         
         groups = [k for k in stats.keys() if k != 'overall']
+
+        dup_line = ""
+        if isinstance(dup_count, int) and dup_count > 1:
+            dup_line = f"<div style=\"margin-top:-8px;color:#64748b;font-size:12px;\">{('Повтор шага свернут: ×' if is_ru else 'Duplicate collapsed: ×')}{dup_count}</div>"
         
         html = f"""
         <div class="card" id="step-{step_id}">
             <h2>{'Таблица 1. Описательная статистика' if is_ru else 'Table 1: Descriptive Statistics'}</h2>
+            {dup_line}
             <table>
                 <thead>
                     <tr>
@@ -1228,11 +1607,18 @@ class ProtocolReport:
         html += """
                 </tbody>
             </table>
+        """
+
+        img_b64 = self._generate_plot_image(res)
+        if img_b64:
+            html += f'<div class="plot-container"><img src="data:image/png;base64,{img_b64}" alt="Table 1 Plot" /></div>'
+
+        html += """
         </div>
         """
         self.html_parts.append(html)
 
-    def _add_analysis_section(self, res: Dict, step_id: str):
+    def _add_analysis_section(self, res: Dict, step_id: str, dup_count: int = 1):
         is_ru = bool(getattr(self, "is_ru", False))
         sig_val = res.get("significant")
         sig_class = "sig-yes" if sig_val is True else "sig-no"
@@ -1241,6 +1627,10 @@ class ProtocolReport:
             if sig_val is True
             else (("Статистически незначимо" if is_ru else "Not Significant") if sig_val is False else "—")
         )
+
+        dup_html = ""
+        if isinstance(dup_count, int) and dup_count > 1:
+            dup_html = f"<div style=\"margin-top: 8px; color: #64748b; font-size: 12px;\">{('Повтор шага свернут: ×' if is_ru else 'Duplicate collapsed: ×')}{dup_count}</div>"
         
         method_obj = res.get("method") if isinstance(res, dict) else None
         method_default = "Статистический тест" if is_ru else "Statistical Test"
@@ -1300,6 +1690,7 @@ class ProtocolReport:
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h3>{method_name}</h3>
+                    {dup_html}
                     {(
                         f'<div style="margin-top: 6px; color: #111; font-size: 12px;">'
                         + (f"<strong>{'Сравнение' if is_ru else 'Comparison'}:</strong> {html.escape(str(target))} " if target else "")
@@ -2052,9 +2443,39 @@ def generate_protocol_docx_report(
                 if isinstance(step_id, str) and isinstance(res, dict):
                     yield step_id, res
 
-    steps = list(iter_steps())
-    for idx, (step_id, res) in enumerate(steps):
-        doc.add_heading(("Шаг" if is_ru else "Step") + f": {step_id}", level=1)
+    raw_steps = list(iter_steps())
+    deduped = _dedupe_step_payloads(raw_steps)
+    total_steps = len(raw_steps)
+    unique_steps = len(deduped)
+    removed = max(0, total_steps - unique_steps)
+
+    doc.add_paragraph(("Шагов (всего)" if is_ru else "Steps (total)") + f": {total_steps}")
+    doc.add_paragraph(("Шагов (уникальных)" if is_ru else "Steps (unique)") + f": {unique_steps}")
+    doc.add_paragraph(("Свернуто повторов" if is_ru else "Duplicates collapsed") + f": {removed}")
+
+    by_type = Counter([str((e.get("res") or {}).get("type") or "result") for e in deduped if isinstance(e, dict)])
+    if by_type:
+        doc.add_paragraph(
+            ("Состав по типам" if is_ru else "By type")
+            + ": "
+            + ", ".join(
+                [
+                    f"{k}={int(v)}"
+                    for k, v in sorted(by_type.items(), key=lambda x: (-int(x[1]), str(x[0])))
+                ]
+            )
+        )
+
+    steps = deduped
+    for idx, e in enumerate(steps):
+        step_id = e.get("step_id") if isinstance(e, dict) else None
+        res = e.get("res") if isinstance(e, dict) else None
+        dup_count = int(e.get("dup_count") or 1) if isinstance(e, dict) else 1
+        if not isinstance(step_id, str) or not isinstance(res, dict):
+            continue
+
+        suffix = f" (×{dup_count})" if dup_count > 1 else ""
+        doc.add_heading(("Шаг" if is_ru else "Step") + f": {step_id}{suffix}", level=1)
 
         step_meta = step_meta_map.get(step_id) if isinstance(step_id, str) else None
         step_meta = step_meta if isinstance(step_meta, dict) else {}
@@ -2144,8 +2565,109 @@ def generate_protocol_docx_report(
 
             continue
 
+        def _render_batch_step(batch_res: Dict[str, Any], title: Optional[str] = None) -> None:
+            alpha_raw = batch_res.get("alpha")
+            if alpha_raw is None and isinstance(run_data, dict):
+                alpha_raw = run_data.get("alpha")
+            try:
+                alpha_val = float(alpha_raw) if alpha_raw is not None else 0.05
+                if not np.isfinite(alpha_val):
+                    alpha_val = 0.05
+            except Exception:
+                alpha_val = 0.05
+
+            group_col = batch_res.get("group") or batch_res.get("group_column") or ""
+            multiplicity = batch_res.get("multiplicity_correction")
+            post_hoc = batch_res.get("post_hoc")
+            post_hoc_correction = batch_res.get("post_hoc_correction")
+
+            items = batch_res.get("items")
+            items = items if isinstance(items, list) else []
+
+            rows: List[Dict[str, Any]] = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                target_name = it.get("target") or it.get("outcome")
+                if not target_name:
+                    continue
+                p_raw = it.get("p_value")
+                p_adj = it.get("p_value_adj")
+                p_used = p_adj if isinstance(p_adj, (int, float)) and np.isfinite(float(p_adj)) else p_raw
+                ok = isinstance(p_used, (int, float)) and np.isfinite(float(p_used))
+                sig = bool(float(p_used) < alpha_val) if ok else False
+                m = it.get("method")
+                if isinstance(m, dict):
+                    m = m.get("id") or m.get("name")
+                rows.append(
+                    {
+                        "target": str(target_name),
+                        "p_raw": p_raw,
+                        "p_adj": p_adj,
+                        "p_used": float(p_used) if ok else None,
+                        "sig": sig,
+                        "method": str(m) if m else "",
+                    }
+                )
+
+            rows = sorted(rows, key=lambda r: r["p_used"] if isinstance(r.get("p_used"), (int, float)) else 1.0)
+            sig_count = len([r for r in rows if r.get("sig")])
+
+            if title:
+                doc.add_heading(title, level=2)
+
+            if group_col:
+                doc.add_paragraph(("Группировка" if is_ru else "Group") + f": {_txt(group_col)}")
+            doc.add_paragraph(("Альфа" if is_ru else "Alpha") + f": {_txt(alpha_val)}")
+            if multiplicity:
+                doc.add_paragraph(("Поправка" if is_ru else "Correction") + f": {_txt(multiplicity)}")
+            if post_hoc and post_hoc != "none":
+                ph = _txt(post_hoc)
+                if post_hoc_correction and post_hoc_correction != "none":
+                    ph = f"{ph} ({_txt(post_hoc_correction)})"
+                doc.add_paragraph(("Post-hoc" if not is_ru else "Пост-хок") + f": {ph}")
+            doc.add_paragraph(("Показателей" if is_ru else "Targets") + f": {_txt(len(rows))}")
+            doc.add_paragraph(("Значимых" if is_ru else "Significant") + f": {_txt(sig_count)}")
+
+            table = doc.add_table(rows=1, cols=5)
+            hdr = table.rows[0].cells
+            hdr[0].text = "Показатель" if is_ru else "Target"
+            hdr[1].text = "p"
+            hdr[2].text = "q" if not is_ru else "p(adj)"
+            hdr[3].text = "Значимо" if is_ru else "Sig"
+            hdr[4].text = "Тест" if is_ru else "Test"
+
+            for r in rows:
+                row = table.add_row().cells
+                row[0].text = _txt(r.get("target"))
+                row[1].text = _fmt_p(r.get("p_raw"))
+                row[2].text = _fmt_p(r.get("p_adj"))
+                row[3].text = ("да" if is_ru else "yes") if r.get("sig") else ("нет" if is_ru else "no")
+                row[4].text = _txt(r.get("method"))
+
+        if res.get("type") == "batch_analysis":
+            _render_batch_step(res)
+            continue
+
+        if res.get("type") == "timepoint_batch_analysis":
+            split_by = res.get("split_by")
+            group_col = res.get("group")
+            if group_col:
+                doc.add_paragraph(("Группировка" if is_ru else "Group") + f": {_txt(group_col)}")
+            if split_by:
+                doc.add_paragraph(("Разбиение" if is_ru else "Split by") + f": {_txt(split_by)}")
+
+            slices = res.get("slices")
+            slices = slices if isinstance(slices, dict) else {}
+            for slice_key in sorted(slices.keys(), key=lambda x: str(x)):
+                slice_res = slices.get(slice_key)
+                if not isinstance(slice_res, dict):
+                    continue
+                _render_batch_step(slice_res, title=("Точка" if is_ru else "Slice") + f": {_txt(slice_key)}")
+            continue
+
         step_type = res.get("type")
-        if step_type and step_type not in {"compare", "hypothesis_test", "correlation", "regression", "survival", "mixed_effects", "clustered_correlation", "batch_compare_by_factor"}:
+        if step_type and step_type not in {"compare", "hypothesis_test", "correlation", "regression", "survival", "mixed_effects", "clustered_correlation", "batch_compare_by_factor", "batch_analysis", "timepoint_batch_analysis"}:
             doc.add_paragraph(("Тип" if is_ru else "Type") + f": {_txt(step_type)}")
             err = res.get("error")
             if isinstance(err, str) and err.strip():
@@ -2639,6 +3161,84 @@ def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = N
         pdf.cell(0, 6, _safe_text(("Фактор" if is_ru else "Feature") + f": {feature}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
 
+    if isinstance(results, dict) and results.get("type") in {"batch_analysis", "timepoint_batch_analysis"}:
+        alpha_raw = variables.get("alpha") if isinstance(variables, dict) else None
+        if alpha_raw is None:
+            alpha_raw = results.get("alpha")
+        try:
+            alpha_val = float(alpha_raw) if alpha_raw is not None else 0.05
+            if not np.isfinite(alpha_val):
+                alpha_val = 0.05
+        except Exception:
+            alpha_val = 0.05
+
+        group_label = group or results.get("group") or results.get("group_column")
+        if group_label and not group:
+            pdf.cell(0, 6, _safe_text(("Группа" if is_ru else "Group") + f": {group_label}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+
+        multiplicity = results.get("multiplicity_correction") or (variables.get("multiplicity_correction") if isinstance(variables, dict) else None)
+        if multiplicity:
+            pdf.cell(0, 6, _safe_text(("Поправка" if is_ru else "Correction") + f": {multiplicity}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, _safe_text(("Альфа" if is_ru else "Alpha") + f": {_fmt_num(alpha_val, 3)}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+        def _render_items(items: Any, label: Optional[str] = None) -> None:
+            local_items = items if isinstance(items, list) else []
+            rows: List[Dict[str, Any]] = []
+            for it in local_items:
+                if not isinstance(it, dict):
+                    continue
+                t = it.get("target") or it.get("outcome")
+                if not t:
+                    continue
+                p_raw = it.get("p_value")
+                p_adj = it.get("p_value_adj")
+                p_used = p_adj if isinstance(p_adj, (int, float)) and np.isfinite(float(p_adj)) else p_raw
+                ok = isinstance(p_used, (int, float)) and np.isfinite(float(p_used))
+                rows.append({"target": str(t), "p_raw": p_raw, "p_adj": p_adj, "p_used": float(p_used) if ok else None})
+            rows = sorted(rows, key=lambda r: r["p_used"] if isinstance(r.get("p_used"), (int, float)) else 1.0)
+
+            sig_count = 0
+            for r in rows:
+                pu = r.get("p_used")
+                if isinstance(pu, (int, float)) and np.isfinite(float(pu)) and float(pu) < alpha_val:
+                    sig_count += 1
+
+            if label:
+                pdf.set_font(font_family, "B", body_size + 1)
+                pdf.cell(0, 7, _safe_text(label, allow_unicode), new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font(font_family, "", body_size)
+
+            pdf.cell(0, 6, _safe_text(("Показателей" if is_ru else "Targets") + f": {len(rows)}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, _safe_text(("Значимых" if is_ru else "Significant") + f": {sig_count}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+
+            pdf.set_font(font_family, "", max(7, body_size - 1))
+            for r in rows:
+                line = f"{r.get('target')}: p={_fmt_p(r.get('p_raw'))}"
+                if r.get("p_adj") is not None:
+                    line += f"; q={_fmt_p(r.get('p_adj'))}"
+                pdf.multi_cell(0, 4.6, _safe_text(line, allow_unicode))
+            pdf.set_font(font_family, "", body_size)
+            pdf.ln(2)
+
+        if results.get("type") == "batch_analysis":
+            _render_items(results.get("items"), label=("Пакетный анализ" if is_ru else "Batch analysis"))
+            return _pdf_bytes(pdf)
+
+        slices = results.get("slices")
+        slices = slices if isinstance(slices, dict) else {}
+        split_by = results.get("split_by")
+        if split_by:
+            pdf.cell(0, 6, _safe_text(("Разбиение" if is_ru else "Split by") + f": {split_by}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+        for k in sorted(slices.keys(), key=lambda x: str(x)):
+            sr = slices.get(k)
+            if not isinstance(sr, dict):
+                continue
+            _render_items(sr.get("items"), label=("Точка" if is_ru else "Slice") + f": {k}")
+        return _pdf_bytes(pdf)
+
     pdf.set_font(font_family, "B", body_size + 2)
     pdf.cell(0, 7, _safe_text("Результаты" if is_ru else "Results", allow_unicode), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font(font_family, "", body_size)
@@ -3025,7 +3625,89 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
             method_name = method.get("name") or method.get("id") or method_name
         pdf.cell(0, 6, _safe_text(("Метод" if is_ru else "Method") + f": {method_name}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
 
-        if step_type and step_type not in {"table_1", "compare", "hypothesis_test", "correlation", "regression", "survival", "mixed_effects", "clustered_correlation", "batch_compare_by_factor", "responders"}:
+        if step_type in {"batch_analysis", "timepoint_batch_analysis"}:
+            alpha_raw = res.get("alpha")
+            if alpha_raw is None and isinstance(run_data, dict):
+                alpha_raw = run_data.get("alpha")
+            try:
+                alpha_val = float(alpha_raw) if alpha_raw is not None else 0.05
+                if not np.isfinite(alpha_val):
+                    alpha_val = 0.05
+            except Exception:
+                alpha_val = 0.05
+
+            group_col = res.get("group") or res.get("group_column")
+            if group_col:
+                pdf.cell(0, 6, _safe_text(("Группировка" if is_ru else "Group") + f": {group_col}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, _safe_text(("Альфа" if is_ru else "Alpha") + f": {_fmt_num(alpha_val, 3)}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            corr = res.get("multiplicity_correction")
+            if corr:
+                pdf.cell(0, 6, _safe_text(("Поправка" if is_ru else "Correction") + f": {corr}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+
+            def _render_items(items: Any, label: Optional[str] = None) -> None:
+                local_items = items if isinstance(items, list) else []
+                rows: List[Dict[str, Any]] = []
+                for it in local_items:
+                    if not isinstance(it, dict):
+                        continue
+                    t = it.get("target") or it.get("outcome")
+                    if not t:
+                        continue
+                    p_raw = it.get("p_value")
+                    p_adj = it.get("p_value_adj")
+                    p_used = p_adj if isinstance(p_adj, (int, float)) and np.isfinite(float(p_adj)) else p_raw
+                    ok = isinstance(p_used, (int, float)) and np.isfinite(float(p_used))
+                    rows.append({"target": str(t), "p_raw": p_raw, "p_adj": p_adj, "p_used": float(p_used) if ok else None})
+                rows = sorted(rows, key=lambda r: r["p_used"] if isinstance(r.get("p_used"), (int, float)) else 1.0)
+
+                sig_count = 0
+                for r in rows:
+                    pu = r.get("p_used")
+                    if isinstance(pu, (int, float)) and np.isfinite(float(pu)) and float(pu) < alpha_val:
+                        sig_count += 1
+
+                if label:
+                    pdf.ln(1)
+                    pdf.set_font(font_family, "B", body_size + 1)
+                    pdf.cell(0, 6, _safe_text(label, allow_unicode), new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_font(font_family, "", body_size)
+
+                pdf.cell(0, 6, _safe_text(("Показателей" if is_ru else "Targets") + f": {len(rows)}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(0, 6, _safe_text(("Значимых" if is_ru else "Significant") + f": {sig_count}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+                pdf.ln(1)
+                pdf.set_font(font_family, "", max(7, body_size - 1))
+                for r in rows:
+                    line = f"{r.get('target')}: p={_fmt_p(r.get('p_raw'))}"
+                    if r.get("p_adj") is not None:
+                        line += f"; q={_fmt_p(r.get('p_adj'))}"
+                    try:
+                        pdf.set_x(pdf.l_margin)
+                    except Exception:
+                        pass
+                    pdf.multi_cell(0, 4.3, _safe_text(line, allow_unicode))
+                pdf.set_font(font_family, "", body_size)
+
+            if step_type == "batch_analysis":
+                _render_items(res.get("items"), label=("Пакетный анализ" if is_ru else "Batch analysis"))
+                pdf.ln(3)
+                new_page_before_step = True
+                continue
+
+            split_by = res.get("split_by")
+            if split_by:
+                pdf.cell(0, 6, _safe_text(("Разбиение" if is_ru else "Split by") + f": {split_by}", allow_unicode), new_x="LMARGIN", new_y="NEXT")
+            slices = res.get("slices")
+            slices = slices if isinstance(slices, dict) else {}
+            for k in sorted(slices.keys(), key=lambda x: str(x)):
+                sr = slices.get(k)
+                if not isinstance(sr, dict):
+                    continue
+                _render_items(sr.get("items"), label=("Точка" if is_ru else "Slice") + f": {k}")
+            pdf.ln(3)
+            new_page_before_step = True
+            continue
+
+        if step_type and step_type not in {"table_1", "compare", "hypothesis_test", "correlation", "regression", "survival", "mixed_effects", "clustered_correlation", "batch_compare_by_factor", "responders", "batch_analysis", "timepoint_batch_analysis"}:
             err = res.get("error")
             if isinstance(err, str) and err.strip():
                 try:

@@ -46,6 +46,8 @@ class ProtocolEngine:
 
         try:
             import numpy as np
+            if isinstance(obj, (np.bool_,)):
+                return bool(obj)
             if isinstance(obj, (np.integer,)):
                 return int(obj)
             if isinstance(obj, (np.floating,)):
@@ -119,14 +121,28 @@ class ProtocolEngine:
 
         # 3. Save Results
         sanitized_results = self._sanitize(results_map)
+
+        step_meta: Dict[str, Any] = {}
+        steps = protocol.get("steps") if isinstance(protocol, dict) else None
+        if isinstance(steps, list):
+            for s in steps:
+                if not isinstance(s, dict):
+                    continue
+                sid = s.get("id")
+                if sid is None:
+                    continue
+                step_meta[str(sid)] = s
         
         full_output = {
             "protocol_name": protocol.get("name", "Unnamed Protocol"),
             "dataset_id": dataset_id,
             "alpha": alpha,
             "results": sanitized_results,
-            "log": log
+            "log": log,
         }
+
+        if step_meta:
+            full_output["step_meta"] = step_meta
         
         self.pipeline.save_run_results(run_dir, full_output)
 
@@ -521,11 +537,22 @@ class ProtocolEngine:
             
         step["alpha"] = alpha
         raw_res = run_analysis(df, method_id, target, group, **step)
+        used_method_id = raw_res.get("method") if isinstance(raw_res, dict) else None
+        if not isinstance(used_method_id, str) or not used_method_id.strip():
+            used_method_id = method_id
+        used_method_id = str(used_method_id)
         
         # Format for storage
+        method_obj = get_method(used_method_id)
+        method_out: Any
+        if method_obj is None:
+            method_out = {"id": used_method_id, "name": used_method_id}
+        else:
+            method_out = method_obj
+
         result_dict = {
             "type": "compare",
-            "method": get_method(method_id),
+            "method": method_out,
             "target": target,
             "target_label": target_label,
             "unit": unit,
@@ -546,9 +573,12 @@ class ProtocolEngine:
             "plot_stats": raw_res.get("plot_stats"),
             "plot_data": raw_res.get("plot_data"),
             "assumptions": raw_res.get("assumptions"),
-            "warnings": raw_res.get("warnings"),
+            "warnings": raw_res.get("warnings") or raw_res.get("warning"),
             "post_hoc": raw_res.get("post_hoc"),
             "comparisons": raw_res.get("comparisons"),
+            "contingency": raw_res.get("contingency"),
+            "expected_min": raw_res.get("expected_min"),
+            "odds_ratio": raw_res.get("odds_ratio"),
         }
         
         # AI Interpretation

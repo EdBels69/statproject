@@ -44,7 +44,8 @@ function ProtocolRunRoute({ mode }) {
   }
 
   if (!runId && !localPayload) {
-    return <Navigate to={`/design/${id}`} replace state={location.state} />;
+    const fallbackBase = location.state?.origin === 'ai' ? '/ai' : '/design';
+    return <Navigate to={`${fallbackBase}/${id}`} replace state={location.state} />;
   }
 
   return (
@@ -81,11 +82,13 @@ function App() {
                   <Route path="/report/:id" element={<ProtocolRunRoute mode="report" />} />
                   <Route path="/tests" element={<AnalysisDesign mode="tests" />} />
                   <Route path="/tests/:id" element={<AnalysisDesign mode="tests" />} />
-                  <Route path="/wizard" element={<AnalysisDesign />} />
+                  <Route path="/wizard" element={<ProtocolWizard />} />
                   <Route path="/design" element={<AnalysisDesign />} />
                   <Route path="/design/:id" element={<AnalysisDesign />} />
-                  <Route path="/ai" element={<ProtocolWizard />} />
-                  <Route path="/protocol" element={<ProtocolWizard />} />
+                  <Route path="/ai" element={<AnalysisDesign mode="ai" />} />
+                  <Route path="/ai/:id" element={<AnalysisDesign mode="ai" />} />
+                  <Route path="/protocol" element={<AnalysisDesign mode="protocol" />} />
+                  <Route path="/protocol/:id" element={<AnalysisDesign mode="protocol" />} />
                   <Route path="/calculator" element={<SampleSizeCalculator />} />
                   <Route path="/wiki" element={<StatWiki />} />
                   <Route path="/settings" element={<Settings />} />

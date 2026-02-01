@@ -67,12 +67,15 @@ class SmartScanner:
         total_cols = int(len(df.columns))
 
         sample_rows = total_rows
-        if total_rows > 20000 or total_cols > 500:
+        if total_rows > 20000:
             sample_rows = min(2000, total_rows)
+        elif total_rows > 5000 or total_cols > 150:
+            sample_rows = min(5000, total_rows)
 
         df_sample = df
         if sample_rows < total_rows and sample_rows > 0:
-            df_sample = df.sample(n=sample_rows, random_state=42)
+            step = max(1, int(total_rows // max(1, sample_rows)))
+            df_sample = df.iloc[::step].head(int(sample_rows))
 
         scan_cols = list(df.columns)
         if total_cols > 500:
@@ -174,12 +177,17 @@ class SmartScanner:
                     if big:
                         continue
 
-                    s_str = s.astype(str) if s.dtype == object else s
-                    numeric_converted = pd.to_numeric(s_str, errors="coerce")
-                    non_null = s.notna().sum()
-                    numeric_non_null = numeric_converted.notna().sum()
+                    probe = s.dropna().head(5000)
+                    if probe.empty:
+                        continue
 
-                    if non_null > 0 and (numeric_non_null / non_null) >= 0.9:
+                    probe_str = probe.astype(str)
+                    probe_num = pd.to_numeric(probe_str, errors="coerce")
+                    probe_non_null = int(len(probe_str))
+                    probe_numeric_non_null = int(probe_num.notna().sum())
+
+                    if probe_non_null > 0 and (probe_numeric_non_null / probe_non_null) >= 0.9:
+                        s_str = s.astype(str)
                         out[col] = pd.to_numeric(s_str, errors="coerce")
                         if pd.api.types.is_integer_dtype(out[col].dropna().dtype):
                             out[col] = pd.to_numeric(out[col], downcast="integer")
@@ -217,19 +225,23 @@ class SmartScanner:
         
         # A. Detect Mixed Types (Numbers hidden in Object columns)
         if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
-            # Try converting to numeric
-            numeric_converted = pd.to_numeric(series, errors='coerce')
-            num_count = numeric_converted.notna().sum()
-            total_count = sample_rows
+            probe = series.dropna().head(5000)
+            numeric_converted = pd.to_numeric(probe.astype(str), errors="coerce") if not probe.empty else pd.Series([], dtype="float64")
+            num_count = int(numeric_converted.notna().sum())
+            total_count = int(len(probe))
             
-            if num_count > 0 and num_count / total_count > 0.5:
+            if total_count > 0 and num_count > 0 and num_count / total_count > 0.5:
                 # Suspicious: >50% are numbers, but it's an object column (likely pollution)
                 stats["mixed_type_suspected"] = True
                 stats["numeric_convertible_percent"] = round((num_count / total_count) * 100, 1)
                 
                 # Find the "Polluters" (values that are NaN after conversion but weren't before)
                 # Note: this is expensive for large sets, so we sample
-                polluters = series[numeric_converted.isna() & series.notna()].unique()[:5]
+                try:
+                    mask = numeric_converted.isna()
+                    polluters = probe[mask].unique()[:5]
+                except Exception:
+                    polluters = []
                 stats["polluting_values"] = [str(x) for x in polluters]
 
         # B. Normality Check (If Numeric)

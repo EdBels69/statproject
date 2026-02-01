@@ -296,7 +296,7 @@ async def apply(payload: WizardApplyRequest):
                     group_col=group,
                     method_id="kruskal",
                     alpha=payload.alpha,
-                    auto_fallback=False,
+                    auto_fallback=(bool(auto_fallback) if auto_fallback is not None else False),
                     multiplicity_correction=multiplicity_correction,
                     post_hoc=post_hoc,
                     post_hoc_correction=post_hoc_correction,

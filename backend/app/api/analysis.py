@@ -26,7 +26,7 @@ from app.modules.reporting import generate_pdf_report, generate_protocol_pdf_rep
 from app.modules.docx_generator import create_results_document
 from app.core.logging import logger
 
-from app.api.datasets import DATA_DIR, parse_file
+from app.api.datasets import DATA_DIR, parse_file, _load_dataset_meta
 
 from app.stats.assumptions import check_normality as check_normality_profile
 from app.stats.assumptions import check_homogeneity as check_homogeneity_profile
@@ -238,9 +238,16 @@ def suggest_design(req: DesignRequest):
                 full_report = json.load(f)
                 metadata = full_report.get("columns", {})
 
+        variables = req.variables if isinstance(req.variables, dict) else {}
+        meta = _load_dataset_meta(req.dataset_id)
+        dataset_title = str(meta.get("original_filename") or meta.get("filename") or "").strip()
+        if dataset_title and not variables.get("dataset_title"):
+            variables = dict(variables)
+            variables["dataset_title"] = dataset_title
+
         # 2. Generate Protocol
         designer = StudyDesignEngine()
-        protocol = designer.suggest_protocol(req.goal, req.variables, metadata, template_id=req.template_id)
+        protocol = designer.suggest_protocol(req.goal, variables, metadata, template_id=req.template_id)
         return protocol
         
     except Exception as e:

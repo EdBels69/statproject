@@ -3,7 +3,6 @@ import {
   DocumentTextIcon,
   SparklesIcon,
   PlayIcon,
-  TrashIcon,
   PencilIcon,
   ArrowUpIcon,
   ArrowDownIcon,
@@ -16,7 +15,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 
 const ProtocolBuilder = ({
   protocol,
-  onRemoveTest,
+  onToggleTest,
   onEditTest,
   onMoveTest,
   onExecuteProtocol,
@@ -35,7 +34,7 @@ const ProtocolBuilder = ({
 }) => {
   const { t } = useTranslation();
   const [expandedTests, setExpandedTests] = useState({});
-  const [leavingTestIds, setLeavingTestIds] = useState(() => ({}));
+  const enabledProtocol = (Array.isArray(protocol) ? protocol : []).filter((s) => s?.enabled !== false);
 
   const toggleTestExpansion = (testId) => {
     setExpandedTests(prev => ({
@@ -54,18 +53,6 @@ const ProtocolBuilder = ({
     if (index < protocol.length - 1) {
       onMoveTest(index, index + 1);
     }
-  };
-
-  const handleRemoveWithAnimation = (testId) => {
-    setLeavingTestIds((prev) => ({ ...prev, [testId]: true }));
-    window.setTimeout(() => {
-      onRemoveTest(testId);
-      setLeavingTestIds((prev) => {
-        const next = { ...prev };
-        delete next[testId];
-        return next;
-      });
-    }, 160);
   };
 
   const getTestDisplayName = (test) => {
@@ -152,13 +139,13 @@ const ProtocolBuilder = ({
               const isExpanded = expandedTests[test.id];
               const displayName = getTestDisplayName(test);
               const description = getTestDescription(test);
-              const isLeaving = Boolean(leavingTestIds?.[test.id]);
               const isSelected = selectedStepId === test.id;
+              const isEnabled = test?.enabled !== false;
 
               return (
                 <div
                   key={test.id}
-                  className={`relative bg-[color:var(--white)] border rounded-[2px] overflow-hidden transition-all duration-200 ease-out ${isLeaving ? 'opacity-0 translate-x-2 scale-[0.99] pointer-events-none' : 'opacity-100 translate-x-0 scale-100'} ${isSelected ? 'border-black' : 'border-[color:var(--border-color)]'}`}
+                  className={`relative bg-[color:var(--white)] border rounded-[2px] overflow-hidden transition-all duration-200 ease-out ${isSelected ? 'border-black' : 'border-[color:var(--border-color)]'} ${isEnabled ? '' : 'opacity-55'}`}
                 >
                   <button
                     type="button"
@@ -184,6 +171,15 @@ const ProtocolBuilder = ({
                       </div>
 
                       <div className="flex items-center gap-1 flex-shrink-0 relative">
+                        <label className="flex items-center gap-2 p-1 rounded-[2px] hover:bg-[color:var(--bg-secondary)]">
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={(e) => onToggleTest?.(test.id, e.target.checked)}
+                            className="h-4 w-4 accent-black"
+                            aria-label="Включить в анализ"
+                          />
+                        </label>
                         <button
                           type="button"
                           onClick={() => handleMoveUp(index)}
@@ -212,15 +208,6 @@ const ProtocolBuilder = ({
                           aria-label={t('edit')}
                         >
                           <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveWithAnimation(test.id)}
-                          className="p-1 text-[color:var(--text-muted)] hover:text-[color:var(--error)] hover:bg-[color:var(--bg-secondary)] rounded-[2px] active:scale-[0.98]"
-                          title={t('remove')}
-                          aria-label={t('remove')}
-                        >
-                          <TrashIcon className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -266,8 +253,8 @@ const ProtocolBuilder = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onExecuteProtocol(protocol)}
-            disabled={isExecuting || protocol.length === 0}
+            onClick={() => onExecuteProtocol(enabledProtocol)}
+            disabled={isExecuting || enabledProtocol.length === 0}
             className="flex-1 h-10 inline-flex items-center justify-center gap-2 px-4 rounded-[2px] bg-[color:var(--accent)] text-[color:var(--white)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             title="Выполнить протокол (Ctrl+Enter)"
             aria-keyshortcuts="Control+Enter Meta+Enter"
@@ -279,7 +266,7 @@ const ProtocolBuilder = ({
           <button
             type="button"
             onClick={onAISuggest}
-            disabled={isAIAnalyzing || protocol.length === 0}
+            disabled={isAIAnalyzing || enabledProtocol.length === 0}
             className="h-10 px-3 rounded-[2px] border border-[color:var(--border-color)] text-[color:var(--accent)] bg-[color:var(--white)] hover:bg-[color:var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
             title={t('ai_suggest_tests')}
           >

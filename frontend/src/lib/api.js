@@ -53,7 +53,11 @@ export async function uploadDataset(file) {
       method: "POST",
       body: formData,
     }, { timeoutMs: 180000, timeoutError: 'Загрузка файла занимает слишком много времени' });
-  } catch {
+  } catch (e) {
+    const message = e?.message ? String(e.message) : '';
+    if (message && message !== 'Failed to fetch') {
+      throw new Error(message);
+    }
     throw new Error("Не удалось подключиться к серверу");
   }
   if (!response.ok) {
@@ -69,7 +73,11 @@ export async function uploadPrimaryDataset() {
     response = await request(`${API_URL}/datasets/demo/primary`, {
       method: "POST",
     }, { timeoutMs: 180000, timeoutError: 'Загрузка демо-файла занимает слишком много времени' });
-  } catch {
+  } catch (e) {
+    const message = e?.message ? String(e.message) : '';
+    if (message && message !== 'Failed to fetch') {
+      throw new Error(message);
+    }
     throw new Error("Не удалось подключиться к серверу");
   }
   if (!response.ok) {
@@ -123,7 +131,7 @@ export async function applyStrategy(data) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
-  }, { timeoutMs: 180000, timeoutError: 'Анализ занимает слишком много времени' });
+  }, { timeoutMs: 240000, timeoutError: 'Анализ занимает слишком много времени' });
   if (!response.ok) throw new Error("Не удалось применить стратегию");
   return response.json();
 }
@@ -666,6 +674,26 @@ export async function getAISuggestions(datasetId, currentProtocol = []) {
     const detail = await readError(response);
     throw new Error(detail || "Не удалось получить AI-подсказки");
   }
+  return response.json();
+}
+
+export async function aiAnalyzeDesign(datasetId, text, { protocol = null, preferences = null } = {}) {
+  const response = await request(`${API_V2_URL}/ai/analyze-design`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      text,
+      protocol,
+      preferences,
+    }),
+  }, { timeoutMs: 60000, timeoutError: 'ИИ слишком долго собирает дизайн исследования' });
+
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось разобрать дизайн исследования');
+  }
+
   return response.json();
 }
 

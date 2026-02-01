@@ -65,6 +65,14 @@ METHODS = {
         min_groups=2,
         max_groups=2
     ),
+    "fisher_exact": StatMethod(
+        id="fisher_exact",
+        name="Fisher's Exact Test",
+        description="Tests association between two categorical variables (better for small samples).",
+        type="categorical",
+        min_groups=2,
+        max_groups=2
+    ),
     "pearson": StatMethod(
         id="pearson",
         name="Pearson Correlation",

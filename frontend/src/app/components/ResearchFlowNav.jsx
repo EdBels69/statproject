@@ -21,6 +21,7 @@ export default function ResearchFlowNav({
   showNextButton = true,
   topLabel = 'Данные',
   highlight = false,
+  designBasePath = null,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,6 +79,8 @@ export default function ResearchFlowNav({
   }, [isOpen]);
 
   const go = (stepId) => {
+    const resolvedDesignBasePath = designBasePath || (location.state?.origin === 'ai' ? '/ai' : '/design');
+
     if (stepId === 'data') {
       navigate('/datasets');
       return;
@@ -94,7 +97,7 @@ export default function ResearchFlowNav({
     }
 
     if (stepId === 'design') {
-      navigate(`/design/${datasetId}`, { state: location.state });
+      navigate(`${resolvedDesignBasePath}/${datasetId}`, { state: location.state });
       return;
     }
 

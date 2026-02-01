@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useRef, useCallback } from 'react';
-import { getWizardRecommendation, applyStrategy, listDatasets, getDataset, exportReport, exportDocx, getAlphaSetting } from '../../lib/api';
+import { getWizardRecommendation, applyStrategy, listDatasets, getDataset, exportReport, exportDocx, getAlphaSetting, aiAnalyzeDesign, executeProtocolV2, cleanColumn } from '../../lib/api';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
@@ -42,6 +42,15 @@ export default function ProtocolWizard() {
   const [recommendation, setRecommendation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showApplyForm, setShowApplyForm] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const [chatText, setChatText] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatError, setChatError] = useState(null);
+  const [chatDesign, setChatDesign] = useState(null);
+  const [chatNotes, setChatNotes] = useState([]);
+  const [prepNormalizeCol, setPrepNormalizeCol] = useState('');
+  const [prepBusy, setPrepBusy] = useState(false);
+  const [prepError, setPrepError] = useState(null);
   const [variables, setVariables] = useState({
     target: '',
     group: '',
@@ -51,6 +60,7 @@ export default function ProtocolWizard() {
     timepoint: '',
     timepoint_value: '',
     all_numeric: true,
+    auto_fallback: true,
     multiplicity_correction: 'fdr_bh',
     post_hoc: 'none',
     post_hoc_correction: 'none',
@@ -86,6 +96,333 @@ export default function ProtocolWizard() {
   });
   const chartRef = useRef(null);
   const autoPickRef = useRef(false);
+
+  const chatProtocol = useMemo(() => (
+    Array.isArray(chatDesign?.protocol) ? chatDesign.protocol : []
+  ), [chatDesign?.protocol]);
+
+  const hasChatProtocol = chatProtocol.length > 0;
+
+  const columnNames = useMemo(() => {
+    const list = Array.isArray(columns) ? columns : [];
+    return list
+      .map((c) => (typeof c === 'string' ? c : c?.name))
+      .filter(Boolean)
+      .map((n) => String(n));
+  }, [columns]);
+
+  const prepColumns = useMemo(() => {
+    const list = Array.isArray(columns) ? columns : [];
+    return list
+      .map((c) => ({
+        name: typeof c === 'string' ? String(c) : String(c?.name || ''),
+        type: typeof c === 'object' && c ? String(c?.type || '') : '',
+        missing_count: typeof c === 'object' && c ? c?.missing_count : null,
+        unique_count: typeof c === 'object' && c ? c?.unique_count : null,
+      }))
+      .filter((c) => Boolean(c.name));
+  }, [columns]);
+
+  const prepCategoricalColumns = useMemo(() => {
+    const list = Array.isArray(prepColumns) ? prepColumns : [];
+    const out = list.filter((c) => ['categorical', 'text'].includes(String(c.type || ''))).map((c) => c.name);
+    return out.length ? out : list.map((c) => c.name);
+  }, [prepColumns]);
+
+  const prepInfoByName = useMemo(() => {
+    const out = new Map();
+    for (const c of prepColumns) out.set(String(c.name), c);
+    return out;
+  }, [prepColumns]);
+
+  const prepSummary = useMemo(() => {
+    const list = Array.isArray(prepColumns) ? prepColumns : [];
+    let missingCols = 0;
+    let constantCols = 0;
+    let categoricalCols = 0;
+    for (const c of list) {
+      const type = String(c?.type || '');
+      if (type === 'categorical' || type === 'text') categoricalCols += 1;
+      const miss = typeof c?.missing_count === 'number' && Number.isFinite(c.missing_count) ? c.missing_count : 0;
+      if (miss > 0) missingCols += 1;
+      const uniq = typeof c?.unique_count === 'number' && Number.isFinite(c.unique_count) ? c.unique_count : null;
+      if (uniq != null && uniq <= 1) constantCols += 1;
+    }
+    return {
+      total: list.length,
+      categoricalCols,
+      missingCols,
+      constantCols,
+    };
+  }, [prepColumns]);
+
+  const resetChatState = useCallback(() => {
+    setApproved(false);
+    setChatText('');
+    setChatBusy(false);
+    setChatError(null);
+    setChatDesign(null);
+    setChatNotes([]);
+  }, []);
+
+  const contract = useMemo(() => {
+    const existingCols = new Set(columnNames.map(String));
+    const issues = [];
+
+    const safeStr = (v) => {
+      const s = String(v || '').trim();
+      return s ? s : null;
+    };
+
+    const stepConfig = (s) => (s && typeof s === 'object' && s.config && typeof s.config === 'object') ? s.config : {};
+
+    const findOutcome = (cfg) => safeStr(cfg.outcome) || safeStr(cfg.target);
+    const findGroup = (cfg) => safeStr(cfg.group) || safeStr(cfg.group_col) || safeStr(cfg.predictor);
+
+    const validateStep = (s, idx) => {
+      const method = safeStr(s?.method) || 'unknown';
+      const cfg = stepConfig(s);
+      const title = safeStr(s?.name) || safeStr(s?.title) || `Шаг ${idx + 1}`;
+
+      if (method === 'descriptive_compare') {
+        const t = safeStr(cfg.target) || safeStr(cfg.outcome);
+        const g = findGroup(cfg);
+        if (!t || !g) issues.push(`${title}: нужны target/outcome и group`);
+        if (t && !existingCols.has(t)) issues.push(`${title}: колонка ${t} не найдена`);
+        if (g && !existingCols.has(g)) issues.push(`${title}: колонка ${g} не найдена`);
+        return;
+      }
+
+      if (method === 'clustered_correlation') {
+        const vars = cfg.variables;
+        if (!Array.isArray(vars) || vars.length < 2) issues.push(`${title}: нужны variables (2+)`);
+        if (Array.isArray(vars)) {
+          for (const v of vars) {
+            const col = safeStr(v);
+            if (col && !existingCols.has(col)) issues.push(`${title}: колонка ${col} не найдена`);
+          }
+        }
+        return;
+      }
+
+      if (method === 'mixed_effects') {
+        const o = findOutcome(cfg);
+        const t = safeStr(cfg.time);
+        const g = findGroup(cfg);
+        const sub = safeStr(cfg.subject);
+        if (!o || !t || !g || !sub) issues.push(`${title}: нужны outcome, time, group, subject`);
+        for (const col of [o, t, g, sub]) {
+          if (col && !existingCols.has(col)) issues.push(`${title}: колонка ${col} не найдена`);
+        }
+        return;
+      }
+
+      if (method === 'rm_anova') {
+        const outcomeCols = cfg.outcome_cols;
+        const subject = safeStr(cfg.subject_col);
+        if (!Array.isArray(outcomeCols) || outcomeCols.length < 2) issues.push(`${title}: нужны outcome_cols (2+)`);
+        if (!subject) issues.push(`${title}: нужен subject_col`);
+        if (Array.isArray(outcomeCols)) {
+          for (const v of outcomeCols) {
+            const col = safeStr(v);
+            if (col && !existingCols.has(col)) issues.push(`${title}: колонка ${col} не найдена`);
+          }
+        }
+        if (subject && !existingCols.has(subject)) issues.push(`${title}: колонка ${subject} не найдена`);
+        return;
+      }
+
+      if (method === 'friedman') {
+        const outcomeCols = cfg.outcome_cols;
+        if (!Array.isArray(outcomeCols) || outcomeCols.length < 3) issues.push(`${title}: нужны outcome_cols (3+)`);
+        if (Array.isArray(outcomeCols)) {
+          for (const v of outcomeCols) {
+            const col = safeStr(v);
+            if (col && !existingCols.has(col)) issues.push(`${title}: колонка ${col} не найдена`);
+          }
+        }
+        return;
+      }
+
+      const o = findOutcome(cfg);
+      const g = findGroup(cfg);
+      if (!o || !g) issues.push(`${title}: нужны outcome/target и group/predictor`);
+      if (o && !existingCols.has(o)) issues.push(`${title}: колонка ${o} не найдена`);
+      if (g && !existingCols.has(g)) issues.push(`${title}: колонка ${g} не найдена`);
+    };
+
+    if (hasChatProtocol) {
+      chatProtocol.forEach((s, idx) => validateStep(s, idx));
+      return {
+        mode: 'chat',
+        issues,
+      };
+    }
+
+    const baseIssues = [];
+    const m = safeStr(recommendation?.method_id);
+
+    if (m && m !== 'consult_statistician') {
+      const needsGroup = m !== 'survival_km' && !(m?.includes('regression')) && !(m === 'rm_anova' || m === 'friedman');
+      const needsTarget = m !== 'kw_timepoints_all_numeric' && !(Boolean(variables.all_numeric) && !['pearson', 'spearman', 'chi_square'].includes(m)) && !(m === 'rm_anova' || m === 'friedman');
+      const needsOutcomeCols = m === 'rm_anova' || m === 'friedman';
+      const needsSubject = m === 'rm_anova';
+      const needsEvent = m === 'survival_km';
+      const needsTimepoint = m === 'kw_timepoints_all_numeric';
+      const needsPredictors = Boolean(m?.includes('regression'));
+
+      if (needsGroup && !safeStr(variables.group)) baseIssues.push('Нужна колонка группы');
+      if (needsTarget && !safeStr(variables.target)) baseIssues.push('Нужна целевая колонка');
+      if (needsEvent && !safeStr(variables.event)) baseIssues.push('Нужна колонка события');
+      if (needsTimepoint && !safeStr(variables.timepoint)) baseIssues.push('Нужна колонка таймпоинта');
+      if (needsPredictors && !safeStr(variables.predictors)) baseIssues.push('Нужны предикторы');
+      if (needsOutcomeCols) {
+        const min = m === 'friedman' ? 3 : 2;
+        const cols = Array.isArray(variables.outcome_cols) ? variables.outcome_cols : [];
+        if (cols.length < min) baseIssues.push(`Нужно outcome_cols (${min}+)`);
+      }
+      if (needsSubject && !safeStr(variables.subject_col)) baseIssues.push('Нужна колонка субъекта (subject_col)');
+
+      const checkCols = (arr) => {
+        for (const v of arr) {
+          const col = safeStr(v);
+          if (col && !existingCols.has(col)) baseIssues.push(`Колонка не найдена: ${col}`);
+        }
+      };
+
+      if (safeStr(variables.group)) checkCols([variables.group]);
+      if (safeStr(variables.target)) checkCols([variables.target]);
+      if (safeStr(variables.event)) checkCols([variables.event]);
+      if (safeStr(variables.timepoint)) checkCols([variables.timepoint]);
+      if (safeStr(variables.subject_col)) checkCols([variables.subject_col]);
+      if (Array.isArray(variables.outcome_cols)) checkCols(variables.outcome_cols);
+    }
+
+    return {
+      mode: 'wizard',
+      issues: baseIssues,
+    };
+  }, [chatProtocol, columnNames, hasChatProtocol, recommendation?.method_id, variables]);
+
+  const approveDisabled = Boolean(chatBusy) || contract.issues.length > 0 || (!(recommendation && recommendation.method_id !== 'consult_statistician') && !hasChatProtocol);
+
+  const ensureApproved = useCallback(() => {
+    if (approved && contract.issues.length === 0) return true;
+    if (contract.issues.length > 0) {
+      alert('Согласование невозможно: заполните обязательные поля контракта');
+      return false;
+    }
+    alert('Сначала согласуйте дизайн (Approve)');
+    return false;
+  }, [approved, contract.issues.length]);
+
+  const handlePrepNormalizeCategories = useCallback(async () => {
+    const datasetId = selectedDataset?.id;
+    const col = String(prepNormalizeCol || '').trim();
+    if (!datasetId || !col) return;
+    if (!confirm(`Нормализовать значения категорий в столбце "${col}"?`)) return;
+
+    setPrepBusy(true);
+    setPrepError(null);
+    try {
+      const profile = await cleanColumn(datasetId, col, 'normalize_categories');
+      if (profile && typeof profile === 'object' && Array.isArray(profile.columns)) {
+        setColumns(profile.columns);
+      } else {
+        const fresh = await getDataset(datasetId);
+        setColumns(fresh.columns || []);
+      }
+    } catch (e) {
+      setPrepError(e?.message ? String(e.message) : 'Не удалось нормализовать категории');
+    } finally {
+      setPrepBusy(false);
+    }
+  }, [prepNormalizeCol, selectedDataset?.id]);
+
+  const approvalStorageKey = useMemo(() => (
+    selectedDataset?.id ? `statproject_wizard_approval_${String(selectedDataset.id)}` : null
+  ), [selectedDataset?.id]);
+
+  useEffect(() => {
+    if (!approvalStorageKey) return;
+    try {
+      const raw = sessionStorage.getItem(approvalStorageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== 'object') return;
+
+      const restoredText = typeof parsed.chatText === 'string' ? parsed.chatText : '';
+      const restoredDesign = parsed.chatDesign && typeof parsed.chatDesign === 'object' ? parsed.chatDesign : null;
+      const restoredNotes = Array.isArray(parsed.chatNotes) ? parsed.chatNotes : [];
+      const restoredApproved = Boolean(parsed.approved);
+      const restoredVars = parsed.variables && typeof parsed.variables === 'object' ? parsed.variables : null;
+
+      setChatText(restoredText);
+      setChatDesign(restoredDesign);
+      setChatNotes(restoredNotes);
+      setApproved(restoredApproved);
+
+      if (restoredVars) {
+        setVariables((v) => ({
+          ...v,
+          group: typeof restoredVars.group === 'string' ? restoredVars.group : v.group,
+          target: typeof restoredVars.target === 'string' ? restoredVars.target : v.target,
+          outcome_cols: Array.isArray(restoredVars.outcome_cols) ? restoredVars.outcome_cols : v.outcome_cols,
+          subject_col: typeof restoredVars.subject_col === 'string' ? restoredVars.subject_col : v.subject_col,
+          event: typeof restoredVars.event === 'string' ? restoredVars.event : v.event,
+          timepoint: typeof restoredVars.timepoint === 'string' ? restoredVars.timepoint : v.timepoint,
+          timepoint_value: restoredVars.timepoint_value !== undefined ? restoredVars.timepoint_value : v.timepoint_value,
+          predictors: typeof restoredVars.predictors === 'string' ? restoredVars.predictors : v.predictors,
+        }));
+      }
+    } catch {
+      return;
+    }
+  }, [approvalStorageKey]);
+
+  useEffect(() => {
+    if (!approvalStorageKey) return;
+    try {
+      sessionStorage.setItem(
+        approvalStorageKey,
+        JSON.stringify({
+          chatText,
+          chatDesign,
+          chatNotes,
+          approved,
+          variables: {
+            group: variables.group,
+            target: variables.target,
+            outcome_cols: variables.outcome_cols,
+            subject_col: variables.subject_col,
+            event: variables.event,
+            timepoint: variables.timepoint,
+            timepoint_value: variables.timepoint_value,
+            predictors: variables.predictors,
+          },
+          ts: Date.now(),
+        })
+      );
+    } catch {
+      return;
+    }
+  }, [approvalStorageKey, approved, chatDesign, chatNotes, chatText, variables.event, variables.group, variables.outcome_cols, variables.predictors, variables.subject_col, variables.target, variables.timepoint, variables.timepoint_value]);
+
+  useEffect(() => {
+    if (!approved) return;
+    if (contract.issues.length === 0) return;
+    setApproved(false);
+  }, [approved, contract.issues.length]);
+
+  useEffect(() => {
+    if (prepNormalizeCol) return;
+    if (!prepCategoricalColumns.length) return;
+    const candidate = String(variables.group || '').trim();
+    if (candidate && prepCategoricalColumns.includes(candidate)) {
+      setPrepNormalizeCol(candidate);
+      return;
+    }
+    setPrepNormalizeCol(prepCategoricalColumns[0]);
+  }, [prepCategoricalColumns, prepNormalizeCol, variables.group]);
 
   useEffect(() => {
     try {
@@ -450,6 +787,24 @@ export default function ProtocolWizard() {
     </div>
   ), []);
 
+  const handleDatasetSelect = useCallback(async (ds) => {
+    setSelectedDataset(ds);
+    resetChatState();
+    setPrepNormalizeCol('');
+    setPrepBusy(false);
+    setPrepError(null);
+    setLoading(true);
+    try {
+      const data = await getDataset(ds.id);
+      setColumns(data.columns || []);
+      setStep(1);
+    } catch (e) {
+      alert("Не удалось загрузить колонки: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [resetChatState]);
+
   useEffect(() => {
     loadDatasets();
   }, []);
@@ -491,20 +846,6 @@ export default function ProtocolWizard() {
     handleDatasetSelect(match);
   }, [datasets, handleDatasetSelect, location.search, selectedDataset?.id]);
 
-  const handleDatasetSelect = useCallback(async (ds) => {
-    setSelectedDataset(ds);
-    setLoading(true);
-    try {
-      const data = await getDataset(ds.id);
-      setColumns(data.columns || []);
-      setStep(1);
-    } catch (e) {
-      alert("Не удалось загрузить колонки: " + e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const handleSelect = (key, value) => {
     const newSelections = { ...selections, [key]: value };
     setSelections(newSelections);
@@ -527,17 +868,91 @@ export default function ProtocolWizard() {
 
   const handlePickMethod = (method) => {
     setRecommendation(method);
+    setApproved(false);
     setShowApplyForm(false);
     setAnalysisResult(null);
-    setVariables(v => ({ ...v, target: '', group: '', outcome_cols: [], subject_col: '', event: '', timepoint: '', all_numeric: true }));
+    setVariables(v => ({ ...v, target: '', group: '', outcome_cols: [], subject_col: '', event: '', timepoint: '', all_numeric: true, auto_fallback: true }));
     setRmBaseKey('');
   };
+
+  const aiPickGroupColumn = useCallback(() => {
+    const cols = Array.isArray(columns) ? columns : [];
+    const scored = cols
+      .map((c) => {
+        const name = String(c?.name || '').trim();
+        if (!name) return null;
+        const nameL = name.toLowerCase();
+        const t = String(c?.type || '').trim().toLowerCase();
+        const unique = typeof c?.unique_count === 'number' ? c.unique_count : null;
+
+        let score = 0;
+        if (t === 'categorical') score += 4;
+        if (t === 'numeric' && typeof unique === 'number' && unique > 1 && unique <= 12) score += 2;
+
+        if (typeof unique === 'number') {
+          if (unique >= 2 && unique <= 6) score += 4;
+          if (unique >= 7 && unique <= 12) score += 2;
+          if (unique > 50) score -= 6;
+        }
+
+        if (/(group|групп|arm|treat|treatment|cohort|coh|site|center|центр|sex|gender|пол)/.test(nameL)) score += 5;
+        if (/(id|uuid|guid|patient|subject|person|номер|ид)/.test(nameL)) score -= 6;
+
+        return { name, type: t, unique, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.score - a.score) || String(a.name).localeCompare(String(b.name)));
+
+    const best = scored[0] || null;
+    if (!best) return null;
+    if (typeof best.unique === 'number' && best.unique < 2) return null;
+    return best;
+  }, [columns]);
+
+  const handleAIBatchAllNumeric = useCallback(async () => {
+    if (!selectedDataset?.id) {
+      alert('Сначала выберите файл данных');
+      return;
+    }
+
+    const bestGroup = aiPickGroupColumn();
+    if (!bestGroup?.name) {
+      alert('Не удалось автоматически выбрать группирующую колонку');
+      return;
+    }
+
+    const groupUnique = typeof bestGroup.unique === 'number' ? bestGroup.unique : null;
+    const method_id = groupUnique === 2 ? 't_test_ind' : 'kruskal';
+    const nextRecommendation = {
+      method_id,
+      name: method_id === 't_test_ind' ? 't‑тест (независимые)' : 'Краскела–Уоллиса',
+      description: 'Пакетный анализ всех числовых показателей по группам (с авто‑подбором теста и FDR).',
+      assumptions: [],
+    };
+
+    const nextVariables = {
+      ...variables,
+      target: '',
+      group: bestGroup.name,
+      all_numeric: true,
+      auto_fallback: true,
+      multiplicity_correction: 'fdr_bh',
+      post_hoc: groupUnique && groupUnique > 2 ? 'dunn' : 'none',
+      post_hoc_correction: groupUnique && groupUnique > 2 ? 'bh' : 'none',
+    };
+
+    setRecommendation(nextRecommendation);
+    setApproved(false);
+    setShowApplyForm(true);
+    setVariables(nextVariables);
+  }, [aiPickGroupColumn, selectedDataset?.id, variables]);
 
   const handleSubmit = async (finalSelections) => {
     setLoading(true);
     try {
       const res = await getWizardRecommendation(finalSelections);
       setRecommendation(res);
+      setApproved(false);
     } catch (e) {
       console.error(e);
       alert("Не удалось получить рекомендацию: " + e.message);
@@ -546,7 +961,53 @@ export default function ProtocolWizard() {
     }
   };
 
+  const handleChatSend = useCallback(async () => {
+    if (!selectedDataset?.id) return;
+    const text = String(chatText || '').trim();
+    if (!text) return;
+    setChatBusy(true);
+    setChatError(null);
+    try {
+      const res = await aiAnalyzeDesign(selectedDataset.id, text, {
+        protocol: Array.isArray(chatDesign?.protocol) ? chatDesign.protocol : null,
+        preferences: {
+          source: 'wizard',
+        },
+      });
+      setChatDesign(res);
+      setChatNotes(Array.isArray(res?.notes) ? res.notes : []);
+      setApproved(false);
+    } catch (e) {
+      setChatError(e?.message || 'Не удалось разобрать дизайн исследования');
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chatDesign?.protocol, chatText, selectedDataset?.id]);
+
+  const handleRunApproved = async () => {
+    if (!ensureApproved()) return;
+    if (!selectedDataset?.id) return;
+
+    if (hasChatProtocol) {
+      setLoading(true);
+      try {
+        const res = await executeProtocolV2(selectedDataset.id, chatProtocol, variables.alpha);
+        const runId = res?.run_id;
+        if (!runId) throw new Error('Не удалось получить run_id');
+        navigate(`/results/${encodeURIComponent(String(selectedDataset.id))}?run=${encodeURIComponent(String(runId))}`, { state: { origin: 'ai' } });
+      } catch (e) {
+        alert(`Ошибка анализа: ${e?.message || 'Не удалось запустить протокол'}`);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    await handleApply();
+  };
+
   const handleApply = async () => {
+    if (!ensureApproved()) return;
     const needsGroup = methodId !== 'survival_km' && !(methodId?.includes('regression')) && !isRepeatedMeasures;
     const needsTarget = methodId !== 'kw_timepoints_all_numeric' && !allNumericEnabled && !isRepeatedMeasures;
     const needsOutcomeCols = isRepeatedMeasures;
@@ -570,6 +1031,7 @@ export default function ProtocolWizard() {
         multiplicity_correction: variables.multiplicity_correction,
         post_hoc: variables.post_hoc,
         post_hoc_correction: variables.post_hoc_correction,
+        auto_fallback: variables.auto_fallback,
       };
       const res = await applyStrategy({
         recommendation: recommendation,
@@ -912,14 +1374,18 @@ export default function ProtocolWizard() {
     });
     setRecommendation(null);
     setShowApplyForm(false);
+    resetChatState();
     setAnalysisResult(null);
     setVariables({
       target: '',
       group: '',
+      outcome_cols: [],
+      subject_col: '',
       event: '',
       timepoint: '',
       timepoint_value: '',
       all_numeric: true,
+      auto_fallback: true,
       multiplicity_correction: 'fdr_bh',
       post_hoc: 'none',
       post_hoc_correction: 'none',
@@ -930,6 +1396,15 @@ export default function ProtocolWizard() {
     setDrilldownResult(null);
     setResultsOpen(false);
   };
+
+  const runDisabled = !approved || loading || (!hasChatProtocol && (
+    recommendation?.method_id === 'kw_timepoints_all_numeric'
+      ? (!variables.group || !variables.timepoint)
+      : ((variables.all_numeric && !['pearson', 'spearman', 'chi_square', 'survival_km'].includes(recommendation?.method_id) && !(recommendation?.method_id?.includes('regression')))
+        ? (!variables.group)
+        : (!variables.target || (recommendation?.method_id === 'survival_km' ? !variables.event :
+          (recommendation?.method_id?.includes('regression') ? !variables.predictors : !variables.group))))
+  ));
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-20">
@@ -1002,6 +1477,12 @@ export default function ProtocolWizard() {
                   title="Сравнить группы"
                   desc="Различия между группами лечения или популяциями"
                   onClick={() => handleSelect('goal', 'compare_groups')}
+                />
+                <OptionCard
+                  icon="∞"
+                  title="ИИ: всё‑на‑всё по группам"
+                  desc="Автовыбор группирующей колонки и пакетный анализ всех числовых показателей"
+                  onClick={handleAIBatchAllNumeric}
                 />
                 <OptionCard
                   icon="⏱️"
@@ -1102,14 +1583,14 @@ export default function ProtocolWizard() {
               <h2 className="text-xl font-bold mb-6 text-[color:var(--text-primary)]">Какой метод применить?</h2>
               <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
                 <div className="text-xs text-[color:var(--text-secondary)] max-w-xl">
-                  Здесь показываются базовые варианты для вашего дизайна. Полная библиотека тестов — в конструкторе.
+                  Здесь показываются базовые варианты для вашего дизайна. Перед запуском лучше привести категории и пропуски в порядок.
                 </div>
                 <Button
                   variant="ghost"
-                  onClick={() => navigate(selectedDataset ? `/design/${selectedDataset.id}` : '/design')}
+                  onClick={() => navigate(selectedDataset ? `/prep/${selectedDataset.id}` : '/datasets')}
                   className="px-4"
                 >
-                  Открыть конструктор →
+                  Подготовка данных →
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1166,6 +1647,221 @@ export default function ProtocolWizard() {
                 )}
               </div>
             ) : null}
+          </div>
+
+          <div className="bg-[color:var(--white)] border border-[color:var(--border-color)] rounded-[2px] p-6">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-[10px] font-black text-[color:var(--text-secondary)] uppercase tracking-widest">Согласование дизайна</div>
+                <div className="mt-2 text-sm text-[color:var(--text-secondary)] max-w-2xl">
+                  Опишите дизайн исследования человеческим языком — ИИ соберёт черновик протокола. Запуск доступен только после approve.
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={approved ? 'px-3 py-2 rounded-[999px] bg-[color:var(--accent)] text-[color:var(--white)] text-xs font-black tracking-widest' : 'px-3 py-2 rounded-[999px] border border-[color:var(--border-color)] text-xs font-black tracking-widest text-[color:var(--text-secondary)]'}>
+                  {approved ? 'СОГЛАСОВАНО' : 'НЕ СОГЛАСОВАНО'}
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={resetChatState}
+                  className="px-4"
+                >
+                  Сбросить
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => setApproved(true)}
+                  disabled={approveDisabled}
+                  className="px-6"
+                >
+                  Approve
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-7 border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--bg-secondary)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[10px] font-black text-[color:var(--text-primary)] uppercase tracking-wide">Prep-чеклист</div>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <Badge variant={prepSummary.missingCols ? 'accent' : 'neutral'}>ПРОПУСКИ · {prepSummary.missingCols}</Badge>
+                    <Badge variant={prepSummary.constantCols ? 'accent' : 'neutral'}>КОНСТАНТЫ · {prepSummary.constantCols}</Badge>
+                    <Badge variant={prepSummary.categoricalCols ? 'neutral' : 'neutral'}>КАТЕГОРИИ · {prepSummary.categoricalCols}</Badge>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                  Быстро выровняйте орфографию/регистр/пробелы в категориях, затем переходите к полноценной подготовке.
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <div className="md:col-span-2">
+                    <div className="text-[10px] font-black text-[color:var(--text-secondary)] uppercase tracking-widest">Нормализация категорий</div>
+                    <select
+                      className="mt-2 w-full border border-[color:var(--border-color)] rounded-[2px] px-3 py-2 bg-[color:var(--white)] focus:border-[color:var(--accent)] focus:outline-none transition-colors"
+                      value={prepNormalizeCol}
+                      onChange={(e) => setPrepNormalizeCol(e.target.value)}
+                      disabled={prepBusy || !selectedDataset?.id}
+                    >
+                      <option value="">-- Выберите колонку --</option>
+                      {prepCategoricalColumns.map((name) => {
+                        const info = prepInfoByName.get(String(name));
+                        const uniq = typeof info?.unique_count === 'number' && Number.isFinite(info.unique_count) ? info.unique_count : null;
+                        const miss = typeof info?.missing_count === 'number' && Number.isFinite(info.missing_count) ? info.missing_count : null;
+                        const suffix = [
+                          uniq != null ? `уник. ${uniq}` : null,
+                          miss != null ? `проп. ${miss}` : null,
+                        ].filter(Boolean).join(' · ');
+
+                        return (
+                          <option key={String(name)} value={String(name)}>
+                            {String(name)}{suffix ? ` — ${suffix}` : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => selectedDataset?.id && navigate(`/prep/${selectedDataset.id}`)}
+                      disabled={!selectedDataset?.id || prepBusy}
+                      className="px-4"
+                    >
+                      Подготовка →
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handlePrepNormalizeCategories}
+                      disabled={prepBusy || !selectedDataset?.id || !String(prepNormalizeCol || '').trim()}
+                      className="px-5"
+                    >
+                      {prepBusy ? 'Обрабатываю…' : 'Нормализовать'}
+                    </Button>
+                  </div>
+                </div>
+                {prepError ? (
+                  <div className="mt-3 text-xs font-semibold text-[color:var(--accent)]">{String(prepError)}</div>
+                ) : null}
+              </div>
+
+              <div className="lg:col-span-5 border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[10px] font-black text-[color:var(--text-primary)] uppercase tracking-wide">Контракт</div>
+                  <Badge variant={contract.issues.length ? 'error' : 'success'}>
+                    {contract.issues.length ? `ПРОБЛЕМЫ · ${contract.issues.length}` : 'OK'}
+                  </Badge>
+                </div>
+
+                {contract.issues.length ? (
+                  <div className="mt-3 space-y-1">
+                    {contract.issues.slice(0, 8).map((it, idx) => (
+                      <div key={idx} className="text-[11px] font-mono text-[color:var(--text-secondary)] break-words">
+                        — {String(it)}
+                      </div>
+                    ))}
+                    {contract.issues.length > 8 ? (
+                      <div className="pt-1 text-[11px] font-mono text-[color:var(--text-muted)]">
+                        …и ещё {contract.issues.length - 8}
+                      </div>
+                    ) : null}
+                    <div className="pt-2 text-xs text-[color:var(--text-secondary)]">Approve заблокирован, пока не исправите обязательные поля.</div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-[color:var(--text-secondary)]">
+                    Контракт согласования чист. Можно approve и запускать.
+                  </div>
+                )}
+
+                {!hasChatProtocol && recommendation?.method_id === 'consult_statistician' ? (
+                  <div className="mt-3 text-xs text-[color:var(--text-secondary)]">
+                    Выбран вариант «Консультация статистика» — протокол запуска не требуется.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--bg-secondary)]">
+                <div className="text-xs font-black text-[color:var(--text-primary)] uppercase tracking-wide">Чат</div>
+                <div className="mt-2 text-xs text-[color:var(--text-secondary)]">
+                  Пример: «3 группы, исход — выписан/нет, хотим сравнить доли, поправка на множественность не нужна».
+                </div>
+                <textarea
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  placeholder="Опишите дизайн…"
+                  className="mt-3 w-full min-h-[120px] border border-[color:var(--border-color)] rounded-[2px] px-3 py-2 bg-[color:var(--white)] text-sm focus:border-[color:var(--accent)] focus:outline-none"
+                />
+                {chatError ? (
+                  <div className="mt-2 text-xs font-semibold text-[color:var(--accent)]">{String(chatError)}</div>
+                ) : null}
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={() => selectedDataset?.id && navigate(`/prep/${selectedDataset.id}`)}
+                    disabled={!selectedDataset?.id}
+                    className="px-4"
+                  >
+                    Подготовка данных
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleChatSend}
+                    disabled={chatBusy || !selectedDataset?.id || !String(chatText || '').trim()}
+                    className="px-6"
+                  >
+                    {chatBusy ? 'Думаю…' : 'Собрать протокол'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border border-[color:var(--border-color)] rounded-[2px] p-4 bg-[color:var(--white)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-black text-[color:var(--text-primary)] uppercase tracking-wide">Черновик протокола</div>
+                  <div className="text-xs font-mono text-[color:var(--text-secondary)]">
+                    {(Array.isArray(chatDesign?.protocol) ? chatDesign.protocol.length : 0) ? `${chatDesign.protocol.length} шаг(ов)` : '—'}
+                  </div>
+                </div>
+
+                {(Array.isArray(chatDesign?.protocol) && chatDesign.protocol.length) ? (
+                  <div className="mt-3 space-y-2">
+                    {chatDesign.protocol.slice(0, 12).map((s, idx) => (
+                      <div key={String(s?.id || idx)} className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs font-black text-[color:var(--text-primary)] truncate">
+                            {String(s?.name || s?.method || 'Шаг')}
+                          </div>
+                          <div className="text-[11px] font-mono text-[color:var(--text-secondary)]">{String(s?.method || '')}</div>
+                        </div>
+                        {s?.config && typeof s.config === 'object' ? (
+                          <div className="mt-1 text-[11px] font-mono text-[color:var(--text-secondary)] break-words">
+                            {Object.entries(s.config)
+                              .filter(([, v]) => v !== null && v !== undefined && String(v) !== '')
+                              .slice(0, 4)
+                              .map(([k, v]) => `${k}=${String(v)}`)
+                              .join(' · ')}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {chatNotes.length ? (
+                      <div className="mt-3 border-l-2 border-[color:var(--accent)] pl-3 py-2 bg-[color:var(--bg-secondary)]">
+                        <div className="text-[10px] font-black text-[color:var(--text-secondary)] uppercase tracking-widest">Примечания</div>
+                        <div className="mt-2 space-y-1">
+                          {chatNotes.slice(0, 6).map((n, i) => (
+                            <div key={i} className="text-xs text-[color:var(--text-primary)]">{String(n)}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-4 text-sm text-[color:var(--text-secondary)]">
+                    Пока пусто. Напишите дизайн и нажмите «Собрать протокол».
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Apply Form - Appears below recommendation */}
@@ -1497,18 +2193,11 @@ export default function ProtocolWizard() {
                 <button onClick={() => setShowApplyForm(false)} className="text-[color:var(--text-secondary)] font-bold hover:text-[color:var(--text-primary)] transition-colors">Отмена</button>
                 <div className="flex gap-4">
                   <button
-                    onClick={handleApply}
-                    disabled={loading || (
-                      recommendation?.method_id === 'kw_timepoints_all_numeric'
-                        ? (!variables.group || !variables.timepoint)
-                        : ((variables.all_numeric && !['pearson', 'spearman', 'chi_square', 'survival_km'].includes(recommendation?.method_id) && !(recommendation?.method_id?.includes('regression')))
-                          ? (!variables.group)
-                          : (!variables.target || (recommendation?.method_id === 'survival_km' ? !variables.event :
-                            (recommendation?.method_id?.includes('regression') ? !variables.predictors : !variables.group))))
-                    )}
+                    onClick={handleRunApproved}
+                    disabled={runDisabled}
                     className="bg-[color:var(--accent)] text-[color:var(--white)] px-10 py-4 rounded-[2px] font-black text-lg hover:bg-[color:var(--accent-hover)] disabled:opacity-30 transition-colors"
                   >
-                    {loading ? 'Выполняю…' : 'Запустить протокол ⚡'}
+                    {loading ? 'Выполняю…' : 'Запустить протокол'}
                   </button>
                 </div>
               </div>

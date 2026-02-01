@@ -83,12 +83,7 @@ const AIRecommendationsPanel = ({
         {isAnalyzing ? (
           <div className="flex flex-col items-center justify-center py-8 text-[color:var(--text-muted)]">
             <SparklesIcon className="w-8 h-8 mb-3 text-[color:var(--accent)] animate-pulse" />
-            <p className="text-sm">{t('ai_analyzing_dataset')}</p>
-          </div>
-        ) : recommendations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-[color:var(--text-muted)]">
-            <InformationCircleIcon className="w-8 h-8 mb-3" />
-            <p className="text-sm">{t('ai_no_recommendations')}</p>
+            <p className="text-sm">{t('ai_analyzing')}</p>
           </div>
         ) : (
           recommendations.map((recommendation, index) => {

@@ -69,7 +69,13 @@ def _sanitize_json(obj: Any) -> Any:
     return obj
 
 
-async def _ingest_dataset_bytes(content: bytes, filename: str) -> DatasetUpload:
+async def _ingest_dataset_bytes(
+    content: bytes,
+    filename: str,
+    *,
+    auto_clean: bool = True,
+    auto_impute: str = "simple",
+) -> DatasetUpload:
     dataset_id = str(uuid.uuid4())
     try:
         raw_path = pipeline.save_source(dataset_id, content, filename)
@@ -80,13 +86,36 @@ async def _ingest_dataset_bytes(content: bytes, filename: str) -> DatasetUpload:
         df, used_header = await run_in_threadpool(parse_logic)
 
         from app.modules.smart_scanner import SmartScanner
+        from app.services.upload_service import _auto_clean_and_impute, _normalize_auto_impute
         scanner = SmartScanner()
         df = await run_in_threadpool(scanner.optimize_dtypes, df)
 
-        pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"header_row": used_header})
+        scan_before = await run_in_threadpool(scanner.scan_dataset, df)
+        scan_report_before = scan_before.get("scan_report") or {}
 
-        scan_result = await run_in_threadpool(scanner.scan_dataset, df)
-        profile_data = scan_result["profile"]
+        auto_impute_norm = _normalize_auto_impute(auto_impute)
+        df, auto_stats = await run_in_threadpool(
+            lambda: _auto_clean_and_impute(
+                df,
+                scan_report_before,
+                auto_clean=bool(auto_clean),
+                auto_impute=auto_impute_norm,
+            )
+        )
+
+        if auto_stats.get("actions"):
+            df = await run_in_threadpool(scanner.optimize_dtypes, df)
+            scan_result = await run_in_threadpool(scanner.scan_dataset, df)
+        else:
+            scan_result = scan_before
+
+        pipeline.create_processed_snapshot(
+            dataset_id,
+            df,
+            cleaning_log={"header_row": used_header, "auto": auto_stats},
+        )
+
+        profile_data = _sanitize_json(scan_result["profile"])
         scan_report = scan_result["scan_report"]
 
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
@@ -370,7 +399,11 @@ async def delete_dataset(dataset_id: str):
     return {"id": dataset_id, "deleted": True}
 
 @router.post("", response_model=DatasetUpload)
-async def upload_dataset(file: UploadFile = File(...)):
+async def upload_dataset(
+    file: UploadFile = File(...),
+    auto_clean: bool = Query(True),
+    auto_impute: str = Query("simple"),
+):
     # File size validation (50MB max)
     MAX_FILE_SIZE = 50 * 1024 * 1024
     file.file.seek(0, 2)
@@ -384,7 +417,12 @@ async def upload_dataset(file: UploadFile = File(...)):
         )
     
     content = await file.read()
-    return await _ingest_dataset_bytes(content, file.filename)
+    return await _ingest_dataset_bytes(
+        content,
+        file.filename,
+        auto_clean=auto_clean,
+        auto_impute=auto_impute,
+    )
 
 
 @router.get("/{dataset_id}/sheets", response_model=List[str])
@@ -774,10 +812,16 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
     try:
         # 1. Load Data
         df = get_dataframe(dataset_id, DATA_DIR)
+
+        if cmd.column not in df.columns:
+            raise ValueError(f"Столбец не найден: {cmd.column}")
         
         # 2. Apply Operation
         if cmd.action == "to_numeric":
             df[cmd.column] = pd.to_numeric(df[cmd.column], errors='coerce')
+        elif cmd.action == "normalize_categories":
+            from app.modules.data_normalizer import normalize_categorical_series
+            df[cmd.column] = normalize_categorical_series(df[cmd.column])
         elif cmd.action == "fill_mean":
             if pd.api.types.is_numeric_dtype(df[cmd.column]):
                 df[cmd.column] = df[cmd.column].fillna(df[cmd.column].mean())
@@ -798,9 +842,11 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
         elif cmd.action == "fill_nocb":
             df[cmd.column] = df[cmd.column].bfill()
         elif cmd.action == "drop_na":
-             df = df.dropna(subset=[cmd.column])
+            df = df.dropna(subset=[cmd.column])
         else:
             raise ValueError(f"Неизвестное действие: {cmd.action}")
+
+        df = df.reset_index(drop=True)
              
         from app.modules.smart_scanner import SmartScanner
         scanner = SmartScanner()

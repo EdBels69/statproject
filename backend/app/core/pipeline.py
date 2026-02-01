@@ -186,13 +186,42 @@ class PipelineManager:
                         except Exception:
                             pass
 
-            df_copy = df.copy()
-            for col in df_copy.columns:
-                if df_copy[col].dtype == object:
-                    df_copy[col] = df_copy[col].astype(str).replace("nan", pd.NA).replace("None", pd.NA)
-
             tmp_path = os.path.join(processed_dir, f".tmp_{dataset_id}.{int(time.time() * 1000)}.parquet")
-            df_copy.to_parquet(tmp_path, engine="pyarrow", index=False)
+
+            try:
+                df.to_parquet(tmp_path, engine="pyarrow", index=False)
+            except Exception:
+                df_copy = df.copy()
+                for col in df_copy.columns:
+                    try:
+                        s = df_copy[col]
+                        if pd.api.types.is_categorical_dtype(s.dtype):
+                            try:
+                                cats = list(s.cat.categories[:2000])
+                                cat_types = {type(v) for v in cats if v is not None}
+                            except Exception:
+                                cat_types = set()
+
+                            if len(cat_types) > 1:
+                                df_copy[col] = s.astype(str).replace("nan", pd.NA).replace("None", pd.NA)
+                            continue
+
+                        if s.dtype != object:
+                            continue
+
+                        probe = s.dropna().head(2000)
+                        types = {type(v) for v in probe.tolist()} if not probe.empty else set()
+                        if len(types) <= 1 and (not types or list(types)[0] is str):
+                            continue
+
+                        df_copy[col] = s.astype(str).replace("nan", pd.NA).replace("None", pd.NA)
+                    except Exception:
+                        try:
+                            df_copy[col] = df_copy[col].astype(str).replace("nan", pd.NA).replace("None", pd.NA)
+                        except Exception:
+                            pass
+
+                df_copy.to_parquet(tmp_path, engine="pyarrow", index=False)
             os.replace(tmp_path, parquet_path)
 
             dtypes = df.dtypes.astype(str).to_dict()

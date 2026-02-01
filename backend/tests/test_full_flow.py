@@ -341,6 +341,7 @@ def setup_prep_data():
             "Value": [1.0, np.nan, 2.0, np.nan],
             "Other": [10.0, 11.0, np.nan, 13.0],
             "Cat": ["x", None, "x", "y"],
+            "CatDirty": [" 3\u00a0группы  выписанных ", "3 группы выписанных", "3\u202fгруппы\t\nвыписанных", None],
             "ValueStr": ["1", "2", None, "4"],
         }
     )
@@ -400,6 +401,24 @@ def test_data_prep_clean_column_fill_mode_and_drop_na():
     assert resp_drop.status_code == 200, resp_drop.text
     profile_drop = resp_drop.json()
     assert profile_drop["row_count"] < 4
+
+
+def test_data_prep_clean_column_normalize_categories_merges_values():
+    setup_prep_data()
+
+    before = client.get(f"/api/v1/datasets/{TEST_ID_PREP}?page=1&limit=10").json()
+    before_col = next(c for c in before["columns"] if c["name"] == "CatDirty")
+    assert before_col["unique_count"] >= 2
+
+    resp = client.post(
+        f"/api/v1/datasets/{TEST_ID_PREP}/clean_column",
+        json={"column": "CatDirty", "action": "normalize_categories"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    profile = resp.json()
+    cat_dirty = next(c for c in profile["columns"] if c["name"] == "CatDirty")
+    assert cat_dirty["unique_count"] == 1
 
 
 def test_data_prep_to_numeric_and_scan_report_endpoint():

@@ -16,6 +16,132 @@ from app.modules.smart_scanner import SmartScanner
 from app.services.job_store import JobStore
 
 
+def _normalize_auto_impute(value: Any) -> str:
+    s = str(value or "").strip().lower()
+    if s in {"0", "false", "no", "off", "none", "disabled"}:
+        return "none"
+    if s in {"mice", "iterative"}:
+        return "mice"
+    return "simple"
+
+
+def _auto_clean_and_impute(
+    df: pd.DataFrame,
+    scan_report: Dict[str, Any],
+    *,
+    auto_clean: bool,
+    auto_impute: str,
+) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    stats = {
+        "auto_clean": bool(auto_clean),
+        "auto_impute": str(auto_impute),
+        "actions": actions,
+    }
+
+    if not auto_clean or not isinstance(df, pd.DataFrame) or df.empty:
+        return df, stats
+
+    cols = scan_report.get("columns") if isinstance(scan_report, dict) else None
+    cols = cols if isinstance(cols, dict) else {}
+    for col, rep in cols.items():
+        if col not in df.columns or not isinstance(rep, dict):
+            continue
+        if rep.get("mixed_type_suspected") is True:
+            pct = rep.get("numeric_convertible_percent")
+            try:
+                pct_f = float(pct)
+            except Exception:
+                pct_f = None
+            if pct_f is not None and pct_f >= 90:
+                try:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+                    actions.append({"type": "to_numeric", "column": str(col)})
+                except Exception:
+                    pass
+
+    missing_report = scan_report.get("missing_report") if isinstance(scan_report, dict) else None
+    by_col = missing_report.get("by_column") if isinstance(missing_report, dict) else None
+    if isinstance(by_col, list) and by_col:
+        for row in by_col:
+            if not isinstance(row, dict):
+                continue
+            col = row.get("column")
+            if not isinstance(col, str) or col not in df.columns:
+                continue
+            try:
+                missing_percent = float(row.get("missing_percent") or 0.0)
+            except Exception:
+                missing_percent = 0.0
+            if missing_percent <= 0:
+                continue
+
+            s = df[col]
+            try:
+                if not bool(s.isna().any()):
+                    continue
+            except Exception:
+                continue
+
+            if pd.api.types.is_numeric_dtype(s.dtype):
+                if missing_percent <= 20.0:
+                    try:
+                        v = s.median(skipna=True)
+                        if v is not None and pd.notna(v):
+                            df[col] = s.fillna(v)
+                            actions.append({"type": "fill_median", "column": col})
+                    except Exception:
+                        pass
+                continue
+
+            if missing_percent <= 10.0:
+                try:
+                    mode = s.mode(dropna=True)
+                    if mode is not None and len(mode) > 0:
+                        v = mode.iloc[0]
+                        if v is not None and pd.notna(v):
+                            df[col] = s.fillna(v)
+                            actions.append({"type": "fill_mode", "column": col})
+                except Exception:
+                    pass
+
+    if auto_impute == "mice":
+        try:
+            from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+            from sklearn.impute import IterativeImputer
+        except Exception:
+            return df, stats
+
+        n_rows = int(len(df))
+        if n_rows <= 20000:
+            numeric_cols: list[str] = []
+            for c in df.columns:
+                try:
+                    if pd.api.types.is_numeric_dtype(df[c].dtype) and bool(df[c].isna().any()):
+                        numeric_cols.append(str(c))
+                except Exception:
+                    continue
+
+            numeric_cols = numeric_cols[:25]
+            if len(numeric_cols) >= 2:
+                try:
+                    numeric_df = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
+                    if bool(numeric_df.isna().any().any()):
+                        imputer = IterativeImputer(
+                            max_iter=10,
+                            random_state=42,
+                            sample_posterior=False,
+                            skip_complete=True,
+                        )
+                        imputed = imputer.fit_transform(numeric_df)
+                        df.loc[:, numeric_cols] = imputed
+                        actions.append({"type": "mice", "columns": numeric_cols, "max_iter": 10})
+                except Exception:
+                    pass
+
+    return df, stats
+
+
 async def save_upload_source(pipeline: PipelineManager, dataset_id: str, file: UploadFile) -> str:
     raw_dir = pipeline.initialize_dataset(dataset_id)["source"]
     raw_path = os.path.join(raw_dir, "original.raw")
@@ -52,6 +178,13 @@ async def ingest_saved_raw_to_parquet_job(
     ds_dir = pipeline.get_dataset_dir(dataset_id)
 
     try:
+        job = job_store.get(job_id)
+        payload = job.get("payload") if isinstance(job, dict) else None
+        payload = payload if isinstance(payload, dict) else {}
+        auto_clean = payload.get("auto_clean")
+        auto_clean = True if auto_clean is None else bool(auto_clean)
+        auto_impute = _normalize_auto_impute(payload.get("auto_impute"))
+
         job_store.update(job_id, status="running", stage="parsing", progress=10, message="parsing")
 
         def parse_logic() -> pd.DataFrame:
@@ -73,17 +206,36 @@ async def ingest_saved_raw_to_parquet_job(
         scanner = SmartScanner()
         df = await run_in_threadpool(scanner.optimize_dtypes, df)
 
-        job_store.update(job_id, stage="parquet", progress=65, message="writing parquet")
+        job_store.update(job_id, stage="auto_clean", progress=55, message="auto cleaning")
+        scan_before = await run_in_threadpool(scanner.scan_dataset, df)
+        scan_report_before = scan_before.get("scan_report") or {}
+
+        df, auto_stats = await run_in_threadpool(
+            lambda: _auto_clean_and_impute(
+                df,
+                scan_report_before,
+                auto_clean=auto_clean,
+                auto_impute=auto_impute,
+            )
+        )
+
+        if auto_stats.get("actions"):
+            df = await run_in_threadpool(scanner.optimize_dtypes, df)
+
+        job_store.update(job_id, stage="parquet", progress=70, message="writing parquet")
         parquet_path = await run_in_threadpool(
             lambda: pipeline.create_processed_snapshot(
                 dataset_id,
                 df,
-                cleaning_log={"header_row": used_header, "normalization": normalization},
+                cleaning_log={"header_row": used_header, "normalization": normalization, "auto": auto_stats},
             )
         )
 
         job_store.update(job_id, stage="scan", progress=80, message="scanning")
-        scan_result = await run_in_threadpool(scanner.scan_dataset, df)
+        if auto_stats.get("actions"):
+            scan_result = await run_in_threadpool(scanner.scan_dataset, df)
+        else:
+            scan_result = scan_before
         scan_report = scan_result.get("scan_report") or {}
         profile_data = scan_result.get("profile") or {}
 

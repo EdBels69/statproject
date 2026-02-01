@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from typing import Dict, Any, Tuple, Optional
 
 import numpy as np
@@ -99,7 +100,8 @@ class DataNormalizer:
         if values.empty:
             return s, False
 
-        series_str = values.astype(str).str.strip().str.lower()
+        probe = values.head(5000)
+        series_str = probe.astype(str).str.strip().str.lower()
         unique = series_str.unique()
         if len(unique) > 12:
             return s, False
@@ -133,9 +135,9 @@ class DataNormalizer:
         if not all((v in yes or v in no) for v in unique):
             return s, False
 
-        mapped = series_str.map(lambda v: 1 if v in yes else 0)
-        out = pd.Series(pd.NA, index=s.index, dtype="Int64")
-        out.loc[mapped.index] = mapped.astype("Int64")
+        full_str = s.astype(str).str.strip().str.lower()
+        mapped = full_str.map(lambda v: 1 if v in yes else (0 if v in no else pd.NA))
+        out = pd.Series(mapped, index=s.index, dtype="Int64")
         return out, True
 
     def _normalize_numeric(self, s: pd.Series) -> Tuple[pd.Series, float, bool]:
@@ -143,8 +145,8 @@ class DataNormalizer:
         if values.empty:
             return s, 0.0, False
 
-        sample = values.astype(str)
-        parsed = sample.map(self._parse_numeric)
+        probe = values.head(5000).astype(str)
+        parsed = probe.map(self._parse_numeric)
         ratio = float(parsed.notna().sum()) / float(max(1, len(parsed)))
 
         if ratio >= 0.9 and len(parsed) >= 3:
@@ -186,3 +188,27 @@ class DataNormalizer:
             return float(text)
         except Exception:
             return None
+
+
+def normalize_categorical_series(s: pd.Series) -> pd.Series:
+    if not (
+        pd.api.types.is_object_dtype(s.dtype)
+        or pd.api.types.is_string_dtype(s.dtype)
+        or isinstance(s.dtype, pd.CategoricalDtype)
+    ):
+        raise ValueError("normalize_categories поддерживается только для текстовых/категориальных столбцов")
+
+    def norm_one(v: object) -> str:
+        text = "" if v is None else str(v)
+        text = unicodedata.normalize("NFKC", text)
+        text = text.replace("\u00a0", " ").replace("\u2007", " ").replace("\u202f", " ")
+        text = text.replace("\t", " ").replace("\n", " ").replace("\r", " ")
+        text = text.replace("−", "-").replace("–", "-").replace("—", "-").replace("‑", "-")
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    out = s.copy()
+    mask = out.notna()
+    if mask.any():
+        out.loc[mask] = out.loc[mask].astype(str).map(norm_one)
+    return out

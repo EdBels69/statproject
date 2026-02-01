@@ -91,7 +91,10 @@ class TextGenerator:
 
         # 3. Categorical (Chi-Square)
         elif method_id == "chi_square":
-             return TextGenerator._interpret_chi_square(results, variables)
+             return TextGenerator._interpret_chi_square(results, variables, style)
+
+        elif method_id in ["fisher", "fisher_exact"]:
+            return TextGenerator._interpret_fisher(results, variables, style)
              
         return "Analysis completed."
 
@@ -240,16 +243,103 @@ class TextGenerator:
         return text
 
     @staticmethod
-    def _interpret_chi_square(results: Dict[str, Any], variables: Dict[str, str]) -> str:
+    def _interpret_chi_square(results: Dict[str, Any], variables: Dict[str, str], style: str = "pro") -> str:
         p_text = TextGenerator.format_p_value(results['p_value'])
         var1 = variables.get('target', 'Variable 1')
         var2 = variables.get('group', 'Variable 2')
-        
+
+        eff_size = results.get('effect_size')
+        eff_interp = results.get('effect_size_interpretation') if isinstance(results, dict) else None
+        expected_min = results.get('expected_min')
+
+        eff_text_ru = ""
+        if isinstance(eff_interp, dict):
+            desc = eff_interp.get("description_ru") or eff_interp.get("label_ru")
+            if desc:
+                eff_text_ru = f"; эффект: {desc}"
+        elif eff_size is not None:
+            try:
+                eff_text_ru = f"; V = {float(eff_size):.2f}"
+            except Exception:
+                eff_text_ru = ""
+
+        caution_ru = ""
+        try:
+            if expected_min is not None and float(expected_min) < 5:
+                caution_ru = " Ожидаемые частоты в некоторых ячейках < 5; интерпретация требует осторожности."
+        except Exception:
+            caution_ru = ""
+
+        if style == "ru":
+            text = f"Проведен тест хи-квадрат для проверки связи между {var1} и {var2}. "
+            if results['significant']:
+                text += f"Связь статистически значима ({p_text}{eff_text_ru}). Это указывает на зависимость {var1} от {var2}."
+            else:
+                text += f"Статистически значимой связи не выявлено ({p_text}{eff_text_ru}). {var1} не демонстрирует зависимости от {var2}."
+            if caution_ru:
+                text += caution_ru
+            return text
+
+        eff_text = ""
+        if isinstance(eff_interp, dict):
+            desc = eff_interp.get("description") or eff_interp.get("label")
+            if desc:
+                eff_text = f", {desc}"
+        elif eff_size is not None:
+            try:
+                eff_text = f", Cramér's V = {float(eff_size):.2f}"
+            except Exception:
+                eff_text = ""
+
         text = f"A Chi-Square test of independence was performed to examine the relation between {var1} and {var2}. "
-        
         if results['significant']:
-            text += f"The relation between these variables was significant ({p_text}). This suggests that {var1} is dependent on {var2}."
+            text += f"The relation between these variables was significant ({p_text}{eff_text}). This suggests that {var1} is dependent on {var2}."
         else:
-            text += f"The relation between these variables was not significant ({p_text}). {var1} appears to be independent of {var2}."
-            
+            text += f"The relation between these variables was not significant ({p_text}{eff_text}). {var1} appears to be independent of {var2}."
+        return text
+
+    @staticmethod
+    def _interpret_fisher(results: Dict[str, Any], variables: Dict[str, str], style: str = "pro") -> str:
+        p_text = TextGenerator.format_p_value(results['p_value'])
+        var1 = variables.get('target', 'Variable 1')
+        var2 = variables.get('group', 'Variable 2')
+
+        odds_ratio = results.get('odds_ratio')
+        eff_interp = results.get('effect_size_interpretation') if isinstance(results, dict) else None
+
+        eff_text_ru = ""
+        if isinstance(eff_interp, dict):
+            desc = eff_interp.get("description_ru") or eff_interp.get("label_ru")
+            if desc:
+                eff_text_ru = f"; эффект: {desc}"
+        elif odds_ratio is not None:
+            try:
+                eff_text_ru = f"; OR = {float(odds_ratio):.2f}"
+            except Exception:
+                eff_text_ru = ""
+
+        if style == "ru":
+            text = f"Проведен точный тест Фишера для проверки связи между {var1} и {var2}. "
+            if results['significant']:
+                text += f"Связь статистически значима ({p_text}{eff_text_ru})."
+            else:
+                text += f"Статистически значимой связи не выявлено ({p_text}{eff_text_ru})."
+            return text
+
+        eff_text = ""
+        if isinstance(eff_interp, dict):
+            desc = eff_interp.get("description") or eff_interp.get("label")
+            if desc:
+                eff_text = f", {desc}"
+        elif odds_ratio is not None:
+            try:
+                eff_text = f", OR = {float(odds_ratio):.2f}"
+            except Exception:
+                eff_text = ""
+
+        text = f"A Fisher's exact test was performed to examine the relation between {var1} and {var2}. "
+        if results['significant']:
+            text += f"The relation between these variables was significant ({p_text}{eff_text})."
+        else:
+            text += f"The relation between these variables was not significant ({p_text}{eff_text})."
         return text

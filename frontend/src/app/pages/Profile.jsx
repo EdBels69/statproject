@@ -652,6 +652,9 @@ export default function Profile() {
                     } else if ((action === 'fill_mean' || action === 'fill_median' || action === 'fill_mode' || action === 'fill_locf' || action === 'fill_nocb') && mostlyEmpty) {
                         setError(`В столбце "${column}" только пропуски — заполнение не имеет смысла. Удали столбец.`);
                         return;
+                    } else if (action === 'normalize_categories') {
+                        if (!confirm(`Нормализовать значения категорий в столбце "${column}"?`)) return;
+                        await cleanColumn(id, column, action);
                     } else {
                         const label = action === 'drop_na' ? 'Удалить строки с пропусками' : 'Заполнить пропуски';
                         if (!confirm(`${label} в столбце "${column}"?`)) return;
@@ -900,6 +903,8 @@ export default function Profile() {
 
     const ColumnMenu = () => {
         if (!activeMenu) return null;
+        const colType = profileTypeByName?.[activeMenu.colName];
+        const canNormalizeCategories = colType === 'categorical' || colType === 'text';
         return (
             <div
                 ref={menuRef}
@@ -921,6 +926,18 @@ export default function Profile() {
                     </button>
                 </div>
                 <div className="border-t border-[color:var(--border-color)] p-1">
+                    {canNormalizeCategories ? (
+                        <button
+                            onClick={async () => {
+                                const col = activeMenu.colName;
+                                setActiveMenu(null);
+                                await applyQualityAction({ column: col, action: 'normalize_categories' });
+                            }}
+                            className="w-full text-left px-2 py-1.5 hover:bg-[color:var(--bg-tertiary)] text-[color:var(--text-primary)] rounded-[2px] transition-colors"
+                        >
+                            Нормализовать категории
+                        </button>
+                    ) : null}
                     <button
                         onClick={() => {
                             const newName = prompt("Переименовать столбец:", activeMenu.colName);
@@ -1329,10 +1346,10 @@ export default function Profile() {
                         Переменные
                     </Link>
                     <Link
-                        to={`/design/${id}`}
+                        to={`/wizard?dataset=${encodeURIComponent(id)}`}
                         className="h-9 px-3 rounded-[2px] border border-black bg-[color:var(--black)] text-[color:var(--white)] text-xs font-bold tracking-[0.18em] uppercase"
                     >
-                        Дизайн анализа
+                        Согласовать дизайн
                     </Link>
                 </div>
             </div>
@@ -1444,10 +1461,10 @@ export default function Profile() {
                             Авто‑отчёт
                         </Link>
                         <Link
-                            to={`/design/${id}`}
+                            to={`/wizard?dataset=${encodeURIComponent(id)}`}
                             className="h-9 px-3 rounded-[2px] border border-black bg-[color:var(--black)] text-[color:var(--white)] text-xs font-bold tracking-[0.18em] uppercase inline-flex items-center justify-center"
                         >
-                            Дизайн анализа
+                            Согласовать дизайн
                         </Link>
 
                         {sheets.length > 0 && (

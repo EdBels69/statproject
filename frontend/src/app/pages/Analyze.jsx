@@ -69,6 +69,8 @@ export default function Analyze({ modeOverride } = {}) {
 
     const activeStep = mode;
 
+    const designBasePath = location.state?.origin === 'ai' ? '/ai' : '/design';
+
     const flowStepData = useMemo(() => ({
         dataLoaded: true,
         variablesSet: true,
@@ -556,7 +558,7 @@ export default function Analyze({ modeOverride } = {}) {
                         <div className="min-w-0 flex items-center gap-3">
                             <button
                                 type="button"
-                                onClick={() => navigate(`/design/${id}`)}
+                                onClick={() => navigate(`${designBasePath}/${id}`, { state: location.state })}
                                 className="h-9 px-4 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-xs font-semibold text-[color:var(--text-secondary)] hover:border-black hover:text-black active:scale-[0.98]"
                             >
                                 ← {t('back')}
@@ -606,6 +608,7 @@ export default function Analyze({ modeOverride } = {}) {
                         className="mt-4"
                         showMenu={false}
                         stepData={flowStepData}
+                        designBasePath={designBasePath}
                     />
 
                     {mode !== 'results' ? (

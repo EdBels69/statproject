@@ -25,7 +25,7 @@ from app.stats.clustered_correlation import ClusteredCorrelationEngine
 from app.stats.engine import run_analysis, select_test, compute_descriptive_compare
 from app.core.study_designer import StudyDesignEngine
 from app.modules.text_generator import TextGenerator
-from app.api.datasets import DATA_DIR
+from app.api.datasets import DATA_DIR, _load_dataset_meta
 
 pipeline = PipelineManager(DATA_DIR)
 
@@ -167,10 +167,17 @@ async def design_analysis_from_template(request: AnalysisTemplateDesignRequest):
                 report = json.load(f)
                 metadata = report.get("columns", {}) or {}
 
+        variables = request.variables if isinstance(request.variables, dict) else {}
+        meta = _load_dataset_meta(request.dataset_id)
+        dataset_title = str(meta.get("original_filename") or meta.get("filename") or "").strip()
+        if dataset_title and not variables.get("dataset_title"):
+            variables = dict(variables)
+            variables["dataset_title"] = dataset_title
+
         designer = StudyDesignEngine()
         protocol_v1 = designer.suggest_protocol(
             request.goal,
-            request.variables,
+            variables,
             metadata,
             template_id=request.template_id,
         )
@@ -448,6 +455,8 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
         results = []
         errors = []
         results_map: Dict[str, Any] = {}
+        step_meta_map: Dict[str, Any] = {}
+        normalized_steps: List[Dict[str, Any]] = []
         
         for step in request.protocol:
             method_id = step.get("method")
@@ -498,6 +507,20 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                         raise ValueError(f"Неподдерживаемый оператор: {op}")
                 else:
                     raise ValueError("filter.value или filter.values обязателен")
+
+            normalized_step = dict(step) if isinstance(step, dict) else {"method": method_id}
+            normalized_step["id"] = step_id
+            if where is not None:
+                normalized_step["filter"] = where
+            step_meta_map[str(step_id)] = {
+                "id": step_id,
+                "method": method_id,
+                "config": config if isinstance(config, dict) else {},
+                "filter": where,
+                "title": step.get("title") or step.get("name") or step.get("label"),
+                "task": (config.get("task") if isinstance(config, dict) else None) or step.get("task"),
+            }
+            normalized_steps.append(normalized_step)
             
             try:
                 # Advanced methods
@@ -832,7 +855,7 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
             {
                 "name": protocol_name,
                 "alpha": request.alpha,
-                "steps": request.protocol,
+                "steps": normalized_steps or request.protocol,
             },
         )
         run_id = os.path.basename(run_dir)
@@ -843,6 +866,7 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                 "protocol_name": protocol_name,
                 "dataset_id": request.dataset_id,
                 "results": results_map,
+                "step_meta": step_meta_map,
                 "status": "completed" if not errors else "partial",
                 "errors": errors,
                 "total_steps": len(request.protocol),
@@ -856,6 +880,7 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                 "protocol_name": protocol_name,
                 "dataset_id": request.dataset_id,
                 "results": results_map,
+                "step_meta": step_meta_map,
                 "status": "completed" if not errors else "partial",
                 "errors": errors,
                 "total_steps": len(request.protocol),

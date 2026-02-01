@@ -6,6 +6,7 @@ export default function AISuggestionsPane({
   protocol,
   recommendations,
   isAnalyzing,
+  error,
   onSuggest,
   onAddRecommendation,
   onClose,
@@ -14,7 +15,7 @@ export default function AISuggestionsPane({
     return typeof t === 'function' ? t : (k) => String(k);
   }, [t]);
 
-  const canSuggest = Array.isArray(protocol) && protocol.length > 0;
+  const canSuggest = Array.isArray(protocol);
 
   return (
     <div className="space-y-3">
@@ -31,6 +32,11 @@ export default function AISuggestionsPane({
           </button>
         </div>
         <div className="mt-2 text-xs text-[color:var(--text-secondary)]">ИИ предлагает шаги поверх твоего текущего пайплайна.</div>
+        {error ? (
+          <div className="mt-2 text-xs text-[color:var(--error)]">
+            {String(error)}
+          </div>
+        ) : null}
       </div>
 
       <AIRecommendationsPanel
@@ -49,4 +55,3 @@ export default function AISuggestionsPane({
     </div>
   );
 }
-

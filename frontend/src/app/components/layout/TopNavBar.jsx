@@ -17,6 +17,8 @@ export default function TopNavBar() {
             '/report/:id',
             '/design/:id',
             '/tests/:id',
+            '/ai/:id',
+            '/protocol/:id',
         ];
 
         for (const pattern of patterns) {
@@ -29,13 +31,18 @@ export default function TopNavBar() {
     const activeFlowStep = useMemo(() => {
         if (pathname.startsWith('/prep/') || pathname.startsWith('/profile/')) return 'variables';
         if (pathname.startsWith('/prepare/')) return 'data';
-        if (pathname.startsWith('/design') || pathname.startsWith('/tests')) return 'design';
+        if (pathname.startsWith('/design') || pathname.startsWith('/tests') || pathname.startsWith('/ai') || pathname.startsWith('/protocol')) return 'design';
         if (pathname.startsWith('/analyze/')) return 'results';
         if (pathname.startsWith('/results/')) return 'results';
         if (pathname.startsWith('/graphs/')) return 'graphs';
         if (pathname.startsWith('/report/')) return 'report';
         return 'data';
     }, [pathname]);
+
+    const isActive = (path) => {
+        if (path === '/') return location.pathname === '/';
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    };
 
     const navItems = [
         { path: '/tests', label: 'Тесты' },
@@ -45,11 +52,6 @@ export default function TopNavBar() {
         { path: '/ai', label: 'ИИ' },
         { path: '/settings', label: 'Настройки' },
     ];
-
-    const isActive = (path) => {
-        if (path === '/') return location.pathname === '/';
-        return location.pathname === path || location.pathname.startsWith(`${path}/`);
-    };
 
     return (
         <nav className="fixed top-0 left-0 right-0 h-14 bg-[color:var(--white)] border-b border-[color:var(--border-color)] z-10">

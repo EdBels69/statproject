@@ -17,7 +17,12 @@ _job_store = build_job_store(WORKSPACE_DIR)
 
 
 @router.post("/upload", response_model=Dict[str, Any])
-async def upload_dataset_async(background: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_dataset_async(
+    background: BackgroundTasks,
+    file: UploadFile = File(...),
+    auto_clean: bool = Query(True),
+    auto_impute: str = Query("simple"),
+):
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="Файл не передан")
 
@@ -26,7 +31,12 @@ async def upload_dataset_async(background: BackgroundTasks, file: UploadFile = F
     if ext not in supported:
         raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат: {ext}")
 
-    meta = {"filename": file.filename, "content_type": getattr(file, "content_type", None)}
+    meta = {
+        "filename": file.filename,
+        "content_type": getattr(file, "content_type", None),
+        "auto_clean": bool(auto_clean),
+        "auto_impute": str(auto_impute),
+    }
     ids = await create_ingest_job(data_dir=DATA_DIR, job_store=_job_store, payload=meta)
     job_id = ids["job_id"]
     dataset_id = ids["dataset_id"]

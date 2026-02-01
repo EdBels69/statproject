@@ -267,6 +267,10 @@ const resources = {
       "ai_analyzing": "ИИ анализирует данные...",
       "ai_ready": "Рекомендации готовы",
       "ai_error": "Ошибка при получении рекомендаций ИИ",
+      "ai_recommendations_desc": "ИИ предлагает шаги поверх твоего текущего пайплайна.",
+      "suggested_config": "Предложенный конфиг",
+      "ai_disclaimer": "Рекомендации ИИ требуют проверки: предпосылки, дизайн, качество данных.",
+      "added": "Добавлено",
 
       // Analysis Design (JAMOVI style)
       "welcome_to_analysis": "Добро пожаловать в анализ данных",
@@ -553,6 +557,10 @@ const resources = {
       "ai_analyzing": "Analyzing data...",
       "ai_ready": "Suggestions ready",
       "ai_error": "Error getting suggestions",
+      "ai_recommendations_desc": "AI suggests steps on top of your current pipeline.",
+      "suggested_config": "Suggested config",
+      "ai_disclaimer": "AI suggestions require review: assumptions, design, and data quality.",
+      "added": "Added",
 
       // Analysis Design (JAMOVI style)
       "welcome_to_analysis": "Welcome to data analysis",
