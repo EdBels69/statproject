@@ -1,0 +1,166 @@
+{
+  "dataset": {
+    "title": "COVID table",
+    "path": "docs/Общая таблица Ковид19.xlsx",
+    "sheet": "Лист1"
+  },
+  "model_id": "google/gemini-2.5-flash",
+  "language": "ru",
+  "research_goal": "Оценить связь гликемии с летальным исходом у госпитализированных пациентов с COVID-19 и получить практические правила стратификации риска.",
+  "research_questions": [
+    "Связана ли гликемия при поступлении с летальным исходом?",
+    "Связана ли последняя гликемия с летальным исходом?",
+    "Меняется ли связь гликемии и исхода у пациентов с/без СД2?",
+    "Сохраняется ли связь после поправки на тяжесть, коморбидность и лечение?"
+  ],
+  "outcome": {
+    "name": "death",
+    "source_columns": [
+      "Исход",
+      "Исход.1",
+      "Исход.2"
+    ],
+    "mapping_rules": [
+      "Мертв/умер/неблагоприятный -> 1",
+      "Выписан/благоприятный -> 0"
+    ]
+  },
+  "exposures": [
+    {
+      "name": "Глюкоза при поступлении",
+      "source": "Глюкоза при поступлении",
+      "type": "numeric"
+    },
+    {
+      "name": "Глюкоза последний результат",
+      "source": "Глюкоза последний результат",
+      "type": "numeric"
+    },
+    {
+      "name": "Гипергликемия >11.1 дважды",
+      "source": "Гипергликемия >11,1 дважды по результатам бх крови",
+      "type": "binary"
+    }
+  ],
+  "covariates": [
+    {
+      "name": "Возраст",
+      "source": "возраст"
+    },
+    {
+      "name": "Пол",
+      "source": "пол"
+    },
+    {
+      "name": "SpO2",
+      "source": "SpO2 %"
+    },
+    {
+      "name": "NEWS2",
+      "source": "NEWS2"
+    },
+    {
+      "name": "qSOFA",
+      "source": "qSOFA"
+    },
+    {
+      "name": "СРБ1",
+      "source": "СРБ1"
+    },
+    {
+      "name": "Фибриноген1",
+      "source": "фибриноген1"
+    },
+    {
+      "name": "Креатинин1",
+      "source": "креатинин1"
+    }
+  ],
+  "comorbidities": [
+    {
+      "name": "СД2 до госпитализации",
+      "source": "Сахарный диабет 2 типа перед госпитализацией (да/нет)"
+    },
+    {
+      "name": "Гипертоническая болезнь",
+      "source": "Гипертоническая болезнь (да/нет)"
+    },
+    {
+      "name": "ИБС",
+      "source": "ИБС (да/нет)"
+    },
+    {
+      "name": "Ожирение",
+      "source": "Ожирение"
+    },
+    {
+      "name": "Онкология",
+      "source": "Онкология (да/нет)"
+    }
+  ],
+  "treatments": [
+    {
+      "name": "Антикоагулянты",
+      "source": "антикоагулянты во время госпитализаци (да/нет)"
+    },
+    {
+      "name": "ГКС в госпитализации",
+      "source": "ГКС во время госпитализации (да/нет)"
+    },
+    {
+      "name": "Инсулинотерапия",
+      "source": "Инсулинотерапия (да, нет)"
+    },
+    {
+      "name": "Антицитокиновая терапия",
+      "source": "Антицитокиновая терапия (да/нет)"
+    },
+    {
+      "name": "Антибиотики в госпитализации",
+      "source": "антибиотики во время госпитализации"
+    }
+  ],
+  "analysis_steps": [
+    "Проверить качество данных, очистку категорий и долю пропусков.",
+    "Построить baseline-таблицы по исходу.",
+    "Выполнить однофакторные OR/95% CI для экспозиций и ключевых клинических переменных.",
+    "Собрать многофакторные логистические модели с возрастающей корректировкой.",
+    "Проверить interaction гликемии с СД2.",
+    "Выполнить sensitivity-анализы."
+  ],
+  "models": [
+    "M1: death ~ glucose_admission + age + sex",
+    "M2: death ~ glucose_admission + age + sex + SpO2 + NEWS2",
+    "M3: death ~ glucose_last + age + sex + SpO2 + NEWS2 + dm2 + hypergly_twice",
+    "M4: death ~ glucose_admission + dm2 + glucose_admission*dm2 + age + sex + SpO2 + NEWS2"
+  ],
+  "sensitivity": [
+    "Complete-case vs simple imputation comparison",
+    "Subgroup without known DM2",
+    "Outlier robustness check"
+  ],
+  "plots": [
+    "Missingness bar chart",
+    "Mortality by glycemia category",
+    "Forest plot for adjusted OR",
+    "ROC curve for best model"
+  ],
+  "required_outputs": [
+    "Executive summary (5-8 bullets)",
+    "Table: variable coverage and missingness",
+    "Table: baseline characteristics by outcome",
+    "Table: comorbidity OR",
+    "Table: treatment OR",
+    "Table: multivariable model coefficients",
+    "Interpretation paragraph after each table and each figure",
+    "Discussion linked to observed results",
+    "Practical recommendations"
+  ],
+  "style_constraints": [
+    "No causal claims without causal design.",
+    "Report confounding-by-indication risk for treatment associations.",
+    "State when effect is non-significant.",
+    "Use only values computed from dataset."
+  ]
+}
+

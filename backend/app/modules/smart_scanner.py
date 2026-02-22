@@ -1,0 +1,320 @@
+import pandas as pd
+import numpy as np
+import math
+from typing import Dict, Any, List, Optional
+from app.stats.engine import check_normality
+
+
+def _safe_float(value):
+    """Convert to JSON-safe float. Returns None for inf, -inf, nan."""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
+class SmartScanner:
+    """
+    Analyzes a DataFrame for common "Dirty Data" problems and scientific metadata.
+    Output: A comprehensive 'Scan Report' used by the frontend Cleaning Sorcerer.
+    """
+    
+    def scan_dataset(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Single-pass analysis:
+        1. Basic Stats (Rows, Cols, Head) - formerly Profiler
+        2. Deep Scan (Mixed types, Normality) - SmartScanner
+        
+        Returns: {
+            "profile": { ... }, # For UI basic view
+            "report": { ... }   # For Cleaning Sorcerer
+        }
+        """
+        # --- 1. Basic Metadata ---
+        # Replace inf/-inf and nan with None for JSON serialization
+        max_head_cols = int(min(40, len(df.columns)))
+        safe_head = df.iloc[:10, :max_head_cols].copy()
+        for col in safe_head.columns:
+            if pd.api.types.is_numeric_dtype(safe_head[col]):
+                safe_head[col] = safe_head[col].replace([np.inf, -np.inf], np.nan)
+        safe_head = safe_head.replace({np.nan: None})
+        
+        profile = {
+            "row_count": len(df),
+            "col_count": len(df.columns),
+            "head": safe_head.to_dict(orient="records") 
+        }
+
+        # --- 2. Deep Scan ---
+        report = {
+            "columns": {},
+            "issues": [],
+            "reorder_suggestion": [],
+            "missing_report": {
+                "total_rows": int(len(df)),
+                "columns_with_missing": 0,
+                "by_column": []
+            }
+        }
+
+        missing_by_column = []
+
+        total_rows = int(len(df))
+        total_cols = int(len(df.columns))
+
+        sample_rows = total_rows
+        if total_rows > 20000:
+            sample_rows = min(2000, total_rows)
+        elif total_rows > 5000 or total_cols > 150:
+            sample_rows = min(5000, total_rows)
+
+        df_sample = df
+        if sample_rows < total_rows and sample_rows > 0:
+            step = max(1, int(total_rows // max(1, sample_rows)))
+            df_sample = df.iloc[::step].head(int(sample_rows))
+
+        scan_cols = list(df.columns)
+        if total_cols > 500:
+            rng = np.random.default_rng(42)
+            idx = rng.choice(total_cols, size=500, replace=False)
+            scan_cols = [list(df.columns)[int(i)] for i in sorted(idx.tolist())]
+
+        for col in scan_cols:
+            col_report = self._analyze_column(df_sample[col], str(col), total_rows=total_rows)
+            report["columns"][str(col)] = col_report
+            
+            # Identify Issues
+            if col_report.get("mixed_type_suspected"):
+                report["issues"].append({
+                    "column": str(col),
+                    "type": "mixed_type",
+                    "severity": "high",
+                    "details": f"Contains {col_report['numeric_convertible_percent']}% numbers but formatted as text."
+                })
+
+            missing_count = int(col_report.get("missing_count") or 0)
+            if missing_count > 0:
+                missing_percent = round((missing_count / max(1, total_rows)) * 100, 2)
+                missing_by_column.append({
+                    "column": str(col),
+                    "missing_count": missing_count,
+                    "missing_percent": missing_percent,
+                    "total": total_rows
+                })
+
+                report["issues"].append({
+                    "column": str(col),
+                    "type": "missing",
+                    "severity": "medium",
+                    "details": f"{missing_count} missing ({missing_percent}%)."
+                })
+        
+        if total_cols > len(scan_cols):
+            report["sampling_info"] = {
+                "sampled": True,
+                "total_rows": total_rows,
+                "sample_rows": int(len(df_sample)),
+                "total_columns": total_cols,
+                "scanned_columns": int(len(scan_cols)),
+            }
+
+        df_view = df[scan_cols] if scan_cols else df
+        report["reorder_suggestion"] = self._suggest_order(df_view, report["columns"])
+
+        missing_by_column.sort(key=lambda x: x["missing_count"], reverse=True)
+        report["missing_report"] = {
+            "total_rows": total_rows,
+            "columns_with_missing": int(len(missing_by_column)),
+            "by_column": missing_by_column
+        }
+
+        # Merge for API convenience
+        # The frontend expects 'profile' to be the top level object for /upload response
+        # But we also want the report.
+        # Let's return a combined dict that can satisfy both needs or splits them.
+        return {
+            "profile": {
+                **profile, 
+                "columns": [v for k,v in report["columns"].items()] # Array format for some UI components
+            },
+            "scan_report": report
+        }
+
+    def optimize_dtypes(self, df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+
+        total_rows = int(len(out))
+        total_cols = int(len(out.columns))
+        big = total_rows > 20000 or total_cols > 500
+
+        for col in out.columns:
+            try:
+                s = out[col]
+
+                if pd.api.types.is_integer_dtype(s.dtype):
+                    out[col] = pd.to_numeric(s, downcast="integer")
+                    continue
+
+                if pd.api.types.is_float_dtype(s.dtype):
+                    out[col] = pd.to_numeric(s, downcast="float")
+                    continue
+
+                if pd.api.types.is_bool_dtype(s.dtype) or isinstance(s.dtype, pd.CategoricalDtype):
+                    continue
+
+                if pd.api.types.is_object_dtype(s.dtype) or pd.api.types.is_string_dtype(s.dtype):
+                    sample = s.dropna().head(2000)
+                    unique_count = int(sample.nunique(dropna=True))
+                    if unique_count > 0:
+                        unique_ratio = unique_count / max(1, int(len(sample)))
+                        if unique_count <= 200 and unique_ratio <= 0.2:
+                            out[col] = s.astype("category")
+
+                    if big:
+                        continue
+
+                    probe = s.dropna().head(5000)
+                    if probe.empty:
+                        continue
+
+                    probe_str = probe.astype(str)
+                    probe_num = pd.to_numeric(probe_str, errors="coerce")
+                    probe_non_null = int(len(probe_str))
+                    probe_numeric_non_null = int(probe_num.notna().sum())
+
+                    if probe_non_null > 0 and (probe_numeric_non_null / probe_non_null) >= 0.9:
+                        s_str = s.astype(str)
+                        out[col] = pd.to_numeric(s_str, errors="coerce")
+                        if pd.api.types.is_integer_dtype(out[col].dropna().dtype):
+                            out[col] = pd.to_numeric(out[col], downcast="integer")
+                        elif pd.api.types.is_float_dtype(out[col].dtype):
+                            out[col] = pd.to_numeric(out[col], downcast="float")
+                        continue
+            except Exception as e:
+                # If optimization fails for a column, leave it unchanged
+                # This handles Excel files with unusual/mixed data types
+                pass
+
+        return out
+
+    def _analyze_column(self, series: pd.Series, name: str, total_rows: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Deep dive into a single column.
+        """
+        sample_rows = int(len(series))
+        total = int(total_rows) if isinstance(total_rows, int) and total_rows > 0 else sample_rows
+
+        unique_c = int(series.nunique(dropna=True))
+        missing_sample = int(series.isnull().sum())
+        if total != sample_rows and sample_rows > 0:
+            missing_c = int(round((float(missing_sample) / float(sample_rows)) * float(total)))
+        else:
+            missing_c = missing_sample
+        
+        stats = {
+            "name": name,
+            "type": str(series.dtype), # Schema expects "type"
+            "missing_count": missing_c, # Schema expects "missing_count"
+            "unique_count": unique_c, # Schema expects "unique_count"
+            "total": total
+        }
+        
+        # A. Detect Mixed Types (Numbers hidden in Object columns)
+        if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
+            probe = series.dropna().head(5000)
+            numeric_converted = pd.to_numeric(probe.astype(str), errors="coerce") if not probe.empty else pd.Series([], dtype="float64")
+            num_count = int(numeric_converted.notna().sum())
+            total_count = int(len(probe))
+            
+            if total_count > 0 and num_count > 0 and num_count / total_count > 0.5:
+                # Suspicious: >50% are numbers, but it's an object column (likely pollution)
+                stats["mixed_type_suspected"] = True
+                stats["numeric_convertible_percent"] = round((num_count / total_count) * 100, 1)
+                
+                # Find the "Polluters" (values that are NaN after conversion but weren't before)
+                # Note: this is expensive for large sets, so we sample
+                try:
+                    mask = numeric_converted.isna()
+                    polluters = probe[mask].unique()[:5]
+                except Exception:
+                    polluters = []
+                stats["polluting_values"] = [str(x) for x in polluters]
+
+        # B. Normality Check (If Numeric)
+        if pd.api.types.is_numeric_dtype(series.dtype):
+            is_normal, p_val, _ = check_normality(series)
+            
+            # Shapiro limit check inside check_normality, but result implies:
+            stats["normality"] = {
+                "is_normal": is_normal,
+                "p_value": _safe_float(p_val)
+            }
+            
+            # Simple Desc - use _safe_float to handle inf/nan values
+            stats["mean"] = _safe_float(series.mean())
+            stats["min"] = _safe_float(series.min())
+            stats["max"] = _safe_float(series.max())
+            stats["example"] = _safe_float(series.iloc[0]) if len(series) > 0 else None
+
+            try:
+                clean = series.replace([np.inf, -np.inf], np.nan).dropna()
+                if len(clean) >= 10:
+                    counts, edges = np.histogram(clean.to_numpy(dtype=float), bins=12)
+                    stats["histogram"] = {
+                        "bins": [int(x) for x in counts.tolist()],
+                        "edges": [_safe_float(x) for x in edges.tolist()],
+                    }
+            except Exception:
+                pass
+
+        # C. Categorical Intelligence
+        if pd.api.types.is_object_dtype(series.dtype) or isinstance(series.dtype, pd.CategoricalDtype):
+             if unique_c < 20:
+                 stats["categories"] = [str(x) for x in series.dropna().unique()]
+             try:
+                 top = series.dropna().astype(str).value_counts().head(3)
+                 stats["top_values"] = [
+                     {"value": str(idx), "count": int(cnt)}
+                     for idx, cnt in top.items()
+                 ]
+             except Exception:
+                 pass
+             stats["example"] = str(series.iloc[0]) if len(series) > 0 else None
+        
+        return stats
+
+
+    def _suggest_order(self, df: pd.DataFrame, col_reports: Dict) -> List[str]:
+        """
+        Suggests a logical column order: ID -> Categorical/Groups -> Numeric -> Text/Other
+        """
+        ids = []
+        cats = []
+        nums = []
+        others = []
+        
+        for col in df.columns:
+            c = str(col)
+            report = col_reports.get(c, {})
+            
+            # ID heuristics
+            if "id" in c.lower() or "code" in c.lower() or report.get("unique_count") == len(df):
+                ids.append(c)
+                continue
+                
+            dtype = str(report.get("type", ""))
+            if "int" in dtype or "float" in dtype:
+                nums.append(c)
+            elif "object" in dtype or "category" in dtype:
+                if report.get("unique_count", 999) < 20:
+                    cats.append(c)
+                else:
+                    others.append(c) # High cardinality text
+            else:
+                others.append(c)
+                
+        return ids + cats + nums + others

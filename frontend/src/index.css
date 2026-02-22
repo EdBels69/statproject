@@ -1,0 +1,495 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --white: #FFFFFF;
+  --black: #0A0A0A;
+  --orange: #FF6B00;
+  --gray-100: #F4F4F5;
+  --gray-200: #E4E4E7;
+  --gray-400: #A1A1AA;
+  --gray-600: #52525B;
+  --success: #10B981;
+  --error: #EF4444;
+
+  --bg-primary: var(--white);
+  --bg-secondary: var(--gray-100);
+  --bg-tertiary: var(--gray-100);
+  --border-color: var(--gray-200);
+
+  --text-primary: var(--black);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-400);
+
+  --accent: var(--orange);
+  --accent-hover: color-mix(in oklab, var(--accent) 85%, var(--black));
+
+  --plot-raw: #0072B2;
+  --plot-mean: #D55E00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Space Grotesk', 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: var(--white);
+  color: var(--black);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-200);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* Typography Utilities */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--black);
+}
+
+/* Focus */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--gray-200);
+  color: var(--black);
+  border-radius: 0;
+  padding: 8px 0;
+  font-size: 14px;
+  transition: border-color 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-bottom-color: var(--accent);
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--white);
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 2px;
+  border: 1px solid var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-primary:active {
+  background: var(--accent);
+}
+
+.btn-primary:disabled {
+  background: var(--gray-200);
+  border-color: var(--gray-200);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+  padding: 9px 20px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 2px;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 22%, var(--border-color));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--white) 94%, var(--black)) 0%,
+    var(--white) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(10, 10, 10, 0.08),
+    0 14px 28px -24px rgba(10, 10, 10, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0 rgba(10, 10, 10, 0.10);
+}
+
+.table-actions:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.table-actions .action-chip + .action-chip {
+  border-left: 1px solid color-mix(in oklab, var(--text-primary) 18%, var(--border-color));
+}
+
+.table-actions .action-chip:first-child {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.table-actions .action-chip:last-child {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.action-chip:hover {
+  background: color-mix(in oklab, var(--bg-tertiary) 70%, transparent);
+}
+
+.action-chip:active {
+  background: color-mix(in oklab, var(--bg-tertiary) 90%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(10, 10, 10, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.70);
+}
+
+.action-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.action-chip--neutral {
+  color: var(--text-secondary);
+}
+
+.action-chip--dark {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--black) 9%, var(--white)) 0%,
+    color-mix(in oklab, var(--black) 2%, var(--white)) 100%
+  );
+  color: var(--text-primary);
+}
+
+.action-chip--dark:hover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--black) 12%, var(--white)) 0%,
+    color-mix(in oklab, var(--black) 4%, var(--white)) 100%
+  );
+}
+
+.action-chip--accent {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 22%, var(--white)) 0%,
+    color-mix(in oklab, var(--accent) 10%, var(--white)) 100%
+  );
+  color: var(--text-primary);
+}
+
+.action-chip--danger {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--error) 18%, var(--white)) 0%,
+    color-mix(in oklab, var(--error) 8%, var(--white)) 100%
+  );
+  color: color-mix(in oklab, var(--error) 82%, var(--black));
+}
+
+/* Cards */
+.card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 2px;
+}
+
+.card:hover {
+  border-color: var(--black);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: separate;
+  /* For rounding */
+  border-spacing: 0;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background: var(--white);
+  color: var(--gray-600);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.15s ease-in;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.18s ease-out;
+}
+
+.animate-scaleOut {
+  animation: scaleOut 0.15s ease-in;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Utility */
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.bg-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.bg-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.stepdata {
+  background:
+    radial-gradient(900px 420px at 15% -10%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 62%),
+    radial-gradient(700px 420px at 82% 0%, rgba(10, 10, 10, 0.045), transparent 66%);
+}
+
+.stepdata .variable-card {
+  border-color: var(--border-color);
+  box-shadow: 0 0 0 0 rgba(10, 10, 10, 0);
+  transform: translateY(0);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.stepdata .variable-card:hover {
+  border-color: color-mix(in oklab, var(--border-color) 50%, var(--black));
+  box-shadow: 0 14px 40px rgba(10, 10, 10, 0.06);
+  transform: translateY(-1px);
+}
+
+.variable-card {
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.variable-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.role-dropzone {
+  min-height: 48px;
+  border: 2px dashed var(--border-color);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.role-dropzone.drag-over {
+  border-color: var(--accent);
+  background: rgba(255, 107, 0, 0.05);
+}
+
+.role-dropzone.has-variable {
+  border-style: solid;
+  background: var(--white);
+}

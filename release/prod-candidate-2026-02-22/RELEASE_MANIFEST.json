@@ -1,0 +1,30 @@
+{
+  "project": "statproject_desktop_test",
+  "tag": "prod-candidate-2026-02-22",
+  "commit": "ad039f0b09c22db512ffc243e9a9018955c1b673",
+  "branch": "codex/win11-deploy-bundle-20260215",
+  "created_at_utc": "2026-02-22T20:33:58Z",
+  "verification": {
+    "backend_full_regression": "238 passed, 6 skipped",
+    "frontend_suite": "29 passed; lint pass; build pass",
+    "preflight": "PASS",
+    "docker_smoke": {
+      "backend_health": "http://localhost:8200/health -> healthy",
+      "frontend_http": "http://localhost:3200 -> 200 OK"
+    }
+  },
+  "default_ports": {
+    "backend": 8100,
+    "frontend": 3100
+  },
+  "validated_override_ports": {
+    "backend": 8200,
+    "frontend": 3200
+  },
+  "artifacts": [
+    "statproject_desktop_test_prod-candidate-2026-02-22_source.tar.gz",
+    "RELEASE_MANIFEST.json",
+    "SHA256SUMS.txt",
+    "RUNBOOK.md"
+  ]
+}

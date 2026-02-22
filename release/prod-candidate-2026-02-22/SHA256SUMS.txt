@@ -1,0 +1,3 @@
+66d3db891e9a02c100a4dabb272ad15134b14081117f0cbf229fd8940061218c  statproject_desktop_test_prod-candidate-2026-02-22_source.tar.gz
+59003ef6691da424856387e4c35ebe6a020d9eb0c000a0ae7cb0b9b87a3fd3a2  RELEASE_MANIFEST.json
+e6f8a050869eba605ae81417eccd547204abc946685533f2f923c8e0f3a29cb3  RUNBOOK.md
