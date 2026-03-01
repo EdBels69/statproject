@@ -1,0 +1,162 @@
+# Operator Runbook
+
+Date: 2026-03-01  
+Scope: Docker deployment of StatProject on Linux/macOS (Windows notes at the end).
+
+## 1. Service Topology
+
+- Frontend container: `frontend` (port `3000`)
+- Backend container: `backend` (port `8000`)
+- Persistent dataset storage: Docker volume `backend_data` (actual name: `<compose_project>_backend_data`)
+
+Reference: `/Users/eduardbelskih/Проекты Github/statproject/docker-compose.yml`
+
+## 2. Daily Health Checklist
+
+Run from repo root:
+
+```bash
+./status-statproject.command
+docker compose ps
+curl -fsS http://localhost:8000/health
+curl -fsS http://localhost:8000/docs >/dev/null
+```
+
+If any command fails, go to Incident Playbook (section 6).
+
+## 3. Safe Operations Rule
+
+Before any stop/restart that may remove volumes, always create backup:
+
+```bash
+./scripts/ops_backup_workspace.sh
+```
+
+Default backup path: `~/statproject_backups`.
+
+Important:
+- `/Users/eduardbelskih/Проекты Github/statproject/stop.sh` executes `docker compose down -v` and removes persistent volume data.
+
+## 4. Backup and Restore
+
+### 4.1 Backup
+
+```bash
+./scripts/ops_backup_workspace.sh
+```
+
+Optional custom directory:
+
+```bash
+./scripts/ops_backup_workspace.sh /absolute/path/to/backups
+```
+
+### 4.2 Restore
+
+1. Stop running services:
+
+```bash
+docker compose down
+```
+
+2. Restore from archive:
+
+```bash
+./scripts/ops_restore_workspace.sh /absolute/path/to/statproject_workspace_YYYYmmdd_HHMMSS.tar.gz --yes
+```
+
+3. Start services:
+
+```bash
+./start-statproject.command
+```
+
+4. Verify:
+
+```bash
+curl -fsS http://localhost:8000/health
+```
+
+## 5. Release Cutover Checklist
+
+1. Run production smoke gate:
+
+```bash
+./scripts/release_production_smoke.sh
+```
+
+2. Verify report `release/PRODUCTION_SMOKE_*.md` has `overall_status: PASS`.
+3. Create or update release notes (`CHANGELOG.md`).
+4. Create git tag for release candidate or production release.
+5. Keep one fresh workspace backup before rollout window.
+
+## 6. Incident Playbook
+
+### Incident A: Backend unhealthy
+
+Symptoms:
+- `/health` non-200
+- frontend cannot fetch API
+
+Actions:
+
+```bash
+docker compose logs --tail=200 backend
+docker compose restart backend
+curl -fsS http://localhost:8000/health
+```
+
+If still failing:
+- run `./scripts/release_production_smoke.sh` for diagnostic signal.
+- rollback to previous image/tag if available.
+
+### Incident B: Frontend shows API errors
+
+Actions:
+
+```bash
+docker compose logs --tail=200 frontend
+docker compose ps
+curl -fsS http://localhost:8000/health
+docker compose restart frontend
+```
+
+### Incident C: Data loss after volume reset
+
+Actions:
+
+```bash
+docker compose down
+./scripts/ops_restore_workspace.sh /absolute/path/to/latest-backup.tar.gz --yes
+./start-statproject.command
+```
+
+### Incident D: Report export blocked by verifier gate
+
+Symptoms:
+- protocol report/export returns validation error.
+
+Actions:
+
+```bash
+docker compose logs --tail=200 backend
+```
+
+Then inspect run artifacts (`verification.json`, `reflection_log.json`) and re-run corrected protocol.
+
+## 7. Recovery Targets
+
+- RPO target: last successful backup.
+- RTO target (local environment): under 30 minutes with verified backup.
+
+## 8. Windows Notes
+
+Use PowerShell wrappers:
+
+```powershell
+.\deploy-win11.ps1
+.\stop-win11.ps1
+.\restart-win11.ps1
+```
+
+Primary reference: `/Users/eduardbelskih/Проекты Github/statproject/DEPLOYMENT_WIN11.md`.

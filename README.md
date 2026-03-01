@@ -241,6 +241,22 @@ docker build -t stat-analyzer-frontend .
 
 For detailed deployment instructions, including SSL configuration, monitoring, and scaling, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
+### Operations and Release Gates
+
+- Operator runbook: [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)
+- Production smoke gate script:
+
+```bash
+./scripts/release_production_smoke.sh
+```
+
+- Workspace backup/restore scripts:
+
+```bash
+./scripts/ops_backup_workspace.sh
+./scripts/ops_restore_workspace.sh /absolute/path/to/backup.tar.gz --yes
+```
+
 ## Development
 
 ### Backend Architecture
