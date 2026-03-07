@@ -16,10 +16,36 @@ from app.api.datasets import DATA_DIR
 from app.llm import scan_data_quality
 from app.schemas.dataset import QualityReport
 from app.core.pipeline import PipelineManager
+from app.modules.semantics import rebuild_and_save_semantics
+from app.modules.study_design import rebuild_and_save_study_design
+from app.modules.delta_log import append_delta_log
 
 router = APIRouter(prefix="/quality", tags=["quality"])
 
 pipeline = PipelineManager(DATA_DIR)
+
+def _sanitize_json(obj):
+    if hasattr(obj, "item") and callable(getattr(obj, "item")):
+        try:
+            return _sanitize_json(obj.item())
+        except Exception:
+            return str(obj)
+
+    if isinstance(obj, float):
+        try:
+            import math
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+        except Exception:
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_json(v) for v in obj]
+    if isinstance(obj, tuple):
+        return [_sanitize_json(v) for v in obj]
+    return obj
 
 @router.get("/{dataset_id}/scan", response_model=QualityReport)
 async def scan_dataset_quality(dataset_id: str):
@@ -84,6 +110,32 @@ async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
             dataset_id,
             cleaned_df,
             cleaning_log={"action": "quality_auto_clean", "strategy": strategy}
+        )
+
+        scan_result = await run_in_threadpool(scanner.scan_dataset, cleaned_df)
+        scan_report = scan_result.get("scan_report") or {}
+        report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="quality_auto_clean",
+            actor="auto",
+            details={"strategy": strategy},
         )
 
         return {"status": "success", "message": f"Файл данных очищен (стратегия: {strategy}) и сохранён."}

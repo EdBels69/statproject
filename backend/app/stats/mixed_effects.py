@@ -210,9 +210,9 @@ class MixedEffectsEngine:
             conf_int = result.conf_int()
             for idx in params.index:
                 coef_table.append({
-                    "term": str(idx),
+                    "variable": str(idx),
                     "coefficient": float(params[idx]),
-                    "std_error": float(result.bse[idx]) if idx in result.bse.index else None,
+                    "std_err": float(result.bse[idx]) if idx in result.bse.index else None,
                     "z_value": float(result.tvalues[idx]) if idx in result.tvalues.index else None,
                     "p_value": float(pvalues[idx]) if idx in pvalues.index else None,
                     "ci_lower": float(conf_int.loc[idx, 0]) if idx in conf_int.index else None,
@@ -223,8 +223,9 @@ class MixedEffectsEngine:
             # Fallback if conf_int fails
             for idx in params.index:
                 coef_table.append({
-                    "term": str(idx),
+                    "variable": str(idx),
                     "coefficient": float(params[idx]),
+                    "std_err": None,
                     "p_value": float(pvalues[idx]) if idx in pvalues.index else None,
                     "significant": pvalues[idx] < alpha if idx in pvalues.index else False
                 })
@@ -387,7 +388,17 @@ class RepeatedMeasuresEngine:
                     "significant": interaction_row['Pr > F'] < alpha if interaction_row is not None else False
                 } if interaction_row is not None else None,
                 
-                "anova_table": anova_table.to_dict() if hasattr(anova_table, 'to_dict') else str(anova_table),
+                # Normalize ANOVA table for frontend
+                "anova_table": [
+                    {
+                        "Source": idx,
+                        "F": float(row['F Value']),
+                        "p-unc": float(row['Pr > F']),
+                        "df": float(row['Num DF']),
+                        "df_den": float(row['Den DF'])
+                    }
+                    for idx, row in anova_table.iterrows()
+                ],
                 
                 "note": "Sphericity not tested. Consider Greenhouse-Geisser correction if violated."
             }

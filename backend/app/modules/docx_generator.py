@@ -2,6 +2,7 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 from app.modules.reporting import generate_protocol_docx_report
+from app.modules.analysis_result_v2 import normalize_run_data_results
 
 
 def create_results_document(
@@ -32,6 +33,7 @@ def create_results_document(
         else:
             run_data = {"protocol_name": "Results", "results": {"analysis": payload}}
 
+    run_data = normalize_run_data_results(run_data if isinstance(run_data, dict) else {})
     docx_bytes = generate_protocol_docx_report(run_data, dataset_name=ds_name, style=style, options=options)
     buffer = BytesIO()
     buffer.write(docx_bytes)

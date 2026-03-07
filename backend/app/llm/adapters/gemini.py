@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiAdapter(AbstractLLMAdapter):
-    def __init__(self, api_key: str, model: str = "gemini-1.5-flash", api_url: str = "https://generativelanguage.googleapis.com/v1beta/models"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", api_url: str = "https://generativelanguage.googleapis.com/v1beta/models"):
         self.api_key = api_key
         self.model = model
         self.api_url = api_url.rstrip("/")

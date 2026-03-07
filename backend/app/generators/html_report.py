@@ -295,7 +295,7 @@ class HTMLReportGenerator(AbstractGenerator):
         {summary_section}
 
         <footer style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted);">
-            Сгенерировано StatWizard · {self._get_timestamp()}
+            Сгенерировано Clinimetria · {self._get_timestamp()}
         </footer>
     </div>
 </body>

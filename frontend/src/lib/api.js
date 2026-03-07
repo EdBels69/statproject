@@ -1,4 +1,24 @@
 export const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
+const COPILOT_API_URL = import.meta.env.VITE_COPILOT_API_URL || "/api/v2/copilot";
+
+let _knowledgeApiSupportPromise = null;
+
+async function hasKnowledgeApi() {
+  if (_knowledgeApiSupportPromise) return _knowledgeApiSupportPromise;
+  _knowledgeApiSupportPromise = (async () => {
+    try {
+      const response = await request(`${API_URL}/openapi.json`, {}, { timeoutMs: 15000 });
+      if (!response.ok) return false;
+      const data = await response.json().catch(() => null);
+      const paths = data && typeof data === 'object' ? data.paths : null;
+      if (!paths || typeof paths !== 'object') return false;
+      return Boolean(paths[`${API_URL}/v2/knowledge/library`] || paths[`${API_URL}/v2/knowledge/catalog`]);
+    } catch {
+      return false;
+    }
+  })();
+  return _knowledgeApiSupportPromise;
+}
 
 async function request(url, options = {}, { timeoutMs = 30000, timeoutError } = {}) {
   const externalSignal = options?.signal;
@@ -40,7 +60,7 @@ async function readError(response) {
 }
 
 export function getAlphaSetting() {
-  const savedAlpha = localStorage.getItem('statwizard_alpha');
+  const savedAlpha = localStorage.getItem('clinimetria_alpha');
   return savedAlpha ? parseFloat(savedAlpha) : 0.05;
 }
 
@@ -58,12 +78,37 @@ export async function uploadDataset(file) {
     if (message && message !== 'Failed to fetch') {
       throw new Error(message);
     }
-    throw new Error("Не удалось подключиться к серверу");
+    throw new Error("Ядро системы не отвечает");
   }
   if (!response.ok) {
     const detail = await readError(response);
     throw new Error(detail || "Не удалось загрузить файл");
   }
+  return response.json();
+}
+
+/**
+ * Protocol Templates
+ */
+export async function saveProtocolTemplate(name, protocol) {
+  const response = await request(`${API_URL}/analysis/protocols/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, protocol })
+  });
+  if (!response.ok) throw new Error("Не удалось сохранить шаблон");
+  return response.json();
+}
+
+export async function listProtocolTemplates() {
+  const response = await request(`${API_URL}/analysis/protocols/list`);
+  if (!response.ok) throw new Error("Не удалось загрузить список шаблонов");
+  return response.json();
+}
+
+export async function getProtocolTemplate(name) {
+  const response = await request(`${API_URL}/analysis/protocols/${name}`);
+  if (!response.ok) throw new Error("Не удалось загрузить шаблон");
   return response.json();
 }
 
@@ -78,7 +123,7 @@ export async function uploadPrimaryDataset() {
     if (message && message !== 'Failed to fetch') {
       throw new Error(message);
     }
-    throw new Error("Не удалось подключиться к серверу");
+    throw new Error("Ядро системы не отвечает");
   }
   if (!response.ok) {
     const detail = await readError(response);
@@ -91,11 +136,24 @@ export async function getDatasets() {
   let response;
   try {
     response = await request(`${API_URL}/datasets`, {}, { timeoutMs: 30000 });
-  } catch {
-    throw new Error("Не удалось подключиться к серверу");
+  } catch (e) {
+    const message = e?.message ? String(e.message) : '';
+    if (message && message !== 'Failed to fetch') {
+      throw new Error(message);
+    }
+    throw new Error("Ядро системы не отвечает");
   }
   if (!response.ok) {
-    throw new Error("Не удалось загрузить список файлов данных");
+    const detail = await readError(response);
+    throw new Error(detail || "Не удалось загрузить список файлов данных");
+  }
+  return response.json();
+}
+
+export async function getDatasetReport(id) {
+  const response = await request(`${API_URL}/datasets/${id}/report`);
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить отчёт о качестве данных");
   }
   return response.json();
 }
@@ -107,7 +165,7 @@ export async function deleteDataset(id) {
       method: "DELETE",
     }, { timeoutMs: 60000 });
   } catch {
-    throw new Error("Не удалось подключиться к серверу");
+    throw new Error("Ядро системы не отвечает");
   }
   if (!response.ok) {
     const detail = await readError(response);
@@ -116,23 +174,13 @@ export async function deleteDataset(id) {
   return response.json();
 }
 
-export async function getWizardRecommendation(data) {
-  const response = await request(`${API_URL}/wizard/recommend`, {
+export async function getSorcererRecommendation(data) {
+  const response = await request(`${API_URL}/sorcerer/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   }, { timeoutMs: 60000, timeoutError: 'Рекомендация строится слишком долго' });
   if (!response.ok) throw new Error("Не удалось получить рекомендацию");
-  return response.json();
-}
-
-export async function applyStrategy(data) {
-  const response = await request(`${API_URL}/wizard/apply`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  }, { timeoutMs: 240000, timeoutError: 'Анализ занимает слишком много времени' });
-  if (!response.ok) throw new Error("Не удалось применить стратегию");
   return response.json();
 }
 
@@ -213,6 +261,49 @@ export async function cleanColumn(id, column, action) {
     body: JSON.stringify({ column, action }),
   }, { timeoutMs: 120000, timeoutError: 'Операция очистки занимает слишком много времени' });
   if (!response.ok) throw new Error("Не удалось очистить колонку");
+  return response.json();
+}
+
+// Copilot V2 API
+export async function copilotPlan(datasetId, request, model) {
+  const response = await request(`${API_URL}/copilot/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataset_id: datasetId, request, model }),
+  }, { timeoutMs: 60000 });
+
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Planning failed");
+  }
+  return response.json();
+}
+
+export async function copilotExecute(sessionId, planOverride = null) {
+  const response = await request(`${API_URL}/copilot/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, plan_override: planOverride }),
+  }, { timeoutMs: 120000 }); // Longer timeout for execution
+
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Execution failed");
+  }
+  return response.json();
+}
+
+export async function copilotRefine(sessionId, refinementRequest) {
+  const response = await request(`${API_URL}/copilot/refine`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, refinement: refinementRequest }),
+  });
+
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Refinement failed");
+  }
   return response.json();
 }
 
@@ -369,6 +460,24 @@ export async function downloadProtocolArtifact(datasetId, runId, name) {
   return response.blob();
 }
 
+export async function downloadProtocolReleaseBundle(datasetId, runId, opts = {}) {
+  const params = new URLSearchParams();
+  params.set('dataset_id', String(datasetId));
+  if (opts?.allowPartial) params.set('allow_partial', 'true');
+  if (opts?.refresh) params.set('refresh', 'true');
+
+  const response = await request(
+    `${API_URL}/analysis/protocol/release/${encodeURIComponent(String(runId))}/zip?${params.toString()}`,
+    {},
+    { timeoutMs: 240000, timeoutError: 'Сборка release bundle занимает слишком много времени' }
+  );
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось скачать release bundle');
+  }
+  return response.blob();
+}
+
 export async function modifyDataset(id, modifications, options = {}) {
   const params = new URLSearchParams();
   if (options?.page !== undefined && options?.page !== null) params.set('page', String(options.page));
@@ -408,6 +517,109 @@ export async function scanDataset(id) {
 export async function getScanReport(id) {
   const response = await request(`${API_URL}/datasets/${id}/scan_report`, {}, { timeoutMs: 60000 });
   if (!response.ok) throw new Error("Не удалось загрузить отчёт проверки качества");
+  return response.json();
+}
+
+export async function getCleaningLog(id) {
+  const response = await request(`${API_URL}/datasets/${id}/cleaning_log`, {}, { timeoutMs: 60000 });
+  if (!response.ok) throw new Error("Не удалось загрузить лог очистки");
+  return response.json();
+}
+
+export async function getDatasetPipelineState(id) {
+  const response = await request(`${API_URL}/datasets/${id}/pipeline_state`, {}, { timeoutMs: 60000 });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось загрузить состояние pipeline');
+  }
+  return response.json();
+}
+
+export async function getDeltaLog(id) {
+  const response = await request(`${API_URL}/datasets/${id}/delta_log`, {}, { timeoutMs: 60000 });
+  if (!response.ok) throw new Error("Не удалось загрузить лог изменений");
+  return response.json();
+}
+
+export async function getSemantics(id) {
+  const response = await request(`${API_URL}/datasets/${id}/semantics`, {}, { timeoutMs: 60000 });
+  if (!response.ok) throw new Error("Не удалось загрузить семантику данных");
+  return response.json();
+}
+
+export async function getStudyDesign(id) {
+  const response = await request(`${API_URL}/datasets/${id}/study_design`, {}, { timeoutMs: 60000 });
+  if (!response.ok) throw new Error("Не удалось загрузить дизайн исследования");
+  return response.json();
+}
+
+export async function getDatasetDesignReview(id) {
+  const response = await request(`${API_URL}/datasets/${id}/design_review`, {}, { timeoutMs: 60000 });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось загрузить статус Design Review');
+  }
+  return response.json();
+}
+
+export async function confirmDatasetDesignReview(id, payload = {}) {
+  const response = await request(`${API_URL}/datasets/${id}/design_review/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload && typeof payload === 'object' ? payload : {}),
+  }, { timeoutMs: 60000, timeoutError: 'Подтверждение Design Review занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось подтвердить Design Review');
+  }
+  return response.json();
+}
+
+export async function revokeDatasetDesignReview(id, payload = {}) {
+  const response = await request(`${API_URL}/datasets/${id}/design_review/revoke`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload && typeof payload === 'object' ? payload : {}),
+  }, { timeoutMs: 60000, timeoutError: 'Сброс Design Review занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось сбросить Design Review');
+  }
+  return response.json();
+}
+
+export async function getDatasetAnalysisSet(id) {
+  const response = await request(`${API_URL}/datasets/${id}/analysis_set`, {}, { timeoutMs: 60000 });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось загрузить фиксированную выборку');
+  }
+  return response.json();
+}
+
+export async function freezeDatasetAnalysisSet(id, payload = {}) {
+  const response = await request(`${API_URL}/datasets/${id}/analysis_set/freeze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload && typeof payload === 'object' ? payload : {}),
+  }, { timeoutMs: 120000, timeoutError: 'Заморозка выборки занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось заморозить выборку');
+  }
+  return response.json();
+}
+
+export async function clearDatasetAnalysisSet(id, payload = {}) {
+  const response = await request(`${API_URL}/datasets/${id}/analysis_set/clear`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload && typeof payload === 'object' ? payload : {}),
+  }, { timeoutMs: 60000, timeoutError: 'Сброс выборки занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось сбросить фиксированную выборку');
+  }
   return response.json();
 }
 
@@ -556,14 +768,123 @@ export async function reprocessDataset(id) {
   return response.json();
 }
 
-export async function runBatchAnalysis(datasetId, targets, groupColumn) {
-  const response = await request(`${API_URL}/analysis/batch`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataset_id: datasetId, target_columns: targets, group_column: groupColumn, alpha: getAlphaSetting() }),
-  }, { timeoutMs: 240000, timeoutError: 'Пакетный анализ занимает слишком много времени' });
-  if (!response.ok) throw new Error("Не удалось выполнить пакетный анализ");
-  return response.json();
+function normalizeLegacyBatchResult(payload, fallbackGroup = null) {
+  const body = payload && typeof payload === 'object' ? payload : {};
+  if (body.results && typeof body.results === 'object' && !Array.isArray(body.results)) {
+    return {
+      descriptives: Array.isArray(body.descriptives) ? body.descriptives : [],
+      results: body.results,
+      run_id: body.run_id || null,
+    };
+  }
+
+  const stepList = Array.isArray(body.results) ? body.results : [];
+  const batchStep = stepList.find((item) => {
+    const res = item && typeof item === 'object' ? item.results : null;
+    return res && typeof res === 'object' && res.method_id === 'batch_analysis';
+  }) || stepList.find((item) => {
+    const res = item && typeof item === 'object' ? item.results : null;
+    return res && typeof res === 'object' && (res.type === 'batch_analysis' || res.mode === 'delta');
+  });
+
+  const batchPayload = batchStep && typeof batchStep === 'object' ? batchStep.results : null;
+  const items = Array.isArray(batchPayload?.items) ? batchPayload.items : [];
+  const results = {};
+  const descriptives = [];
+
+  items.forEach((item, idx) => {
+    if (!item || typeof item !== 'object') return;
+    const target = String(item.target || item.variable || item.outcome || `var_${idx + 1}`);
+    const methodRaw = item.method;
+    const methodId =
+      (typeof item.method_id === 'string' && item.method_id.trim()) ||
+      (typeof methodRaw === 'string' && methodRaw.trim()) ||
+      (methodRaw && typeof methodRaw === 'object' && typeof methodRaw.id === 'string' && methodRaw.id.trim()) ||
+      'unknown';
+    const methodName =
+      (methodRaw && typeof methodRaw === 'object' && typeof methodRaw.name === 'string' && methodRaw.name.trim()) ||
+      methodId;
+    const groups = Array.isArray(item.groups) ? item.groups : [];
+
+    results[target] = {
+      method: { id: methodId, name: methodName },
+      p_value: item.p_value ?? null,
+      adjusted_p_value: item.p_value_adj ?? null,
+      significant_adj: item.significant_adj ?? null,
+      stat_value: item.stat_value ?? null,
+      significant: item.significant ?? null,
+      effect_size: item.effect_size ?? null,
+      effect_size_name: item.effect_size_name ?? null,
+      effect_size_ci_lower: item.effect_size_ci_lower ?? null,
+      effect_size_ci_upper: item.effect_size_ci_upper ?? null,
+      power: item.power ?? null,
+      bf10: item.bf10 ?? null,
+      groups,
+      plot_data: item.plot_data ?? null,
+      plot_stats: item.plot_stats ?? null,
+      comparisons: Array.isArray(item.comparisons) ? item.comparisons : null,
+      pairwise_comparisons: Array.isArray(item.pairwise_comparisons) ? item.pairwise_comparisons : null,
+      conclusion: item.conclusion || item.ai_interpretation || '',
+      engine: item.engine ?? null,
+    };
+
+    groups.forEach((g) => {
+      if (!g || typeof g !== 'object') return;
+      const shapiro = g.shapiro_p ?? g.normality_p ?? null;
+      descriptives.push({
+        variable: target,
+        group: String(g.group ?? g.name ?? g.label ?? fallbackGroup ?? 'overall'),
+        count: g.count ?? g.n ?? null,
+        missing: g.missing ?? null,
+        mean: g.mean ?? null,
+        sd: g.sd ?? g.std ?? null,
+        se: g.se ?? null,
+        median: g.median ?? null,
+        mode: g.mode ?? null,
+        iqr: g.iqr ?? null,
+        skewness: g.skewness ?? null,
+        kurtosis: g.kurtosis ?? null,
+        shapiro_p: shapiro,
+        is_normal: typeof shapiro === 'number' ? shapiro >= 0.05 : null,
+      });
+    });
+  });
+
+  return {
+    descriptives,
+    results,
+    run_id: body.run_id || null,
+  };
+}
+
+export async function runBatchAnalysis(datasetId, targets, groupColumn, options = {}) {
+  const protocol = [
+    {
+      id: 'legacy_batch',
+      method: 'batch_analysis',
+      config: {
+        group: groupColumn,
+        targets: Array.isArray(targets) ? targets : [],
+        method_id: 'auto',
+        auto_fallback: true,
+        multiplicity_correction: 'fdr_bh',
+      },
+    },
+  ];
+
+  const globals = {};
+  if (options && typeof options === 'object' && options.designConfirmed === true) {
+    globals.design_confirmed = true;
+  }
+
+  const response = await executeProtocolV2(
+    datasetId,
+    protocol,
+    getAlphaSetting(),
+    'Batch analysis',
+    globals
+  );
+  return normalizeLegacyBatchResult(response, groupColumn);
 }
 
 /* ============================================================
@@ -641,15 +962,18 @@ export async function runClusteredCorrelation(datasetId, {
 /**
  * Execute v2 analysis protocol (supports advanced methods)
  */
-export async function executeProtocolV2(datasetId, protocol, alpha = null) {
+export async function executeProtocolV2(datasetId, protocol, alpha = null, protocolName = null, globals = null) {
+  const payload = {
+    dataset_id: datasetId,
+    protocol,
+    alpha: alpha ?? getAlphaSetting(),
+  };
+  if (protocolName) payload.protocol_name = protocolName;
+  if (globals && typeof globals === 'object') payload.globals = globals;
   const response = await request(`${API_V2_URL}/analysis/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      dataset_id: datasetId,
-      protocol,
-      alpha: alpha ?? getAlphaSetting()
-    }),
+    body: JSON.stringify(payload),
   }, { timeoutMs: 240000, timeoutError: 'Выполнение протокола занимает слишком много времени' });
   if (!response.ok) {
     const detail = await readError(response);
@@ -678,7 +1002,7 @@ export async function getAISuggestions(datasetId, currentProtocol = []) {
 }
 
 export async function aiAnalyzeDesign(datasetId, text, { protocol = null, preferences = null } = {}) {
-  const response = await request(`${API_V2_URL}/ai/analyze-design`, {
+  const response = await request(`${API_V2_URL}/analysis/plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -694,6 +1018,128 @@ export async function aiAnalyzeDesign(datasetId, text, { protocol = null, prefer
     throw new Error(detail || 'Не удалось разобрать дизайн исследования');
   }
 
+  return response.json();
+}
+
+export async function analysisPlan(datasetId, text, { protocol = null, preferences = null } = {}) {
+  return aiAnalyzeDesign(datasetId, text, { protocol, preferences });
+}
+
+export async function getModelRouterBenchmarkSnapshot({
+  minRuns = 10,
+  includeMarkdown = false,
+  topN = 10,
+} = {}) {
+  const params = new URLSearchParams();
+  const minRunsNorm = Number.isFinite(Number(minRuns)) ? Math.max(0, Math.round(Number(minRuns))) : 10;
+  const topNNorm = Number.isFinite(Number(topN)) ? Math.max(1, Math.min(50, Math.round(Number(topN)))) : 10;
+  params.set('min_runs', String(minRunsNorm));
+  params.set('top_n', String(topNNorm));
+  if (includeMarkdown) params.set('include_markdown', 'true');
+
+  const response = await request(`${API_V2_URL}/analysis/benchmark/model-router?${params.toString()}`, {}, {
+    timeoutMs: 60000,
+    timeoutError: 'Сбор benchmark snapshot занимает слишком много времени',
+  });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось загрузить benchmark snapshot');
+  }
+  return response.json();
+}
+
+export async function generatePromptBrief(datasetId, preferences = null) {
+  const response = await request(`${API_V2_URL}/analysis/brief`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      preferences,
+    }),
+  }, { timeoutMs: 60000, timeoutError: 'Авто-бриф занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || 'Не удалось сформировать бриф');
+  }
+  return response.json();
+}
+
+export async function downloadCopilotReportPdf(sessionId, options = {}) {
+  const response = await fetch(`${COPILOT_API_URL}/report/pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      include_code: options.includeCode ?? true,
+      include_interpretation: options.includeInterpretation ?? true,
+    }),
+  });
+  if (!response.ok) throw new Error('PDF generation failed');
+  return response.blob();
+}
+
+/**
+ * Knowledge Base
+ */
+export async function uploadKnowledgeFile(file, { title = null, tags = null } = {}) {
+  if (!(await hasKnowledgeApi())) {
+    throw new Error("Модуль базы знаний недоступен в текущей версии backend");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  if (title) formData.append("title", title);
+  if (tags) formData.append("tags", tags);
+
+  const response = await request(`${API_V2_URL}/knowledge/upload`, {
+    method: "POST",
+    body: formData,
+  }, { timeoutMs: 120000, timeoutError: 'Загрузка базы знаний занимает слишком много времени' });
+  if (!response.ok) {
+    const detail = await readError(response);
+    throw new Error(detail || "Не удалось загрузить файл в базу знаний");
+  }
+  return response.json();
+}
+
+export async function listKnowledgeDocs() {
+  if (!(await hasKnowledgeApi())) {
+    return { docs: [] };
+  }
+  const response = await request(`${API_V2_URL}/knowledge/library`, {}, { timeoutMs: 30000 });
+  if (!response.ok) throw new Error("Не удалось получить список базы знаний");
+  return response.json();
+}
+
+export async function listKnowledgeCatalog() {
+  if (!(await hasKnowledgeApi())) {
+    return { docs: [] };
+  }
+  const response = await request(`${API_V2_URL}/knowledge/catalog`, {}, { timeoutMs: 30000 });
+  if (!response.ok) throw new Error("Не удалось получить каталог базы знаний");
+  return response.json();
+}
+
+export async function searchKnowledge(query, topK = 5) {
+  if (!(await hasKnowledgeApi())) {
+    return { results: [] };
+  }
+  const params = new URLSearchParams();
+  params.set("q", query);
+  params.set("top_k", String(topK));
+  const response = await request(`${API_V2_URL}/knowledge/search?${params.toString()}`, {}, { timeoutMs: 30000 });
+  if (!response.ok) throw new Error("Не удалось выполнить поиск по базе знаний");
+  return response.json();
+}
+
+export async function deleteKnowledgeDoc(docId) {
+  if (!(await hasKnowledgeApi())) {
+    return { status: "unavailable" };
+  }
+  const response = await request(`${API_V2_URL}/knowledge/doc/${docId}`, {
+    method: "DELETE",
+  }, { timeoutMs: 30000 });
+  if (!response.ok) throw new Error("Не удалось удалить документ");
   return response.json();
 }
 

@@ -24,8 +24,8 @@ import shutil
 client = TestClient(app)
 TEST_ID_V2 = "test_dataset_v2_integration"
 TEST_ID_V2_CLUSTER = "test_dataset_v2_cluster"
-TEST_DIR_V2 = os.path.join("workspace", "datasets", "test_dataset_v2_integration")
-TEST_DIR_V2_CLUSTER = os.path.join("workspace", "datasets", TEST_ID_V2_CLUSTER)
+TEST_DIR_V2 = os.path.join(DATA_DIR, TEST_ID_V2)
+TEST_DIR_V2_CLUSTER = os.path.join(DATA_DIR, TEST_ID_V2_CLUSTER)
 
 # Test data for mixed effects (longitudinal)
 def create_mixed_effects_test_data():
@@ -173,6 +173,17 @@ def setup_v2_test_data():
     with open(os.path.join(TEST_DIR_V2_CLUSTER, "processed", "scan_report.json"), "w") as f:
         json.dump(cluster_scan_report, f)
 
+    design_review_payload = {
+        "confirmed": True,
+        "confirmed_at": "2026-02-07T12:00:00",
+        "confirmed_by": "test",
+        "confirmed_source": "test",
+    }
+    with open(os.path.join(TEST_DIR_V2, "processed", "design_review.json"), "w") as f:
+        json.dump(design_review_payload, f)
+    with open(os.path.join(TEST_DIR_V2_CLUSTER, "processed", "design_review.json"), "w") as f:
+        json.dump(design_review_payload, f)
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_and_teardown():
     """Setup and teardown for v2 tests."""
@@ -220,7 +231,11 @@ def test_mixed_effects_basic():
     assert len(result["coefficients"]) > 0
     
     # Check that group effect is present
-    group_effects = [eff for eff in result["coefficients"] if "group" in eff["term"].lower()]
+    group_effects = [
+        eff
+        for eff in result["coefficients"]
+        if "group" in str(eff.get("term") or eff.get("variable") or "").lower()
+    ]
     assert len(group_effects) > 0, "Group effect should be present in results"
     
     # Check that interaction exists
@@ -251,7 +266,11 @@ def test_mixed_effects_random_slope():
     result = response.json()
     assert "coefficients" in result
     # Check that random effects variance is present
-    random_effects = [eff for eff in result["coefficients"] if "Var" in eff["term"]]
+    random_effects = [
+        eff
+        for eff in result["coefficients"]
+        if "Var" in str(eff.get("term") or eff.get("variable") or "")
+    ]
     assert len(random_effects) > 0, "Random effects variance should be present"
 
 def test_mixed_effects_missing_columns():
@@ -434,6 +453,7 @@ def test_template_design_and_execute_protocol():
         "dataset_id": TEST_ID_V2,
         "alpha": 0.05,
         "protocol": protocol,
+        "globals": {"design_confirmed": True},
     }
     exec_res = client.post("/api/v1/v2/analysis/execute", json=execute_payload)
     assert exec_res.status_code == 200, f"Protocol execute failed: {exec_res.text}"
@@ -441,6 +461,40 @@ def test_template_design_and_execute_protocol():
     assert exec_data.get("status") in ["completed", "partial"]
     assert exec_data.get("total_steps") == len(protocol)
     assert (exec_data.get("completed_steps") or 0) >= 1
+
+
+def test_execute_protocol_exports_analysis_dataset_artifacts():
+    execute_payload = {
+        "dataset_id": TEST_ID_V2,
+        "alpha": 0.05,
+        "protocol": [],
+        "globals": {},
+    }
+    exec_res = client.post("/api/v1/v2/analysis/execute", json=execute_payload)
+    assert exec_res.status_code == 200, f"Protocol execute failed: {exec_res.text}"
+    exec_data = exec_res.json()
+    run_id = exec_data.get("run_id")
+    assert isinstance(run_id, str) and run_id
+
+    artifact_meta = exec_data.get("analysis_dataset")
+    assert isinstance(artifact_meta, dict)
+    assert artifact_meta.get("parquet") == "analysis_dataset.parquet"
+    assert artifact_meta.get("xlsx") == "analysis_dataset.xlsx"
+    assert artifact_meta.get("xlsx_status") == "exported"
+
+    artifacts_dir = os.path.join(TEST_DIR_V2, "analysis", run_id, "artifacts")
+    assert os.path.exists(os.path.join(artifacts_dir, "analysis_dataset.parquet"))
+    assert os.path.exists(os.path.join(artifacts_dir, "analysis_dataset.xlsx"))
+    assert os.path.exists(os.path.join(artifacts_dir, "analysis_dataset.meta.json"))
+
+    list_res = client.get(
+        f"/api/v1/analysis/protocol/artifacts/{run_id}?dataset_id={TEST_ID_V2}"
+    )
+    assert list_res.status_code == 200, f"Artifacts list failed: {list_res.text}"
+    names = {item.get("name") for item in list_res.json().get("files", [])}
+    assert "analysis_dataset.parquet" in names
+    assert "analysis_dataset.xlsx" in names
+    assert "analysis_dataset.meta.json" in names
 
 
 def test_ai_analyze_design_returns_protocol():
@@ -479,6 +533,143 @@ def test_ai_analyze_design_returns_protocol():
     assert isinstance(data.get("protocol"), list)
     assert len(data.get("protocol")) >= 1
     assert data["protocol"][0].get("method")
+
+
+def test_legacy_telemetry_endpoint_shape():
+    response = client.get("/api/v1/v2/telemetry/legacy")
+    assert response.status_code == 200, f"Legacy telemetry failed: {response.text}"
+    data = response.json()
+    assert "total_hits" in data
+    assert "endpoints" in data
+    assert isinstance(data["endpoints"], list)
+
+
+def test_legacy_telemetry_endpoint_token_protection(monkeypatch):
+    from app.api import v2
+
+    monkeypatch.setattr(v2.settings, "CLINIMETRIA_TELEMETRY_TOKEN", "secret-token")
+
+    denied = client.get("/api/v1/v2/telemetry/legacy")
+    assert denied.status_code == 403
+
+    ok = client.get("/api/v1/v2/telemetry/legacy", headers={"X-Telemetry-Token": "secret-token"})
+    assert ok.status_code == 200
+    payload = ok.json()
+    assert "total_hits" in payload
+    assert "endpoints" in payload
+
+
+def test_model_router_benchmark_snapshot_endpoint():
+    import json
+
+    run_dir = os.path.join(TEST_DIR_V2, "analysis", "run_router_bench_1", "artifacts")
+    os.makedirs(run_dir, exist_ok=True)
+    workspace_dir = os.path.dirname(os.path.abspath(DATA_DIR))
+    release_dir = os.path.join(os.path.dirname(workspace_dir), "release")
+    os.makedirs(release_dir, exist_ok=True)
+    capture_path = os.path.join(release_dir, "model_router_benchmark_capture_last.json")
+    capture_backup_exists = os.path.exists(capture_path)
+    capture_backup_payload = None
+    if capture_backup_exists:
+        with open(capture_path, "r", encoding="utf-8") as f:
+            capture_backup_payload = f.read()
+
+    try:
+        with open(capture_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "schema": "clinimetria.model_router_benchmark_capture",
+                    "version": 1,
+                    "generated_at": "2026-03-02T10:00:00Z",
+                    "status": "completed",
+                    "skip_reason": None,
+                    "dataset_id": TEST_ID_V2,
+                    "analysis_mode": "focused",
+                    "validation_profile": "focused",
+                    "run_id": "run_capture_20260302",
+                    "recommended_id": "qwen_single",
+                    "recommendation_source": "auto_metrics",
+                    "snapshot": {
+                        "summary": {"runs_total": 3, "variants_total": 15, "distinct_variants": 5},
+                        "coverage_gate": {"runs_total": 3, "min_runs": 1, "meets_threshold": True, "deficit": 0},
+                    },
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        with open(os.path.join(run_dir, "llm_benchmark.json"), "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "schema": "clinimetria.llm_benchmark",
+                    "benchmark_context": {
+                        "analysis_mode": "exploratory",
+                        "validation_profile": "exploratory",
+                        "expected_step_count": 8,
+                    },
+                    "recommended_id": "minimax_single",
+                    "variants": [
+                        {
+                            "id": "minimax_single",
+                            "status": "ok",
+                            "quality_score": 90.0,
+                            "elapsed_ms": 900,
+                            "token_total": 4200,
+                            "step_count": 8,
+                            "attempt_count": 1,
+                            "fallback_used": False,
+                        },
+                        {
+                            "id": "gemini_single",
+                            "status": "ok",
+                            "quality_score": 85.0,
+                            "elapsed_ms": 1100,
+                            "token_total": 4600,
+                            "step_count": 8,
+                            "attempt_count": 1,
+                            "fallback_used": False,
+                        },
+                    ],
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        response = client.get("/api/v1/v2/analysis/benchmark/model-router?min_runs=1&include_markdown=true")
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data.get("schema") == "clinimetria.model_router_benchmark_report"
+        assert isinstance(data.get("summary"), dict)
+        assert int((data.get("summary") or {}).get("runs_total") or 0) >= 1
+
+        coverage = data.get("coverage_gate")
+        assert isinstance(coverage, dict)
+        assert coverage.get("meets_threshold") is True
+        assert int(coverage.get("min_runs") or 0) == 1
+
+        markdown = data.get("markdown")
+        assert isinstance(markdown, str)
+        assert "Model Router Benchmark Report" in markdown
+        assert "Winners by profile" in markdown
+
+        winners = data.get("winners_by_profile")
+        assert isinstance(winners, dict)
+        assert isinstance(winners.get("exploratory"), dict)
+
+        capture_last = data.get("capture_last")
+        assert isinstance(capture_last, dict)
+        assert capture_last.get("available") is True
+        assert capture_last.get("status") == "completed"
+        assert capture_last.get("run_id") == "run_capture_20260302"
+        assert capture_last.get("recommended_id") == "qwen_single"
+    finally:
+        if capture_backup_exists:
+            with open(capture_path, "w", encoding="utf-8") as f:
+                f.write(capture_backup_payload or "")
+        elif os.path.exists(capture_path):
+            os.remove(capture_path)
 
 # --- Memory and Performance Tests ---
 

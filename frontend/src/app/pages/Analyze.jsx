@@ -1,43 +1,28 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { runBatchAnalysis, getDataset, getVariableMapping, exportDocx, exportReport } from '../../lib/api';
+import {
+    runBatchAnalysis,
+    getDataset,
+    getVariableMapping,
+    exportDocx,
+    exportReport,
+    getDatasetDesignReview,
+    confirmDatasetDesignReview,
+    revokeDatasetDesignReview,
+} from '../../lib/api';
 import VariableSelector from '../components/VariableSelector';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 import SearchableSelect from '../components/SearchableSelect';
 import { useTranslation } from '../../hooks/useTranslation';
+import { EffectSizeExplainer, StatTooltip } from '../components/education';
+import { getEffectSizeInterpretation } from '../components/education/EffectSizeExplainer';
+import VariableSelectorModal from './analyze/VariableSelectorModal';
+import ChartFallback from './analyze/ChartFallback';
+import { buildAnalyzeFlowStepData, deriveAnalyzeMode, downloadBlob } from './analyze/analyzePageUtils';
 
 const VisualizePlot = lazy(() => import('../components/VisualizePlot'));
 const ClusteredHeatmap = lazy(() => import('../components/ClusteredHeatmap'));
 const InteractionPlot = lazy(() => import('../components/InteractionPlot'));
-
-function VariableSelectorModal({ isOpen, onClose, title, children }) {
-    return (
-        <div
-            className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 transition-opacity duration-150 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label={title || 'Конфигурация'}
-            aria-hidden={!isOpen}
-            onMouseDown={(e) => {
-                if (!isOpen) return;
-                if (e.target === e.currentTarget) onClose?.();
-            }}
-            onKeyDown={(e) => {
-                if (!isOpen) return;
-                if (e.key === 'Escape') {
-                    e.stopPropagation();
-                    onClose?.();
-                }
-            }}
-        >
-            <div
-                className={`w-full max-w-[1100px] h-[82vh] bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] overflow-hidden transition-all duration-150 ${isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-[0.98]'}`}
-            >
-                {children}
-            </div>
-        </div>
-    );
-}
 
 export default function Analyze({ modeOverride } = {}) {
     const { t } = useTranslation();
@@ -56,48 +41,23 @@ export default function Analyze({ modeOverride } = {}) {
     const [exportingDocx, setExportingDocx] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [designReviewConfirmed, setDesignReviewConfirmed] = useState(Boolean(location.state?.designReviewConfirmed));
+    const [designReviewLoading, setDesignReviewLoading] = useState(true);
+    const [designReviewUpdating, setDesignReviewUpdating] = useState(false);
+    const [designReviewError, setDesignReviewError] = useState(null);
 
-    const derivedMode = location.pathname.startsWith('/report')
-        ? 'report'
-        : location.pathname.startsWith('/graphs')
-            ? 'graphs'
-            : location.pathname.startsWith('/results')
-                ? 'results'
-                : 'results';
-
-    const mode = modeOverride || derivedMode;
+    const mode = deriveAnalyzeMode(location.pathname, modeOverride);
 
     const activeStep = mode;
 
     const designBasePath = location.state?.origin === 'ai' ? '/ai' : '/design';
 
-    const flowStepData = useMemo(() => ({
-        dataLoaded: true,
-        variablesSet: true,
-        designReady: true,
-        resultsReady: Boolean(batchResult),
-        graphsReady: Boolean(batchResult),
-        reportReady: Boolean(batchResult),
-        results_summary: batchResult ? 'готово' : '',
-        graphs_summary: batchResult ? 'готово' : '',
-        report_summary: batchResult ? 'готово' : '',
-    }), [batchResult]);
+    const flowStepData = useMemo(
+        () => buildAnalyzeFlowStepData({ designReviewConfirmed, batchResult }),
+        [batchResult, designReviewConfirmed],
+    );
 
-    const chartFallback = useMemo(() => (
-        <div style={{
-            height: 360,
-            borderRadius: '2px',
-            border: '1px solid var(--border-color)',
-            background: 'var(--bg-tertiary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-muted)',
-            fontSize: '12px'
-        }} className="animate-pulse">
-            {t('loading')}
-        </div>
-    ), [t]);
+    const chartFallback = useMemo(() => <ChartFallback label={t('loading')} />, [t]);
 
     useEffect(() => {
         const loadColumns = async () => {
@@ -157,6 +117,47 @@ export default function Analyze({ modeOverride } = {}) {
         loadMapping();
     }, [id, location.state]);
 
+    useEffect(() => {
+        let cancelled = false;
+        const loadDesignReview = async () => {
+            setDesignReviewLoading(true);
+            setDesignReviewError(null);
+            try {
+                const status = await getDatasetDesignReview(id);
+                if (cancelled) return;
+                setDesignReviewConfirmed(Boolean(status?.confirmed));
+            } catch (e) {
+                if (cancelled) return;
+                setDesignReviewError(e?.message || 'Не удалось загрузить статус Design Review');
+            } finally {
+                if (!cancelled) setDesignReviewLoading(false);
+            }
+        };
+        loadDesignReview();
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
+
+    const toggleDesignReview = async (nextConfirmed) => {
+        if (designReviewUpdating) return;
+        setDesignReviewUpdating(true);
+        setDesignReviewError(null);
+        try {
+            if (nextConfirmed) {
+                await confirmDatasetDesignReview(id, { actor: 'analyze_page', source: 'analyze_ui' });
+                setDesignReviewConfirmed(true);
+            } else {
+                await revokeDatasetDesignReview(id, { actor: 'analyze_page', reason: 'manual_reset' });
+                setDesignReviewConfirmed(false);
+            }
+        } catch (e) {
+            setDesignReviewError(e?.message || 'Не удалось обновить Design Review');
+        } finally {
+            setDesignReviewUpdating(false);
+        }
+    };
+
     const suggestedDefaults = useMemo(() => {
         const mapping = variableMapping && typeof variableMapping === 'object' ? variableMapping : {};
         const hasMapping = Object.keys(mapping).length > 0;
@@ -191,6 +192,10 @@ export default function Analyze({ modeOverride } = {}) {
     }, [columns, variableMapping]);
 
     const handleRunBatch = async (targets, group) => {
+        if (!designReviewConfirmed) {
+            setError('Перед запуском подтвердите Design Review');
+            return;
+        }
         setLoading(true);
         setError(null);
         setBatchResult(null);
@@ -198,7 +203,7 @@ export default function Analyze({ modeOverride } = {}) {
         setActiveGroupCol(group);
 
         try {
-            const res = await runBatchAnalysis(id, targets, group);
+            const res = await runBatchAnalysis(id, targets, group, { designConfirmed: designReviewConfirmed });
             setBatchResult(res);
             if (res.results && targets.length > 0 && res.results[targets[0]]) {
                 setSelectedVarDetail(targets[0]);
@@ -215,6 +220,7 @@ export default function Analyze({ modeOverride } = {}) {
         setExportingDocx(true);
         try {
             const blob = await exportDocx({
+                dataset_id: id,
                 dataset_name: id,
                 filename: `batch_${id}.docx`,
                 results: {
@@ -236,17 +242,6 @@ export default function Analyze({ modeOverride } = {}) {
         } finally {
             setExportingDocx(false);
         }
-    };
-
-    const downloadBlob = (blob, filename) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
     };
 
     const handleExportPdf = async () => {
@@ -349,11 +344,76 @@ export default function Analyze({ modeOverride } = {}) {
     const renderResultsTable = () => {
         if (!batchResult?.results) return null;
 
-        const fmtEffect = (res) => {
+        const normalizeEffectType = (name) => {
+            if (!name) return 'cohens_d';
+            const normalized = String(name).toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+            if (['cohen_d', 'cohens_d', 'hedges_g', 'glass_delta', 'd'].includes(normalized)) return 'cohens_d';
+            if (['eta2', 'eta_sq', 'eta_squared', 'epsilon_squared', 'eps_sq'].includes(normalized)) return 'eta_squared';
+            if (['partial_eta2', 'partial_eta_squared', 'np2'].includes(normalized)) return 'partial_eta_squared';
+            if (['r', 'pearson', 'spearman'].includes(normalized)) return 'r';
+            if (['rbc', 'rank_biserial', 'rank_biserial_correlation'].includes(normalized)) return 'rank_biserial';
+            if (['cramers_v', 'cramer_v'].includes(normalized)) return 'cramers_v';
+            if (['odds_ratio', 'or'].includes(normalized)) return 'odds_ratio';
+            return normalized;
+        };
+
+        const renderEffect = (res) => {
             if (typeof res?.effect_size !== 'number') return na;
-            const name = typeof res?.effect_size_name === 'string' ? res.effect_size_name : '';
-            const val = res.effect_size.toFixed(2);
-            return name ? `${name}: ${val}` : val;
+            const type = normalizeEffectType(res?.effect_size_name);
+            return <EffectSizeExplainer type={type} value={res.effect_size} compact />;
+        };
+
+        const interpretationToneMap = {
+            yellow: {
+                background: 'rgba(250, 204, 21, 0.14)',
+                color: '#a16207',
+                border: 'rgba(250, 204, 21, 0.5)'
+            },
+            orange: {
+                background: 'rgba(251, 146, 60, 0.14)',
+                color: '#c2410c',
+                border: 'rgba(251, 146, 60, 0.5)'
+            },
+            green: {
+                background: 'rgba(34, 197, 94, 0.14)',
+                color: '#166534',
+                border: 'rgba(34, 197, 94, 0.5)'
+            }
+        };
+
+        const getInterpretationTone = (key) => {
+            if (key === 'large' || key === 'strong') return 'green';
+            if (key === 'medium' || key === 'moderate') return 'orange';
+            return 'yellow';
+        };
+
+        const renderInterpretation = (res) => {
+            if (typeof res?.effect_size !== 'number') return na;
+            const type = normalizeEffectType(res?.effect_size_name);
+            const interpretation = getEffectSizeInterpretation(type, res.effect_size);
+            if (!interpretation?.label) return na;
+            const tone = interpretationToneMap[getInterpretationTone(interpretation.key)] || interpretationToneMap.yellow;
+
+            return (
+                <span
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '4px 10px',
+                        borderRadius: '2px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        background: tone.background,
+                        color: tone.color,
+                        border: `1px solid ${tone.border}`
+                    }}
+                >
+                    {interpretation.label}
+                </span>
+            );
         };
 
         return (
@@ -366,6 +426,11 @@ export default function Analyze({ modeOverride } = {}) {
                             <th style={{ textAlign: 'right' }}>{t('statistic')}</th>
                             <th style={{ textAlign: 'right' }}>{t('p_value')}</th>
                             <th style={{ textAlign: 'right' }}>{t('effect_size')}</th>
+                            <th style={{ textAlign: 'center' }}>
+                                <StatTooltip term="effect_size" level="junior" position="top">
+                                    <span>{t('interpretation')}</span>
+                                </StatTooltip>
+                            </th>
                             <th style={{ textAlign: 'center', width: '80px' }}>{t('sig')}</th>
                         </tr>
                     </thead>
@@ -396,7 +461,10 @@ export default function Analyze({ modeOverride } = {}) {
                                     }
                                 </td>
                                 <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                    {fmtEffect(res)}
+                                    {renderEffect(res)}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    {renderInterpretation(res)}
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                     {res.significant ? (
@@ -610,6 +678,40 @@ export default function Analyze({ modeOverride } = {}) {
                         stepData={flowStepData}
                         designBasePath={designBasePath}
                     />
+
+                    <div className="mt-4 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-tertiary)] px-4 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div className="text-[10px] font-semibold tracking-[0.22em] text-[color:var(--text-muted)] uppercase">Design Review</div>
+                                <div className={`mt-1 text-xs font-semibold ${designReviewConfirmed ? 'text-[color:var(--success)]' : 'text-[color:var(--error)]'}`}>
+                                    {designReviewLoading
+                                        ? t('loading')
+                                        : (designReviewConfirmed ? 'Подтверждено в backend-артефакте' : 'Не подтверждено')}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="inline-flex items-center gap-2 text-xs text-[color:var(--text-secondary)] cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(designReviewConfirmed)}
+                                        disabled={designReviewLoading || designReviewUpdating}
+                                        onChange={(e) => toggleDesignReview(Boolean(e.target.checked))}
+                                    />
+                                    Подтверждаю Design Review
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`${designBasePath}/${id}`, { state: location.state })}
+                                    className="h-8 px-3 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[11px] font-semibold text-[color:var(--text-secondary)] hover:border-black hover:text-black"
+                                >
+                                    Открыть Design Review
+                                </button>
+                            </div>
+                        </div>
+                        {designReviewError ? (
+                            <div className="mt-2 text-xs text-[color:var(--error)]">{designReviewError}</div>
+                        ) : null}
+                    </div>
 
                     {mode !== 'results' ? (
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">

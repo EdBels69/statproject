@@ -12,7 +12,7 @@ from app.services.upload_service import create_ingest_job, ingest_saved_raw_to_p
 
 router = APIRouter(prefix="/datasets", tags=["datasets-v2"])
 
-WORKSPACE_DIR = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+WORKSPACE_DIR = os.getenv("CLINIMETRIA_WORKSPACE_DIR", "workspace")
 _job_store = build_job_store(WORKSPACE_DIR)
 
 

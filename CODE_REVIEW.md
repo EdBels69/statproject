@@ -14,7 +14,7 @@
 
 - Роутинг: [App.jsx](file:///Users/eduardbelskih/%D0%9F%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D1%8B%20Github/statproject/frontend/src/App.jsx)
   - `/design/:id` — конструктор протоколов (основной UI).
-  - `/wizard` / `/protocol` — мастер подбора.
+  - `/sorcerer` / `/protocol` — мастер подбора.
   - `/results/:id`, `/graphs/:id`, `/report/:id` — просмотр результатов запуска протокола.
   - `/wiki` — StatWiki.
 - Конфиг модалка теста/шага: [TestConfigModal.jsx](file:///Users/eduardbelskih/%D0%9F%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D1%8B%20Github/statproject/frontend/src/app/components/TestConfigModal.jsx)

@@ -60,6 +60,7 @@ const resources = {
       "friedman": "Тест Фридмана",
       "pearson": "Корреляция Пирсона",
       "spearman": "Корреляция Спирмена",
+      "kendall": "Корреляция Кендалла",
       "clustered_correlation": "Кластерный анализ корреляций",
       
       // Configuration
@@ -370,6 +371,7 @@ const resources = {
       "friedman": "Friedman test",
       "pearson": "Pearson correlation",
       "spearman": "Spearman correlation",
+      "kendall": "Kendall correlation",
       "clustered_correlation": "Clustered correlation analysis",
       
       // Configuration

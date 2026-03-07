@@ -1,4 +1,4 @@
-# 🗺️ ROADMAP.md — План развития StatWizard
+# 🗺️ ROADMAP.md — План развития Clinimetria
 
 > **Для AI-агентов:** Используй этот документ как руководство к действию.  
 > **Правило:** Можешь реализовывать задачи самостоятельно без ревью пользователя, если:
@@ -15,10 +15,11 @@
 | Версия | Название | Статус | Ключевые фичи |
 |--------|----------|--------|---------------|
 | v0.9 | MVP | ✅ Готово | 26 методов, импутация, AI рекомендации |
-| v1.0 | Scientific | 🔄 В работе | Parquet, Pingouin, Effect sizes, AI-интерпретации |
+| v1.0 | Scientific | ✅ Готово | Parquet, Pingouin, Effect sizes, AI-интерпретации, **Copilot Engine** |
 | v1.1 | Visualization | 📋 Планируется | Publication-ready графики, Plot export |
 | v1.2 | UX | 📋 Планируется | ag-grid, Variable Workspace, Templates |
 | v1.3 | AI | 📋 Планируется | AI-консультант, Batch ML, Multi-dataset |
+| v1.4 | Copilot Pro | 📋 Планируется | Multi-turn refinement, Protocol caching, Batch reports |
 
 ---
 
@@ -49,10 +50,10 @@ result = pg.ttest(group1, group2)  # Возвращает d, CI, power, BF10
 
 **Критерии готовности:**
 
-- [ ] pingouin установлен
-- [ ] t-test использует pg.ttest
-- [ ] ANOVA использует pg.anova
-- [ ] Тесты проходят
+- [x] pingouin установлен
+- [x] t-test использует pg.ttest
+- [x] ANOVA использует pg.anova
+- [x] Тесты проходят
 
 ---
 
@@ -81,9 +82,9 @@ df = pd.read_parquet(path)
 
 **Критерии готовности:**
 
-- [ ] pyarrow установлен
-- [ ] Processed data сохраняется в .parquet
-- [ ] Чтение ускорено в 5x+
+- [x] pyarrow установлен
+- [x] Processed data сохраняется в .parquet
+- [x] Чтение ускорено в 5x+
 
 ---
 
@@ -109,9 +110,9 @@ def optimize_dtypes(df):
 
 **Критерии готовности:**
 
-- [ ] Функция optimize_dtypes создана
-- [ ] Вызывается после parse_file
-- [ ] Экономия памяти 50%+
+- [x] Функция optimize_dtypes создана
+- [x] Вызывается после parse_file
+- [x] Экономия памяти 50%+
 
 ---
 
@@ -145,10 +146,10 @@ sns.set_theme(style="whitegrid", palette="colorblind")
 
 **Критерии готовности:**
 
-- [ ] Конфиг создан
-- [ ] Все графики используют 300 DPI
-- [ ] Colorblind-safe палитра
-- [ ] SVG/PDF экспорт
+- [x] Конфиг создан
+- [x] Все графики используют 300 DPI
+- [x] Colorblind-safe палитра
+- [x] SVG/PDF экспорт
 
 ---
 
@@ -167,9 +168,9 @@ sns.set_theme(style="whitegrid", palette="colorblind")
 
 **Критерии готовности:**
 
-- [ ] 4 шаблона созданы
-- [ ] Используют publication config
-- [ ] Тесты визуализации
+- [x] 4 шаблона созданы
+- [x] Используют publication config
+- [x] Тесты визуализации
 
 ---
 
@@ -211,14 +212,14 @@ def interpret_effect_size(effect_type: str, value: float) -> str:
 
 **Критерии готовности:**
 
-- [ ] Функция `interpret_effect_size` работает для всех типов
-- [ ] Результат анализа содержит `effect_size_interpretation`
-- [ ] Тест `test_effect_size_interpretation` проходит
+- [x] Функция `interpret_effect_size` работает для всех типов
+- [x] Результат анализа содержит `effect_size_interpretation`
+- [x] Тест `test_effect_size_interpretation` проходит
 
 **Тест:**
 
 ```bash
-python3 -m pytest tests/test_engine_integration.py -v -k "effect"
+python3 -m pytest tests/test_effect_size_verification.py -v
 ```
 
 ---
@@ -250,9 +251,9 @@ eta_squared = ss_between / ss_total
 
 **Критерии готовности:**
 
-- [ ] ANOVA возвращает `eta_squared`
-- [ ] Интерпретация: 0.01=малый, 0.06=средний, 0.14=большой
-- [ ] Тест проходит
+- [x] ANOVA возвращает `eta_squared`
+- [x] Интерпретация: 0.01=малый, 0.06=средний, 0.14=большой
+- [x] Тест проходит
 
 ---
 
@@ -313,9 +314,9 @@ INTERPRETATION_TEMPLATES = {
 
 **Критерии готовности:**
 
-- [ ] Шаблоны для всех 26 методов
-- [ ] APA-style форматирование
-- [ ] Тест на корректность вывода
+- [x] Шаблоны для всех 26 методов
+- [x] APA-style форматирование
+- [x] Тест на корректность вывода
 
 ---
 
@@ -341,9 +342,9 @@ INTERPRETATION_TEMPLATES = {
 
 **Критерии готовности:**
 
-- [ ] Все метрики в выводе
-- [ ] Округление до 3 знаков
-- [ ] NaN → null в JSON
+- [x] Все метрики в выводе
+- [x] Округление до 3 знаков
+- [x] NaN → null в JSON
 
 ---
 
@@ -363,9 +364,9 @@ INTERPRETATION_TEMPLATES = {
 
 **Критерии готовности:**
 
-- [ ] Колонки отображаются
-- [ ] Цветовая кодировка работает
-- [ ] Tooltip с объяснением
+- [x] Колонки отображаются
+- [x] Цветовая кодировка работает
+- [x] Tooltip с объяснением
 
 ---
 
@@ -399,9 +400,9 @@ INTERPRETATION_TEMPLATES = {
 
 **Критерии готовности:**
 
-- [ ] Ячейки редактируемые
-- [ ] Изменения сохраняются на backend
-- [ ] Undo работает (Ctrl+Z)
+- [x] Ячейки редактируемые
+- [x] Изменения сохраняются на backend
+- [x] Undo работает (Ctrl+Z)
 
 ---
 
@@ -567,12 +568,111 @@ git commit -m "feat: TASK-XXX краткое описание"
 
 | Фаза | Всего задач | Готово | % |
 |------|-------------|--------|---|
-| v1.0 | 6 | 0 | 0% |
-| v1.1 | 4 | 0 | 0% |
+| v1.0 | 6 | 6 | 100% |
+| v1.1 | 4 | 2 | 50% |
 | v1.2 | 3 | 0 | 0% |
-| Backlog | 8 | 0 | 0% |
+| Copilot | 5 | 5 | 100% |
+| Backlog | 8 | 1 | 12% |
 
 ---
 
-*Последнее обновление: 2026-01-13*  
-*Версия документа: 1.0*
+*Последнее обновление: 2026-02-09*  
+*Версия документа: 1.1*
+
+---
+
+## 🤖 ФАЗА COPILOT: LLM-Powered Statistical Analysis (ГОТОВО)
+
+### Статус: ✅ Завершено
+
+---
+
+#### TASK-COP-001: Copilot Engine ✅
+
+**Файлы:**
+
+- `backend/app/copilot/engine.py`
+
+**Реализовано:**
+
+- LLM оркестрация: User Request → Plan → Code → Execute → Interpret
+- Self-healing loop (3 попытки исправить код)
+- SSE Streaming для real-time UI
+- Session management с persistence
+
+---
+
+#### TASK-COP-002: Safe Code Executor ✅
+
+**Файлы:**
+
+- `backend/app/copilot/executor.py`
+
+**Реализовано:**
+
+- AST-валидация кода перед выполнением
+- Whitelist импортов (pandas, numpy, scipy, statsmodels, pingouin)
+- Blacklist опасных вызовов (eval, exec, subprocess)
+- Resource limits (CPU, Memory, Timeout)
+- Streaming output
+
+---
+
+#### TASK-COP-003: Expert Statistical Utilities ✅
+
+**Файлы:**
+
+- `backend/app/copilot/clinical_utils.py`
+
+**Реализовано:**
+
+- `analyze_continuous()` — полный статистический battery
+- `analyze_categorical()` — Chi-square/Fisher
+- `fit_mixed_models()` — Linear Mixed Effects
+- `discover_longitudinal_groups()` — автодетект паттернов V1/V2/V3
+- Publication-ready графики (300 DPI)
+
+---
+
+#### TASK-COP-004: DOCX Report Generator ✅
+
+**Файлы:**
+
+- `backend/app/copilot/report.py`
+
+**Реализовано:**
+
+- Профессиональный Word-отчёт с глоссарием
+- Рекурсивный рендер вложенных результатов
+- Вставка графиков PNG
+- Секции: Design, Results, Interpretation, Appendix
+
+---
+
+#### TASK-COP-005: API Endpoints ✅
+
+**Файлы:**
+
+- `backend/app/copilot/router.py`
+
+**Endpoints:**
+
+- `POST /api/v2/copilot/analyze` — полный цикл анализа
+- `POST /api/v2/copilot/plan` — только планирование
+- `POST /api/v2/copilot/execute` — выполнение плана
+- `POST /api/v2/copilot/execute_stream` — SSE streaming
+- `POST /api/v2/copilot/refine` — итеративное уточнение
+- `GET /api/v2/copilot/session/{id}` — состояние сессии
+- `POST /api/v2/copilot/report` — скачать DOCX
+
+---
+
+### Тестовое покрытие Copilot
+
+| Файл | Тестов | Статус |
+|------|--------|--------|
+| `test_copilot_engine.py` | 14 | ✅ |
+| `test_copilot_report.py` | 13 | ✅ |
+| `test_auto_discovery.py` | 2 | ✅ |
+
+**Всего: 29 тестов**

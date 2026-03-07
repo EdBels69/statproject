@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "dataset_id": "ds_soft_check",
+  "generated_at": "2026-02-24T21:57:08.285665",
+  "source": "auto",
+  "columns": {},
+  "design": {
+    "repeated_measures": false,
+    "time_column": null,
+    "subject_column": null,
+    "group_column": null,
+    "outcome_candidates": [],
+    "predictor_candidates": []
+  }
+}

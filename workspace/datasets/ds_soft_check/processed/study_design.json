@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "dataset_id": "ds_soft_check",
+  "generated_at": "2026-02-24T21:57:08.286101",
+  "source": "auto",
+  "summary": {
+    "n_rows": null,
+    "n_cols": 0
+  },
+  "columns": {},
+  "design": {
+    "design_type": "cross_sectional",
+    "repeated_measures": false,
+    "group_column": null,
+    "time_column": null,
+    "subject_column": null,
+    "endpoint_groups": [],
+    "id_like_columns": [],
+    "outcomes": [],
+    "categorical_outcomes": [],
+    "predictors": []
+  },
+  "analysis_policy": {
+    "alpha": 0.05,
+    "multiplicity_correction": "fdr_bh",
+    "post_hoc": "tukey",
+    "post_hoc_correction": "fdr_bh",
+    "bootstrap_ci": false,
+    "bootstrap_samples": 1000,
+    "exploratory_mode": true,
+    "allow_data_mining": true,
+    "max_batch_targets": 60,
+    "max_descriptive_targets": 60,
+    "max_table1_categorical": 40,
+    "max_protocol_steps": 60
+  },
+  "notes": []
+}

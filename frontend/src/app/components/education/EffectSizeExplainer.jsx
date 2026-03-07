@@ -13,23 +13,41 @@
 import React from 'react';
 import { ChartBarIcon } from '@heroicons/react/24/outline';
 
+const COHENS_D_THRESHOLDS = {
+    negligible: { max: 0.2, label: "незначительный", color: "gray" },
+    small: { max: 0.5, label: "малый", color: "blue" },
+    medium: { max: 0.8, label: "средний", color: "amber" },
+    large: { min: 0.8, label: "большой", color: "green" }
+};
+
+const ETA_THRESHOLDS = {
+    small: { max: 0.06, label: "малый", color: "blue" },
+    medium: { max: 0.14, label: "средний", color: "amber" },
+    large: { min: 0.14, label: "большой", color: "green" }
+};
+
+const CORR_THRESHOLDS = {
+    weak: { max: 0.3, label: "слабая", color: "blue" },
+    moderate: { max: 0.5, label: "умеренная", color: "amber" },
+    strong: { min: 0.5, label: "сильная", color: "green" }
+};
+
+const OR_THRESHOLDS = {
+    negligible: { max: 1.5, label: "незначительный", color: "gray" },
+    small: { max: 2.5, label: "малый", color: "blue" },
+    medium: { max: 4.3, label: "средний", color: "amber" },
+    large: { min: 4.3, label: "большой", color: "green" }
+};
+
 const THRESHOLDS = {
-    cohens_d: {
-        negligible: { max: 0.2, label: "незначительный", color: "gray" },
-        small: { max: 0.5, label: "малый", color: "blue" },
-        medium: { max: 0.8, label: "средний", color: "amber" },
-        large: { min: 0.8, label: "большой", color: "green" }
-    },
-    partial_eta_squared: {
-        small: { max: 0.06, label: "малый", color: "blue" },
-        medium: { max: 0.14, label: "средний", color: "amber" },
-        large: { min: 0.14, label: "большой", color: "green" }
-    },
-    r: {
-        weak: { max: 0.3, label: "слабая", color: "blue" },
-        moderate: { max: 0.5, label: "умеренная", color: "amber" },
-        strong: { min: 0.5, label: "сильная", color: "green" }
-    }
+    cohens_d: COHENS_D_THRESHOLDS,
+    partial_eta_squared: ETA_THRESHOLDS,
+    eta_squared: ETA_THRESHOLDS,
+    r: CORR_THRESHOLDS,
+    cramers_v: CORR_THRESHOLDS,
+    rank_biserial: CORR_THRESHOLDS,
+    odds_ratio: OR_THRESHOLDS,
+    or: OR_THRESHOLDS
 };
 
 const TYPE_NAMES = {
@@ -38,7 +56,9 @@ const TYPE_NAMES = {
     eta_squared: "η²",
     r: "r",
     cramers_v: "Cramér's V",
-    rank_biserial: "r (rank-biserial)"
+    rank_biserial: "r (rank-biserial)",
+    odds_ratio: "Odds ratio",
+    or: "OR"
 };
 
 // Practical meaning for Cohen's d
@@ -81,6 +101,14 @@ function getPracticalMeaning(type, value) {
 
     const pct = COHENS_D_PRACTICAL[closest];
     return `${pct} группы A выше среднего группы B`;
+}
+
+export function getEffectSizeInterpretation(type, value) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return null;
+    }
+
+    return getInterpretation(type, value);
 }
 
 export default function EffectSizeExplainer({

@@ -2,7 +2,7 @@
 
 > **Основано на:** Nathan Yau "Visualize This" (FlowingData)  
 > **Дополнительно:** Edward Tufte, Cole Nussbaumer Knaflic, Stephen Few  
-> **Применение:** StatWizard графики и отчёты
+> **Применение:** Clinimetria графики и отчёты
 
 ---
 
@@ -382,4 +382,4 @@ fig, ax = plt.subplots()
 
 *Обновлено: 15 января 2026*  
 *Основано на: Nathan Yau "Visualize This" (FlowingData)*  
-*Применение: StatWizard v1.0*
+*Применение: Clinimetria v1.0*

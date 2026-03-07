@@ -8,11 +8,17 @@ Endpoints:
 - GET /api/v2/knowledge/tests/{test_id} - Get test rationale
 - GET /api/v2/knowledge/effect-size - Interpret effect size
 - GET /api/v2/knowledge/power - Get power recommendation
+- POST /api/v2/knowledge/upload - Upload knowledge file
+- GET /api/v2/knowledge/library - List uploaded docs
+- GET /api/v2/knowledge/catalog - List docs with keywords/topics
+- GET /api/v2/knowledge/search - Search uploaded docs
+- GET /api/v2/knowledge/doc/{id} - Get full document
+- DELETE /api/v2/knowledge/doc/{id} - Remove document
 """
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, UploadFile, File, Form
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 from app.modules.stat_knowledge import (
@@ -23,6 +29,7 @@ from app.modules.stat_knowledge import (
     get_all_terms,
     get_all_tests
 )
+from app.modules.knowledge_store import add_document, list_documents, search_documents, get_document, delete_document, route_documents
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge"])
 
@@ -46,6 +53,30 @@ class TestRationale(BaseModel):
     alternatives: dict
     effect_size: Optional[str]
     emoji: str
+
+
+class KnowledgeUploadResponse(BaseModel):
+    id: str
+    warnings: List[str] = []
+    preview: Optional[str] = None
+    text_chars: int = 0
+    num_chunks: int = 0
+
+
+class KnowledgeDocListResponse(BaseModel):
+    docs: List[dict]
+
+
+class KnowledgeSearchResponse(BaseModel):
+    results: List[dict]
+
+
+class KnowledgeCatalogResponse(BaseModel):
+    docs: List[dict]
+
+
+class KnowledgeRouteResponse(BaseModel):
+    docs: List[dict]
 
 
 @router.get("/terms")
@@ -149,3 +180,83 @@ async def get_user_manual(
         if not manual_path.exists():
             raise HTTPException(status_code=404, detail="Мануал не найден")
     return {"markdown": manual_path.read_text(encoding="utf-8")}
+
+
+@router.post("/upload", response_model=KnowledgeUploadResponse)
+async def upload_knowledge_file(
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+):
+    if not file:
+        raise HTTPException(status_code=400, detail="Файл не передан")
+    try:
+        data = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Не удалось прочитать файл: {str(e)}")
+
+    if data is None or len(data) == 0:
+        raise HTTPException(status_code=400, detail="Пустой файл")
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Файл слишком большой (лимит 25MB)")
+
+    tag_list: Optional[List[str]] = None
+    if tags:
+        tag_list = [t.strip() for t in str(tags).split(",") if t.strip()]
+
+    res = add_document(
+        file_bytes=data,
+        filename=str(file.filename or "document"),
+        title=title,
+        tags=tag_list,
+    )
+    return KnowledgeUploadResponse(**res)
+
+
+@router.get("/library", response_model=KnowledgeDocListResponse)
+async def list_knowledge_library():
+    return KnowledgeDocListResponse(docs=list_documents())
+
+
+@router.get("/catalog", response_model=KnowledgeCatalogResponse)
+async def list_knowledge_catalog():
+    docs = []
+    for doc in list_documents():
+        docs.append(
+            {
+                "id": doc.get("id"),
+                "title": doc.get("title") or doc.get("filename"),
+                "tags": doc.get("tags") or [],
+                "keywords": doc.get("keywords") or [],
+                "preview": doc.get("preview"),
+                "source_type": doc.get("source_type"),
+            }
+        )
+    return KnowledgeCatalogResponse(docs=docs)
+
+
+@router.get("/route", response_model=KnowledgeRouteResponse)
+async def route_knowledge_catalog(q: str = Query(..., min_length=1), top_k: int = Query(5, ge=1, le=20)):
+    docs = route_documents(q, top_k=top_k)
+    return KnowledgeRouteResponse(docs=docs)
+
+@router.get("/search", response_model=KnowledgeSearchResponse)
+async def search_knowledge(q: str = Query(..., min_length=1), top_k: int = Query(5, ge=1, le=20)):
+    results = search_documents(q, top_k=top_k)
+    return KnowledgeSearchResponse(results=results)
+
+
+@router.get("/doc/{doc_id}")
+async def get_knowledge_doc(doc_id: str):
+    doc = get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return doc
+
+
+@router.delete("/doc/{doc_id}")
+async def delete_knowledge_doc(doc_id: str):
+    ok = delete_document(doc_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return {"status": "deleted", "id": doc_id}

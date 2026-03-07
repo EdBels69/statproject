@@ -11,6 +11,10 @@ export default defineConfig({
       '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), './src'),
     },
   },
+  build: {
+    // Scientific visualization vendors are intentionally heavy and lazy-loaded.
+    chunkSizeWarningLimit: 1200,
+  },
   test: {
     environment: 'jsdom',
     exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],

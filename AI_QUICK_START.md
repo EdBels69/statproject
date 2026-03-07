@@ -8,7 +8,7 @@
 
 ## ⚡ 30-Second Overview
 
-**Проект:** StatWizard — веб-платформа для статистического анализа  
+**Проект:** Clinimetria — веб-платформа для статистического анализа  
 **Стек:** React + FastAPI + Python stats libs  
 **Статус:** 85% backend готов, 60% frontend готов  
 **Цель:** Довести до production за 11-15 дней  

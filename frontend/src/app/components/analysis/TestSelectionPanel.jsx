@@ -35,6 +35,8 @@ const TestSelectionPanel = ({
     models: false,
     agreement: false,
     assumptions: false,
+    bayesian: false,
+    time_series: false,
     factor_analysis: false,
     clustering: false,
     advanced: false
@@ -187,6 +189,30 @@ const TestSelectionPanel = ({
       tests: [
         { id: 'shapiro_wilk', name: 'Шапиро—Уилка', description: 'Тест нормальности распределения' },
         { id: 'levene', name: 'Левена', description: 'Однородность дисперсий' }
+      ]
+    },
+    {
+      id: 'bayesian',
+      name: 'Байесовская статистика',
+      icon: BeakerIcon,
+      description: 'Bayes Factor и вероятности гипотез',
+      tests: [
+        { id: 'bayes_t_test_one', name: 'Bayes t-test (1 выборка)', description: 'Байесовский t-тест для одной выборки' },
+        { id: 'bayes_t_test_ind', name: 'Bayes t-test (2 независимые)', description: 'Байесовский t-тест для двух независимых групп' },
+        { id: 'bayes_t_test_rel', name: 'Bayes t-test (парный)', description: 'Байесовский t-тест для парных данных' },
+        { id: 'bayes_correlation', name: 'Bayes correlation', description: 'Байесовская корреляция (Pearson/Spearman/Kendall)' },
+        { id: 'bayes_anova', name: 'Bayes ANOVA', description: 'Байесовский дисперсионный анализ для 2+ групп' },
+        { id: 'bayes_linear_regression', name: 'Bayes linear regression', description: 'Байесовская линейная регрессия (BF10/BF01)' },
+        { id: 'bayes_chi_square', name: 'Bayes chi-square', description: 'Байесовская проверка связи категориальных переменных' }
+      ]
+    },
+    {
+      id: 'time_series',
+      name: 'Временные ряды',
+      icon: ClockIcon,
+      description: 'Тренд, стационарность, автокорреляция и сезонность',
+      tests: [
+        { id: 'time_series_analysis', name: 'Time Series Analysis', description: 'ADF + ACF + декомпозиция ряда' }
       ]
     },
     {

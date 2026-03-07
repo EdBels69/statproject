@@ -2,10 +2,12 @@ import shutil
 import uuid
 import os
 import pandas as pd
+import numpy as np
 import aiofiles
 import json
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi.responses import Response
 from fastapi.concurrency import run_in_threadpool
 from typing import List, Dict, Any, Optional, Literal
 
@@ -17,15 +19,24 @@ from app.schemas.dataset import (
     ColumnInfo,
     VariableMappingUpdate,
     VariableMappingDocument,
+    DesignReviewAction,
+    DesignReviewDocument,
+    AnalysisSetAction,
+    AnalysisSetDocument,
 )
 from app.modules.parsers import parse_file, get_dataset_path, get_dataframe, get_dataset_columns, get_dataset_row_count, get_dataframe_window
+from app.modules.semantics import rebuild_and_save_semantics, load_semantics
+from app.modules.study_design import rebuild_and_save_study_design, load_study_design
+from app.modules.design_review import load_design_review, confirm_design_review, revoke_design_review
+from app.modules.analysis_set import load_analysis_set, freeze_analysis_set, clear_current_analysis_set
+from app.modules.delta_log import append_delta_log
 from app.core.pipeline import PipelineManager
 from pydantic import BaseModel
 import math
 
 router = APIRouter()
 
-WORKSPACE_DIR = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+WORKSPACE_DIR = os.getenv("CLINIMETRIA_WORKSPACE_DIR", "workspace")
 DATA_DIR = os.path.join(WORKSPACE_DIR, "datasets")
 pipeline = PipelineManager(DATA_DIR)
 
@@ -69,6 +80,168 @@ def _sanitize_json(obj: Any) -> Any:
     return obj
 
 
+def _is_missing_scalar(value: Any) -> bool:
+    if value is None:
+        return True
+    try:
+        miss = pd.isna(value)
+        return bool(miss) if isinstance(miss, (bool, np.bool_)) else False
+    except Exception:
+        return False
+
+
+def _int_dtype_bounds(dtype: Any) -> Optional[tuple[int, int]]:
+    try:
+        np_dtype = dtype.numpy_dtype if hasattr(dtype, "numpy_dtype") else dtype
+        info = np.iinfo(np_dtype)
+        return int(info.min), int(info.max)
+    except Exception:
+        return None
+
+
+def _coerce_cell_update_value(series: pd.Series, value: Any) -> tuple[pd.Series, Any, bool]:
+    """
+    Coerce a scalar value for assignment into an existing series dtype.
+    Returns (possibly converted series, coerced value, series_changed).
+    """
+    dtype = series.dtype
+    is_missing = _is_missing_scalar(value)
+
+    if isinstance(dtype, pd.CategoricalDtype):
+        if is_missing:
+            return series, pd.NA, False
+        try:
+            if value not in series.cat.categories:
+                return series.cat.add_categories([value]), value, True
+            return series, value, False
+        except Exception:
+            return series.astype("object"), value, True
+
+    if pd.api.types.is_datetime64_any_dtype(dtype):
+        if is_missing:
+            return series, pd.NaT, False
+        parsed = pd.to_datetime(pd.Series([value]), errors="coerce").iloc[0]
+        if pd.isna(parsed):
+            return series.astype("object"), value, True
+        return series, parsed, False
+
+    if pd.api.types.is_bool_dtype(dtype):
+        if is_missing:
+            if not pd.api.types.is_extension_array_dtype(dtype):
+                return series.astype("boolean"), pd.NA, True
+            return series, pd.NA, False
+        if isinstance(value, (bool, np.bool_)):
+            return series, bool(value), False
+        if isinstance(value, str):
+            low = value.strip().lower()
+            if low in {"1", "true", "t", "yes", "y"}:
+                return series, True, False
+            if low in {"0", "false", "f", "no", "n"}:
+                return series, False, False
+        if isinstance(value, (int, float, np.integer, np.floating)):
+            as_float = float(value)
+            if as_float == 1.0:
+                return series, True, False
+            if as_float == 0.0:
+                return series, False, False
+        return series.astype("object"), value, True
+
+    if pd.api.types.is_integer_dtype(dtype):
+        if is_missing:
+            if not pd.api.types.is_extension_array_dtype(dtype):
+                return series.astype("Int64"), pd.NA, True
+            return series, pd.NA, False
+
+        numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+        if pd.isna(numeric):
+            return series.astype("object"), value, True
+
+        as_float = float(numeric)
+        if not as_float.is_integer():
+            return series.astype("float64"), as_float, True
+
+        as_int = int(as_float)
+        bounds = _int_dtype_bounds(dtype)
+        if bounds is not None and (as_int < bounds[0] or as_int > bounds[1]):
+            target_dtype = "Int64" if pd.api.types.is_extension_array_dtype(dtype) else "int64"
+            return series.astype(target_dtype), as_int, True
+        return series, as_int, False
+
+    if pd.api.types.is_float_dtype(dtype):
+        if is_missing:
+            return series, np.nan, False
+        numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+        if pd.isna(numeric):
+            return series.astype("object"), value, True
+        return series, float(numeric), False
+
+    return series, value, False
+
+
+def _design_review_document(dataset_id: str, artifact: Optional[Dict[str, Any]]) -> DesignReviewDocument:
+    if not isinstance(artifact, dict):
+        return DesignReviewDocument(dataset_id=str(dataset_id), artifact_exists=False)
+
+    details = artifact.get("details")
+    if not isinstance(details, dict):
+        details = {}
+
+    return DesignReviewDocument(
+        dataset_id=str(dataset_id),
+        version=int(artifact.get("version") or 1),
+        confirmed=bool(artifact.get("confirmed")),
+        confirmed_at=artifact.get("confirmed_at") if isinstance(artifact.get("confirmed_at"), str) else None,
+        confirmed_by=artifact.get("confirmed_by") if isinstance(artifact.get("confirmed_by"), str) else None,
+        confirmed_source=artifact.get("confirmed_source") if isinstance(artifact.get("confirmed_source"), str) else None,
+        revoked_at=artifact.get("revoked_at") if isinstance(artifact.get("revoked_at"), str) else None,
+        revoked_by=artifact.get("revoked_by") if isinstance(artifact.get("revoked_by"), str) else None,
+        revoke_reason=artifact.get("revoke_reason") if isinstance(artifact.get("revoke_reason"), str) else None,
+        revoke_source=artifact.get("revoke_source") if isinstance(artifact.get("revoke_source"), str) else None,
+        updated_at=artifact.get("updated_at") if isinstance(artifact.get("updated_at"), str) else None,
+        details=details,
+        artifact_exists=True,
+    )
+
+
+def _analysis_set_document(dataset_id: str, artifact: Optional[Dict[str, Any]]) -> AnalysisSetDocument:
+    if not isinstance(artifact, dict):
+        return AnalysisSetDocument(dataset_id=str(dataset_id), artifact_exists=False)
+
+    analysis_set_id = artifact.get("analysis_set_id") if isinstance(artifact.get("analysis_set_id"), str) else None
+    fingerprint = artifact.get("fingerprint")
+    if not isinstance(fingerprint, dict):
+        fingerprint = {}
+
+    required_non_missing = artifact.get("required_non_missing")
+    if not isinstance(required_non_missing, list):
+        required_non_missing = []
+
+    impute_columns = artifact.get("impute_columns")
+    if not isinstance(impute_columns, list):
+        impute_columns = []
+
+    n_total = artifact.get("n_total")
+    n_selected = artifact.get("n_selected")
+
+    return AnalysisSetDocument(
+        dataset_id=str(dataset_id),
+        analysis_set_id=analysis_set_id,
+        version=int(artifact.get("version") or 1),
+        mode=str(artifact.get("mode") or "").strip() or None,
+        enforce=str(artifact.get("enforce") or "").strip() or None,
+        required_non_missing=[str(c) for c in required_non_missing if c is not None],
+        impute_columns=[str(c) for c in impute_columns if c is not None],
+        n_total=int(n_total) if isinstance(n_total, (int, float)) else None,
+        n_selected=int(n_selected) if isinstance(n_selected, (int, float)) else None,
+        created_at=artifact.get("created_at") if isinstance(artifact.get("created_at"), str) else None,
+        created_by=artifact.get("created_by") if isinstance(artifact.get("created_by"), str) else None,
+        created_source=artifact.get("created_source") if isinstance(artifact.get("created_source"), str) else None,
+        updated_at=artifact.get("updated_at") if isinstance(artifact.get("updated_at"), str) else None,
+        fingerprint=fingerprint,
+        artifact_exists=True,
+    )
+
+
 async def _ingest_dataset_bytes(
     content: bytes,
     filename: str,
@@ -80,13 +253,46 @@ async def _ingest_dataset_bytes(
     try:
         raw_path = pipeline.save_source(dataset_id, content, filename)
 
-        def parse_logic():
-            return parse_file(raw_path, header_row=0, original_filename=filename)
-
-        df, used_header = await run_in_threadpool(parse_logic)
-
         from app.modules.smart_scanner import SmartScanner
-        from app.services.upload_service import _auto_clean_and_impute, _normalize_auto_impute
+        from app.services import upload_service as upload_service_module
+
+        _auto_clean_and_impute = upload_service_module._auto_clean_and_impute
+        _normalize_auto_impute = upload_service_module._normalize_auto_impute
+        _run_quality_gate_ingest = getattr(upload_service_module, "_run_quality_gate_ingest", None)
+        _quality_gate_summary = getattr(upload_service_module, "_quality_gate_summary", None)
+        _persist_quality_gate_artifacts = getattr(upload_service_module, "_persist_quality_gate_artifacts", None)
+
+        quality_gate_result: Dict[str, Any] = {}
+        quality_gate_df: Optional[pd.DataFrame] = None
+        quality_gate_header: Optional[int] = None
+
+        if callable(_run_quality_gate_ingest):
+            quality_gate_result = await run_in_threadpool(
+                lambda: _run_quality_gate_ingest(
+                    pipeline,
+                    dataset_id=dataset_id,
+                    raw_path=raw_path,
+                    original_filename=filename,
+                    header_row=None,
+                )
+            )
+            candidate_df = quality_gate_result.get("dataframe") if isinstance(quality_gate_result, dict) else None
+            if isinstance(candidate_df, pd.DataFrame):
+                quality_gate_df = candidate_df
+                try:
+                    quality_gate_header = int(quality_gate_result.get("header_row"))
+                except Exception:
+                    quality_gate_header = None
+
+        if isinstance(quality_gate_df, pd.DataFrame):
+            df = quality_gate_df
+            used_header = quality_gate_header if quality_gate_header is not None else 0
+        else:
+            def parse_logic():
+                return parse_file(raw_path, header_row=0, original_filename=filename)
+
+            df, used_header = await run_in_threadpool(parse_logic)
+
         scanner = SmartScanner()
         df = await run_in_threadpool(scanner.optimize_dtypes, df)
 
@@ -109,10 +315,28 @@ async def _ingest_dataset_bytes(
         else:
             scan_result = scan_before
 
+        quality_gate_meta = (
+            _quality_gate_summary(quality_gate_result)
+            if callable(_quality_gate_summary)
+            else {"applied": bool((quality_gate_result or {}).get("quality_gate_applied"))}
+        )
+        cleaning_log_payload: Dict[str, Any] = {
+            "action": "ingest_pipeline",
+            "header_row": used_header,
+            "auto": auto_stats,
+            "quality_gate": quality_gate_meta,
+        }
+        quality_gate_log = quality_gate_result.get("cleaning_log") if isinstance(quality_gate_result, dict) else None
+        if isinstance(quality_gate_log, dict):
+            cleaning_log_payload["quality_gate_log"] = quality_gate_log
+        structure_log = quality_gate_result.get("structure_log") if isinstance(quality_gate_result, dict) else None
+        if isinstance(structure_log, dict):
+            cleaning_log_payload["structure_log"] = structure_log
+
         pipeline.create_processed_snapshot(
             dataset_id,
             df,
-            cleaning_log={"header_row": used_header, "auto": auto_stats},
+            cleaning_log=cleaning_log_payload,
         )
 
         profile_data = _sanitize_json(scan_result["profile"])
@@ -120,6 +344,39 @@ async def _ingest_dataset_bytes(
 
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
+        if callable(_persist_quality_gate_artifacts):
+            await run_in_threadpool(
+                lambda: _persist_quality_gate_artifacts(
+                    pipeline,
+                    dataset_id=dataset_id,
+                    result=quality_gate_result,
+                )
+            )
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="ingest",
+            actor="auto",
+            details={
+                "header_row": used_header,
+                "auto": auto_stats,
+                "quality_gate": quality_gate_meta,
+            },
+        )
     except Exception as e:
         shutil.rmtree(os.path.join(DATA_DIR, dataset_id), ignore_errors=True)
         raise HTTPException(status_code=400, detail=f"Обработка файла не удалась: {str(e)}")
@@ -354,29 +611,86 @@ async def list_datasets():
         return []
     
     # New Pipeline Structure Logic
-    for dataset_id in os.listdir(DATA_DIR):
-        ds_dir = os.path.join(DATA_DIR, dataset_id)
-        if not os.path.isdir(ds_dir): continue
-        
-        # Check source metadata first
-        meta_path = os.path.join(ds_dir, "source", "meta.json")
-        if os.path.exists(meta_path):
-            try:
-                with open(meta_path, "r") as f:
-                    meta = json.load(f)
-                    datasets.append({
-                        "id": dataset_id, 
-                        "filename": meta.get("original_filename", "unknown"),
-                        "created_at": meta.get("ingest_timestamp")
-                    })
-                continue
-            except:
-                pass
-                
-        # Fallback to old flat structure (Migration support)
-        files = [f for f in os.listdir(ds_dir) if not f.endswith('.json') and f != "processed.csv" and not os.path.isdir(os.path.join(ds_dir, f))]
-        if files:
-            datasets.append({"id": dataset_id, "filename": files[0]})
+    try:
+        # Use run_in_threadpool if there are many files to avoid blocking the event loop
+        def scan_datasets():
+            results = []
+            for dataset_id in os.listdir(DATA_DIR):
+                try:
+                    ds_dir = os.path.join(DATA_DIR, dataset_id)
+                    if not os.path.isdir(ds_dir): continue
+                    
+                    row_count = None
+                    col_count = None
+                    file_size = None
+                    created_at = None
+                    filename = "unknown"
+                    
+                    # Try to get size from original.raw
+                    raw_path = os.path.join(ds_dir, "source", "original.raw")
+                    if os.path.exists(raw_path):
+                         try:
+                             file_size = os.path.getsize(raw_path)
+                         except:
+                             pass
+                    
+                    # Try to get rows/cols from scan_report
+                    report_path = os.path.join(ds_dir, "processed", "scan_report.json")
+                    if os.path.exists(report_path):
+                        try:
+                            with open(report_path, "r") as f:
+                                report = json.load(f)
+                                profile = report.get("profile", {})
+                                row_count = profile.get("row_count")
+                                col_count = profile.get("col_count")
+                        except:
+                            pass
+
+                    # Check source metadata
+                    meta_path = os.path.join(ds_dir, "source", "meta.json")
+                    if os.path.exists(meta_path):
+                        try:
+                            with open(meta_path, "r") as f:
+                                meta = json.load(f)
+                                filename = meta.get("original_filename", "unknown")
+                                created_at = meta.get("ingest_timestamp")
+                                
+                                results.append({
+                                    "id": dataset_id, 
+                                    "filename": filename,
+                                    "created_at": created_at,
+                                    "row_count": row_count,
+                                    "col_count": col_count,
+                                    "size": file_size,
+                                    "is_ready": row_count is not None
+                                })
+                            continue
+                        except:
+                            pass
+                            
+                    # Fallback to old flat structure (Migration support)
+                    files = [f for f in os.listdir(ds_dir) if not f.endswith('.json') and f != "processed.csv" and not os.path.isdir(os.path.join(ds_dir, f))]
+                    if files:
+                        results.append({
+                            "id": dataset_id, 
+                            "filename": files[0],
+                            "row_count": None,
+                            "col_count": None,
+                            "size": None,
+                            "is_ready": False
+                        })
+                except Exception:
+                    continue # Skip bad dataset
+            return results
+
+        datasets = await run_in_threadpool(scan_datasets)
+
+    except Exception as e:
+        print(f"Error listing datasets: {e}")
+        return []
+
+    # Sort by created_at desc
+    datasets.sort(key=lambda x: x.get("created_at") or "", reverse=True)
             
     return datasets
 
@@ -423,6 +737,30 @@ async def upload_dataset(
         auto_clean=auto_clean,
         auto_impute=auto_impute,
     )
+
+
+@router.get("/{dataset_id}/report", response_model=Dict[str, Any])
+def get_dataset_report(dataset_id: str):
+    """
+    Returns the full 'Technical Audit' report (scan_report.json).
+    Contains: basic stats, data quality issues, normality checks, etc.
+    """
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    report_path = os.path.join(ds_dir, "processed", "scan_report.json")
+    if not os.path.exists(report_path):
+        # Fallback: if not found, generate a fresh profile and return minimal info
+        # But ideally we should re-scan. For now, 404 is appropriate or a basic mock.
+        return {"error": "Report not found", "status": "pending"}
+
+    try:
+        with open(report_path, "r") as f:
+            data = json.load(f)
+        return _sanitize_json(data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read report: {str(e)}")
 
 
 @router.get("/{dataset_id}/sheets", response_model=List[str])
@@ -487,6 +825,27 @@ async def clone_dataset_for_preparation(dataset_id: str):
         if mapping:
             save_variable_mapping(new_id, mapping)
 
+        rebuild_and_save_semantics(
+            dataset_id=new_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=new_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=new_id,
+            action="prepare_clone",
+            actor="auto",
+            details={"from": dataset_id},
+        )
+
         return DatasetUpload(id=new_id, filename=prepared_filename, profile=profile_data)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Файл данных не найден")
@@ -538,6 +897,27 @@ async def undo_prepare_change(
     report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
     pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
 
+    rebuild_and_save_semantics(
+        dataset_id=dataset_id,
+        base_dir=DATA_DIR,
+        scan_report=scan_report,
+        source="auto",
+    )
+    rebuild_and_save_study_design(
+        dataset_id=dataset_id,
+        base_dir=DATA_DIR,
+        scan_report=scan_report,
+        source="auto",
+    )
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="prepare_undo",
+        actor="user",
+        details={},
+    )
+
     total_pages = max(1, math.ceil(len(df) / limit))
     safe_page = min(page, total_pages)
     return generate_profile(df, page=safe_page, limit=limit)
@@ -577,7 +957,174 @@ def put_variable_mapping(dataset_id: str, payload: VariableMappingUpdate):
 
     save_variable_mapping(dataset_id, payload.mapping)
 
+    rebuild_and_save_semantics(
+        dataset_id=dataset_id,
+        base_dir=DATA_DIR,
+        source="user",
+    )
+    rebuild_and_save_study_design(
+        dataset_id=dataset_id,
+        base_dir=DATA_DIR,
+        source="user",
+    )
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="variable_mapping_update",
+        actor="user",
+        details={"count": len(payload.mapping or {})},
+    )
+
     return VariableMappingDocument(dataset_id=dataset_id, mapping=payload.mapping)
+
+
+@router.get("/{dataset_id}/design_review", response_model=DesignReviewDocument)
+def get_design_review(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    artifact = load_design_review(DATA_DIR, dataset_id)
+    return _design_review_document(dataset_id, artifact)
+
+
+@router.post("/{dataset_id}/design_review/confirm", response_model=DesignReviewDocument)
+def confirm_dataset_design_review(dataset_id: str, payload: Optional[DesignReviewAction] = None):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    payload = payload or DesignReviewAction()
+    details = payload.details if isinstance(payload.details, dict) else {}
+    artifact = confirm_design_review(
+        DATA_DIR,
+        dataset_id,
+        actor=payload.actor or "user",
+        source=payload.source or "ui",
+        details=details,
+    )
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="design_review_confirm",
+        actor=payload.actor or "user",
+        details={
+            "source": payload.source or "ui",
+            "confirmed_at": artifact.get("confirmed_at"),
+            "details": details,
+        },
+    )
+
+    return _design_review_document(dataset_id, artifact)
+
+
+@router.post("/{dataset_id}/design_review/revoke", response_model=DesignReviewDocument)
+def revoke_dataset_design_review(dataset_id: str, payload: Optional[DesignReviewAction] = None):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    payload = payload or DesignReviewAction()
+    details = payload.details if isinstance(payload.details, dict) else {}
+    artifact = revoke_design_review(
+        DATA_DIR,
+        dataset_id,
+        actor=payload.actor or "user",
+        source=payload.source or "ui",
+        reason=payload.reason,
+        details=details,
+    )
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="design_review_revoke",
+        actor=payload.actor or "user",
+        details={
+            "source": payload.source or "ui",
+            "reason": payload.reason,
+            "revoked_at": artifact.get("revoked_at"),
+            "details": details,
+        },
+    )
+
+    return _design_review_document(dataset_id, artifact)
+
+
+@router.get("/{dataset_id}/analysis_set", response_model=AnalysisSetDocument)
+def get_analysis_set_status(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    artifact = load_analysis_set(DATA_DIR, dataset_id)
+    return _analysis_set_document(dataset_id, artifact)
+
+
+@router.post("/{dataset_id}/analysis_set/freeze", response_model=AnalysisSetDocument)
+def freeze_dataset_analysis_set(dataset_id: str, payload: Optional[AnalysisSetAction] = None):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    payload = payload or AnalysisSetAction()
+    df = get_dataframe(dataset_id, DATA_DIR)
+    try:
+        artifact = freeze_analysis_set(
+            DATA_DIR,
+            dataset_id,
+            df=df,
+            mode=payload.mode,
+            enforce=payload.enforce,
+            required_non_missing=payload.required_non_missing,
+            impute_columns=payload.impute_columns,
+            actor=payload.actor or "user",
+            source=payload.source or "ui",
+            notes=payload.notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="analysis_set_freeze",
+        actor=payload.actor or "user",
+        details={
+            "source": payload.source or "ui",
+            "analysis_set_id": artifact.get("analysis_set_id"),
+            "mode": artifact.get("mode"),
+            "enforce": artifact.get("enforce"),
+            "n_selected": artifact.get("n_selected"),
+        },
+    )
+
+    return _analysis_set_document(dataset_id, artifact)
+
+
+@router.post("/{dataset_id}/analysis_set/clear", response_model=AnalysisSetDocument)
+def clear_dataset_analysis_set(dataset_id: str, payload: Optional[AnalysisSetAction] = None):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    payload = payload or AnalysisSetAction()
+    clear_current_analysis_set(DATA_DIR, dataset_id)
+
+    append_delta_log(
+        base_dir=DATA_DIR,
+        dataset_id=dataset_id,
+        action="analysis_set_clear",
+        actor=payload.actor or "user",
+        details={
+            "source": payload.source or "ui",
+        },
+    )
+
+    artifact = load_analysis_set(DATA_DIR, dataset_id)
+    return _analysis_set_document(dataset_id, artifact)
 
 @router.post("/{dataset_id}/reparse", response_model=DatasetProfile)
 def reparse_dataset(
@@ -603,14 +1150,63 @@ def reparse_dataset(
         raw_path = file_path
         
     try:
-        df, used_header = parse_file(raw_path, header_row=request.header_row, sheet_name=request.sheet_name)
+        from app.services import upload_service as upload_service_module
+        _run_quality_gate_ingest = getattr(upload_service_module, "_run_quality_gate_ingest", None)
+        _quality_gate_summary = getattr(upload_service_module, "_quality_gate_summary", None)
+        _persist_quality_gate_artifacts = getattr(upload_service_module, "_persist_quality_gate_artifacts", None)
+
+        quality_gate_result: Dict[str, Any] = {}
+        quality_gate_df: Optional[pd.DataFrame] = None
+        quality_gate_header: Optional[int] = None
+        original_filename = str(meta.get("original_filename") or os.path.basename(raw_path))
+
+        if callable(_run_quality_gate_ingest):
+            quality_gate_result = _run_quality_gate_ingest(
+                pipeline,
+                dataset_id=dataset_id,
+                raw_path=raw_path,
+                original_filename=original_filename,
+                header_row=request.header_row,
+                sheet_name=request.sheet_name,
+            )
+            candidate_df = quality_gate_result.get("dataframe") if isinstance(quality_gate_result, dict) else None
+            if isinstance(candidate_df, pd.DataFrame):
+                quality_gate_df = candidate_df
+                try:
+                    quality_gate_header = int(quality_gate_result.get("header_row"))
+                except Exception:
+                    quality_gate_header = None
+
+        if isinstance(quality_gate_df, pd.DataFrame):
+            df = quality_gate_df
+            used_header = quality_gate_header if quality_gate_header is not None else int(request.header_row)
+        else:
+            df, used_header = parse_file(raw_path, header_row=request.header_row, sheet_name=request.sheet_name)
 
         from app.modules.smart_scanner import SmartScanner
         scanner = SmartScanner()
         df = scanner.optimize_dtypes(df)
+
+        quality_gate_meta = (
+            _quality_gate_summary(quality_gate_result)
+            if callable(_quality_gate_summary)
+            else {"applied": bool((quality_gate_result or {}).get("quality_gate_applied"))}
+        )
+        cleaning_log_payload: Dict[str, Any] = {
+            "action": "reparse_pipeline",
+            "header_row": used_header,
+            "sheet": request.sheet_name,
+            "quality_gate": quality_gate_meta,
+        }
+        quality_gate_log = quality_gate_result.get("cleaning_log") if isinstance(quality_gate_result, dict) else None
+        if isinstance(quality_gate_log, dict):
+            cleaning_log_payload["quality_gate_log"] = quality_gate_log
+        structure_log = quality_gate_result.get("structure_log") if isinstance(quality_gate_result, dict) else None
+        if isinstance(structure_log, dict):
+            cleaning_log_payload["structure_log"] = structure_log
         
         # Create new processed snapshot (Overwrite stage 1)
-        pipeline.create_processed_snapshot(dataset_id, df, cleaning_log={"header_row": used_header, "sheet": request.sheet_name})
+        pipeline.create_processed_snapshot(dataset_id, df, cleaning_log=cleaning_log_payload)
 
         mapping = load_variable_mapping(dataset_id)
         if mapping:
@@ -620,6 +1216,42 @@ def reparse_dataset(
                 actions=[],
                 existing_columns=[str(c) for c in df.columns],
             )
+
+        scan_result = scanner.scan_dataset(df)
+        scan_report = scan_result["scan_report"]
+        report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
+        if callable(_persist_quality_gate_artifacts):
+            _persist_quality_gate_artifacts(
+                pipeline,
+                dataset_id=dataset_id,
+                result=quality_gate_result,
+            )
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="reparse",
+            actor="user",
+            details={
+                "header_row": used_header,
+                "sheet": request.sheet_name,
+                "quality_gate": quality_gate_meta,
+            },
+        )
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Не удалось перепарсить файл: {str(e)}")
@@ -672,7 +1304,12 @@ def modify_dataset(
                     v = action.value
                     if v == "":
                         v = None
-                    df.at[action.row_index, action.column] = v
+                    prepared_series, prepared_value, series_changed = _coerce_cell_update_value(
+                        df[action.column], v
+                    )
+                    if series_changed:
+                        df[action.column] = prepared_series
+                    df.at[action.row_index, action.column] = prepared_value
             else:
                 raise ValueError(f"Unknown modification type: {action.type}")
 
@@ -700,6 +1337,27 @@ def modify_dataset(
 
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="modify",
+            actor="user",
+            details={"actions": actions},
+        )
 
         total_pages = max(1, math.ceil(len(df) / limit))
         safe_page = min(page, total_pages)
@@ -799,6 +1457,31 @@ def impute_mice_api(dataset_id: str, cmd: MiceImputeCommand):
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
 
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="mice_imputation",
+            actor="user",
+            details={
+                "columns": columns,
+                "max_iter": max_iter,
+                "n_imputations": n_imputations,
+            },
+        )
+
         return generate_profile(df)
 
     except Exception as e:
@@ -859,6 +1542,27 @@ def clean_column_api(dataset_id: str, cmd: CleanCommand):
         
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="clean_column",
+            actor="user",
+            details={"column": cmd.column, "action": cmd.action},
+        )
             
         return generate_profile(df)
         
@@ -916,6 +1620,27 @@ def compute_column_api(dataset_id: str, cmd: ComputeColumnCommand):
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         pipeline.write_json_atomic(report_path, _sanitize_json(scan_report), allow_nan=False)
 
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+        append_delta_log(
+            base_dir=DATA_DIR,
+            dataset_id=dataset_id,
+            action="compute_column",
+            actor="user",
+            details={"op": cmd.op, "name": name},
+        )
+
         return generate_profile(df)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Не удалось добавить колонку: {str(e)}")
@@ -932,6 +1657,148 @@ def get_scan_report(dataset_id: str):
         return _sanitize_json(data)
     except Exception as e:
         raise HTTPException(status_code=404, detail="Отчёт не найден")
+
+
+@router.get("/{dataset_id}/cleaning_log")
+def get_cleaning_log(dataset_id: str):
+    try:
+        path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "cleaning_log.json")
+        if not os.path.exists(path):
+            return {"status": "no_log"}
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _sanitize_json(data)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Лог очистки не найден")
+
+
+@router.get("/{dataset_id}/pipeline_state")
+def get_pipeline_state(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+    try:
+        doc = pipeline.build_dataset_state_document(dataset_id)
+        payload = dict(doc) if isinstance(doc, dict) else {}
+        payload["dataset_id"] = str(dataset_id)
+        return _sanitize_json(payload)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось построить состояние pipeline: {str(e)}")
+
+
+@router.get("/{dataset_id}/delta_log")
+def get_delta_log(dataset_id: str):
+    try:
+        path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "delta_log.json")
+        if not os.path.exists(path):
+            return {"status": "no_log"}
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _sanitize_json(data)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Лог изменений не найден")
+
+
+@router.get("/{dataset_id}/semantics")
+def get_semantics(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    semantics = load_semantics(DATA_DIR, dataset_id)
+    if semantics is None:
+        scan_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        scan_report = None
+        if os.path.exists(scan_path):
+            try:
+                with open(scan_path, "r", encoding="utf-8") as f:
+                    scan_report = json.load(f)
+            except Exception:
+                scan_report = None
+
+        semantics = rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+    return _sanitize_json(semantics or {})
+
+
+@router.get("/{dataset_id}/export/cleaned")
+async def export_cleaned_dataset(
+    dataset_id: str,
+    format: str = Query("xlsx", description="Export format: xlsx or csv"),
+):
+    """
+    Export the cleaned/processed dataset used for analysis.
+    Returns an Excel (xlsx) or CSV file built from processed Parquet.
+    """
+    try:
+        df = get_dataframe(dataset_id, DATA_DIR)
+        fmt = str(format or "xlsx").strip().lower()
+        if fmt not in {"xlsx", "csv"}:
+            raise HTTPException(status_code=400, detail="Поддерживаются только xlsx или csv")
+
+        if fmt == "csv":
+            content = df.to_csv(index=False).encode("utf-8")
+            filename = f"{dataset_id}_cleaned.csv"
+            return Response(
+                content=content,
+                media_type="text/csv",
+                headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'},
+            )
+
+        import io
+
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="cleaned")
+        buffer.seek(0)
+        filename = f"{dataset_id}_cleaned.xlsx"
+        return Response(
+            content=buffer.read(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Не удалось экспортировать датасет: {str(e)}")
+
+
+@router.get("/{dataset_id}/study_design")
+def get_study_design(dataset_id: str):
+    ds_dir = os.path.join(DATA_DIR, dataset_id)
+    if not os.path.isdir(ds_dir):
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
+
+    design = load_study_design(DATA_DIR, dataset_id)
+    if design is None:
+        scan_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
+        scan_report = None
+        if os.path.exists(scan_path):
+            try:
+                with open(scan_path, "r", encoding="utf-8") as f:
+                    scan_report = json.load(f)
+            except Exception:
+                scan_report = None
+
+        design = rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=DATA_DIR,
+            scan_report=scan_report,
+            source="auto",
+        )
+
+    return _sanitize_json(design or {})
 
 @router.get("/{dataset_id}", response_model=DatasetProfile)
 def get_dataset(

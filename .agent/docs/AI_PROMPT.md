@@ -1,10 +1,10 @@
-# 🚀 Промпт для GPT Codex 5.2 — StatWizard v6
+# 🚀 Промпт для GPT Codex 5.2 — Clinimetria v6
 >
 > Дата: 2026-01-27
 
 ## 🎯 Статус проекта: Phase 4 COMPLETE (100%)
 
-StatWizard — клиническая статистика с AI-интерпретациями (Python FastAPI + React).
+Clinimetria — клиническая статистика с AI-интерпретациями (Python FastAPI + React).
 
 ---
 
@@ -45,7 +45,7 @@ StatWizard — клиническая статистика с AI-интерпр�
 
 ```
 1. backend/app/modules/reporting.py (158KB) → разбить на модули
-2. frontend/src/app/pages/ProtocolWizard.jsx (143KB) → на компоненты
+2. frontend/src/app/pages/ProtocolSorcerer.jsx (143KB) → на компоненты
 ```
 
 ### P2: E2E тестирование

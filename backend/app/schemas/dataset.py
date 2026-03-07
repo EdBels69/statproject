@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Literal
 
 class ColumnInfo(BaseModel):
     name: str
@@ -72,3 +72,54 @@ class VariableMappingUpdate(BaseModel):
 class VariableMappingDocument(BaseModel):
     dataset_id: str
     mapping: Dict[str, VariableMappingEntry] = Field(default_factory=dict)
+
+
+class DesignReviewAction(BaseModel):
+    actor: Optional[str] = None
+    source: Optional[str] = None
+    reason: Optional[str] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DesignReviewDocument(BaseModel):
+    dataset_id: str
+    version: int = 1
+    confirmed: bool = False
+    confirmed_at: Optional[str] = None
+    confirmed_by: Optional[str] = None
+    confirmed_source: Optional[str] = None
+    revoked_at: Optional[str] = None
+    revoked_by: Optional[str] = None
+    revoke_reason: Optional[str] = None
+    revoke_source: Optional[str] = None
+    updated_at: Optional[str] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+    artifact_exists: bool = False
+
+
+class AnalysisSetAction(BaseModel):
+    actor: Optional[str] = None
+    source: Optional[str] = None
+    mode: Literal["complete_case", "simple_impute"] = "complete_case"
+    enforce: Literal["models", "all"] = "models"
+    required_non_missing: List[str] = Field(default_factory=list)
+    impute_columns: List[str] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+
+
+class AnalysisSetDocument(BaseModel):
+    dataset_id: str
+    analysis_set_id: Optional[str] = None
+    version: int = 1
+    mode: Optional[str] = None
+    enforce: Optional[str] = None
+    required_non_missing: List[str] = Field(default_factory=list)
+    impute_columns: List[str] = Field(default_factory=list)
+    n_total: Optional[int] = None
+    n_selected: Optional[int] = None
+    created_at: Optional[str] = None
+    created_by: Optional[str] = None
+    created_source: Optional[str] = None
+    updated_at: Optional[str] = None
+    fingerprint: Dict[str, Any] = Field(default_factory=dict)
+    artifact_exists: bool = False

@@ -1,6 +1,5 @@
 import asyncio
 import json
-import math
 import os
 from typing import Any, Dict, List, Literal, Optional
 
@@ -12,36 +11,17 @@ from pydantic import BaseModel, Field
 from app.api.datasets import DATA_DIR
 from app.core.logging import logger
 from app.llm import analyze_research_design
+from app.llm.smart_sampling import build_smart_sample
 from app.modules.parsers import get_dataframe
+from app.modules.ai_context import build_ai_context, safe_plan_constraints, enforce_protocol_constraints
+from app.modules.legacy_telemetry import record_legacy_hit
+from app.utils import convert_numpy_to_native
 
 
 AI_MODULE_DATE = "2026-01-17"
 
 
 router = APIRouter()
-
-
-def convert_numpy_to_native(obj: Any) -> Any:
-    if isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
-        return obj
-    if isinstance(obj, np.bool_):
-        return bool(obj)
-    if isinstance(obj, np.integer):
-        return int(obj)
-    if isinstance(obj, np.floating):
-        v = float(obj)
-        if math.isnan(v) or math.isinf(v):
-            return None
-        return v
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    if isinstance(obj, dict):
-        return {key: convert_numpy_to_native(value) for key, value in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [convert_numpy_to_native(item) for item in obj]
-    return obj
 
 
 async def load_dataset_async(dataset_id: str) -> pd.DataFrame:
@@ -138,80 +118,12 @@ class AIAnalyzeDesignRequest(BaseModel):
     preferences: Optional[Dict[str, Any]] = Field(None, description="Global preferences")
 
 
-def _build_dataset_meta_for_ai(df: pd.DataFrame) -> Dict[str, Any]:
-    sample = df
-    if len(df.index) > 8000:
-        sample = df.head(8000)
-
-    columns: List[Dict[str, Any]] = []
-    for col in list(sample.columns)[:200]:
-        s = sample[col]
-        dtype = str(s.dtype)
-        missing = int(s.isna().sum()) if hasattr(s, "isna") else 0
-        unique = None
-        try:
-            unique = int(s.nunique(dropna=True))
-        except Exception:
-            unique = None
-
-        name_l = str(col).strip().lower()
-        if pd.api.types.is_numeric_dtype(s):
-            try:
-                non_na = s.dropna()
-                n = int(len(non_na))
-                u = int(non_na.nunique(dropna=True)) if n else 0
-            except Exception:
-                n = int(len(s))
-                u = int(unique or 0)
-
-            ratio = float(u) / float(max(1, n))
-            looks_like_group = any(
-                k in name_l
-                for k in [
-                    "группа",
-                    "group",
-                    "treatment",
-                    "arm",
-                    "cohort",
-                    "класс",
-                    "категор",
-                    "category",
-                    "групп",
-                    "рандом",
-                ]
-            )
-            kind = "categorical" if ((u and u <= 12 and ratio <= 0.2) or (looks_like_group and u and u <= 50)) else "numeric"
-        else:
-            kind = "categorical"
-
-        columns.append(
-            {
-                "name": str(col),
-                "dtype": dtype,
-                "kind": kind,
-                "missing": missing,
-                "unique": unique,
-            }
-        )
-
-    numeric_cols = [c["name"] for c in columns if c.get("kind") == "numeric"]
-    categorical_cols = [c["name"] for c in columns if c.get("kind") == "categorical"]
-
-    return {
-        "n_rows": int(len(df.index)),
-        "n_cols": int(len(df.columns)),
-        "columns": columns,
-        "numeric_cols": numeric_cols,
-        "categorical_cols": categorical_cols,
-    }
-
-
 def _normalize_ai_protocol_item(item: Dict[str, Any], idx: int) -> Optional[Dict[str, Any]]:
     if not isinstance(item, dict):
         return None
 
     raw_method = item.get("method") or item.get("test") or item.get("type")
-    method = str(raw_method or "").strip()
+    method = str(raw_method or "").strip().lower()
     if not method:
         return None
     if method == "mixed_model":
@@ -221,9 +133,13 @@ def _normalize_ai_protocol_item(item: Dict[str, Any], idx: int) -> Optional[Dict
     config = raw_config if isinstance(raw_config, dict) else {}
     name = str(item.get("name") or "").strip() or None
     step_id = str(item.get("id") or f"ai_{idx + 1}").strip()
+    if not name:
+        name = method.replace("_", " ").title()
 
     if "outcome" not in config and "target" in config:
         config = {**config, "outcome": config.get("target")}
+    if "target" not in config and "outcome" in config and method == "descriptive_compare":
+        config = {**config, "target": config.get("outcome")}
     if "group" not in config and "predictor" in config:
         config = {**config, "group": config.get("predictor")}
 
@@ -232,19 +148,63 @@ def _normalize_ai_protocol_item(item: Dict[str, Any], idx: int) -> Optional[Dict
 
 @router.post("/ai/analyze-design", response_model=Dict[str, Any])
 async def ai_analyze_design(request: AIAnalyzeDesignRequest):
+    logger.warning(
+        "Deprecated endpoint hit: /api/v1/v2/ai/analyze-design. Use /api/v1/v2/analysis/plan for canonical flow."
+    )
+    record_legacy_hit("/api/v1/v2/ai/analyze-design")
     try:
         df = await load_dataset_async(request.dataset_id)
-        dataset_meta = _build_dataset_meta_for_ai(df)
+        dataset_meta = build_ai_context(dataset_id=request.dataset_id, base_dir=DATA_DIR, df=df)
+        constraints = safe_plan_constraints(request.preferences)
+
+        prefs = request.preferences if isinstance(request.preferences, dict) else {}
+        role_models = prefs.get("llm_models") if isinstance(prefs.get("llm_models"), dict) else None
+        use_sampling = bool(prefs.get("smart_sampling") or prefs.get("use_smart_sampling"))
+        sample_mode = str(prefs.get("smart_sampling_mode") or "").strip().lower()
+        if not sample_mode:
+            sample_mode = "masked" if use_sampling else "off"
+        if prefs.get("no_raw_sample") is True:
+            sample_mode = "off"
+
+        if sample_mode not in {"off", "none"}:
+            max_rows = prefs.get("smart_sample_rows") or prefs.get("sample_rows") or 40
+            max_cols = prefs.get("smart_sample_cols") or prefs.get("sample_cols") or 18
+            redact_mode = "pii"
+            if sample_mode in {"raw", "unsafe"}:
+                redact_mode = "none"
+            elif sample_mode in {"strict", "full"}:
+                redact_mode = "strict"
+            try:
+                sample = build_smart_sample(
+                    df,
+                    max_rows=int(max_rows),
+                    max_cols=int(max_cols),
+                    redact_mode=redact_mode,
+                )
+                dataset_meta["sample_rows"] = sample.get("rows") or []
+                dataset_meta["sample_info"] = {
+                    "strategy": sample.get("strategy"),
+                    "row_count": sample.get("row_count"),
+                    "columns": sample.get("columns"),
+                    "redact_mode": redact_mode,
+                }
+            except Exception:
+                pass
+        else:
+            dataset_meta["sample_rows"] = []
+            dataset_meta["sample_info"] = {"strategy": "disabled", "row_count": 0, "columns": []}
 
         ai_payload = await analyze_research_design(
             text=request.text,
             dataset_meta=dataset_meta,
             current_protocol=request.protocol or [],
-            preferences=request.preferences or {},
+            preferences=prefs,
+            constraints=constraints,
+            role_models=role_models,
         )
 
         if isinstance(ai_payload, dict):
-            raw_steps = ai_payload.get("protocol")
+            raw_steps = ai_payload.get("protocol") or ai_payload.get("steps")
             steps_in = raw_steps if isinstance(raw_steps, list) else []
             protocol_out: List[Dict[str, Any]] = []
             for i, step in enumerate(steps_in[:40]):
@@ -261,12 +221,15 @@ async def ai_analyze_design(request: AIAnalyzeDesignRequest):
                 globals_out["post_hoc"] = pref.get("post_hoc")
             if "post_hoc_correction" not in globals_out and "post_hoc_correction" in pref:
                 globals_out["post_hoc_correction"] = pref.get("post_hoc_correction")
+            if role_models:
+                globals_out["llm_models"] = role_models
 
             protocol_name = str(ai_payload.get("protocol_name") or "Протокол").strip() or "Протокол"
             notes = ai_payload.get("notes")
             notes_out = notes if isinstance(notes, list) else []
 
             if protocol_out:
+                protocol_out = enforce_protocol_constraints(protocol_out, constraints)
                 return {
                     "status": "completed",
                     "protocol_name": protocol_name,

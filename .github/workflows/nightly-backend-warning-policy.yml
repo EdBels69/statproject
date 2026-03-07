@@ -1,0 +1,27 @@
+name: Nightly Backend Warning Policy
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-warning-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest httpx pytest-timeout
+
+      - name: Run Full Backend Warning Policy
+        run: |
+          bash backend/scripts/run_nightly_warning_policy.sh

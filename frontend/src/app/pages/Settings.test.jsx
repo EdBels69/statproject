@@ -25,7 +25,7 @@ describe('Settings', () => {
     expect(screen.getByText('0.05 (Standard)')).toBeInTheDocument();
     fireEvent.click(screen.getByText('0.10 (More Lenient)'));
 
-    expect(localStorage.getItem('statwizard_alpha')).toBe('0.1');
+    expect(localStorage.getItem('clinimetria_alpha')).toBe('0.1');
     expect(screen.getByRole('alert')).toHaveTextContent('Settings saved successfully');
   });
 });

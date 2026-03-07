@@ -31,6 +31,7 @@ def get_dataset_path(dataset_id: str, data_dir: str) -> Tuple[Optional[str], str
 def parse_file(file_path: str, header_row: int = 0, sheet_name: str = None, original_filename: str = None) -> Tuple[pd.DataFrame, int]:
     """
     Parses various file types into a DataFrame.
+    Falls back to ExcelIntelligence for messy files.
     """
     # Use original filename for extension if provided, else file path
     path_for_ext = original_filename if original_filename else file_path
@@ -47,14 +48,49 @@ def parse_file(file_path: str, header_row: int = 0, sheet_name: str = None, orig
         df = pd.read_json(file_path)
     elif ext == '.parquet':
         df = pd.read_parquet(file_path)
-    # Allow .raw if original filename was passed and had valid ext, OR just try basic CSV for raw as fallback?
-    # No, better to be strict on original_filename if provided.
     else:
-        # If .raw and no original_filename, we can try to guess or fail.
-        # But for now, system should always pass original_filename.
         raise ValueError(f"Unsupported file format: {ext}")
         
     return df, header_row
+
+
+def parse_file_intelligent(
+    file_path: str,
+    *,
+    header_row: Optional[int] = None,
+    sheet_name: str = None,
+    original_filename: str = None,
+) -> Tuple[pd.DataFrame, int, Optional[dict]]:
+    """
+    Smart file parser using ExcelIntelligence.
+    Auto-detects header row, handles merged cells, removes footnotes.
+    
+    Returns: (DataFrame, header_row, structure_log)
+    """
+    try:
+        from app.modules.excel_intelligence import ExcelIntelligence
+        
+        ei = ExcelIntelligence()
+        
+        if header_row is not None:
+            # User specified header — use standard parse but still clean
+            df, hr = parse_file(file_path, header_row=header_row,
+                               sheet_name=sheet_name, original_filename=original_filename)
+            return df, hr, None
+        
+        # Let ExcelIntelligence analyze and read
+        df, structure = ei.read_clean(
+            file_path,
+            original_filename=original_filename,
+            structure=None,
+        )
+        return df, structure.header_row, {"log": structure.log, "issues": structure.issues}
+        
+    except Exception:
+        # Fallback to basic parser
+        df, hr = parse_file(file_path, header_row=header_row or 0,
+                           sheet_name=sheet_name, original_filename=original_filename)
+        return df, hr, None
 
 def get_dataframe(dataset_id: str, data_dir: str) -> pd.DataFrame:
     """

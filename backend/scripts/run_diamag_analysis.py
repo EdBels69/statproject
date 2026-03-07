@@ -1293,7 +1293,7 @@ def generate_word_report(
     doc.add_paragraph()
     footer = doc.add_paragraph()
     footer.add_run(
-        "Отчёт сгенерирован автоматически с использованием StatWizard.\n"
+        "Отчёт сгенерирован автоматически с использованием Clinimetria.\n"
         "Методы: Kruskal-Wallis, Linear Mixed Model (statsmodels), Bayes Factor (Sellke bound)."
     ).italic = True
     

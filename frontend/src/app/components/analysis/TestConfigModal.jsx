@@ -60,11 +60,11 @@ export default function TestConfigModal({
 
     // Determine which options to show based on test type
     const showPostHoc = ['anova', 'anova_welch', 'kruskal', 'anova_twoway', 'rm_anova', 'friedman'].includes(testType);
-    const showAlternative = ['t_test_ind', 't_test_rel', 't_test_welch', 't_test_one', 'mann_whitney', 'wilcoxon'].includes(testType);
-    const showCorrelationOptions = ['pearson', 'spearman', 'partial_correlation'].includes(testType);
+    const showAlternative = ['t_test_ind', 't_test_rel', 't_test_welch', 't_test_one', 'mann_whitney', 'wilcoxon', 'bayes_t_test_one', 'bayes_t_test_ind', 'bayes_t_test_rel'].includes(testType);
+    const showCorrelationOptions = ['pearson', 'spearman', 'partial_correlation', 'bayes_correlation'].includes(testType);
     const showClusteringOptions = ['kmeans', 'hierarchical_clustering'].includes(testType);
     const showFactorOptions = ['pca', 'efa'].includes(testType);
-    const showBootstrapOption = ['t_test_ind', 't_test_rel', 'pearson', 'spearman', 'anova'].includes(testType);
+    const showBootstrapOption = ['t_test_ind', 't_test_rel', 'pearson', 'spearman', 'anova', 'bayes_t_test_ind', 'bayes_t_test_rel', 'bayes_t_test_one', 'bayes_correlation'].includes(testType);
 
     const handleApply = () => {
         onApply({

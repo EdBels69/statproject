@@ -65,7 +65,14 @@ class ProtocolEngine:
             return [self._sanitize(v) for v in obj]
         return obj
 
-    def execute_protocol(self, dataset_id: str, df: pd.DataFrame, protocol: Dict[str, Any], alpha: float = 0.05) -> str:
+    def execute_protocol(
+        self,
+        dataset_id: str,
+        df: pd.DataFrame,
+        protocol: Dict[str, Any],
+        alpha: float = 0.05,
+        engine: Optional[str] = None,
+    ) -> str:
         """
         Runs the full protocol.
         """
@@ -75,10 +82,18 @@ class ProtocolEngine:
         results_map = {}
         log = []
         
+        globals_cfg = protocol.get("globals") if isinstance(protocol, dict) else None
+        if engine is None and isinstance(globals_cfg, dict):
+            engine = globals_cfg.get("engine") or globals_cfg.get("stats_engine") or globals_cfg.get("analysis_engine")
+
         # 2. Iterate Steps
         for step in protocol.get("steps", []):
+            step = dict(step) if isinstance(step, dict) else {}
             step_id = step.get("id")
             step_type = step.get("type", "compare")
+            step_engine = step.get("engine") or step.get("stats_engine") or step.get("analysis_engine") or engine
+            if step_engine:
+                step["engine"] = step_engine
             
             try:
                 log.append(f"Starting step {step_id}...")
@@ -259,7 +274,14 @@ class ProtocolEngine:
             uniq_groups = [k for k, v in group_stats.items() if isinstance(v, dict) and v.get("total", 0) > 0]
             if len(uniq_groups) >= 2:
                 try:
-                    test_res = run_analysis(tmp[["__group__", "__responder__"]].copy(), "chi_square", "__group__", "__responder__", alpha=alpha)
+                    test_res = run_analysis(
+                        tmp[["__group__", "__responder__"]].copy(),
+                        "chi_square",
+                        "__group__",
+                        "__responder__",
+                        alpha=alpha,
+                        engine=step.get("engine"),
+                    )
                 except Exception:
                     test_res = None
 
@@ -354,7 +376,14 @@ class ProtocolEngine:
                     group = config.get("group")
                     
                     if outcome and group:
-                        raw_res = run_analysis(df, method_id, outcome, group, alpha)
+                        raw_res = run_analysis(
+                            df,
+                            method_id,
+                            outcome,
+                            group,
+                            alpha,
+                            engine=config.get("engine"),
+                        )
                         
                         results.append({
                             "step_id": step_id,
@@ -595,8 +624,16 @@ class ProtocolEngine:
         time_col = step.get("time")
         event_col = step.get("event")
         group_col = step.get("group")
-        
-        raw_res = run_analysis(df, "survival_km", time_col, event_col, group_col=group_col, alpha=alpha)
+
+        raw_res = run_analysis(
+            df,
+            "survival_km",
+            time_col,
+            event_col,
+            group_col=group_col,
+            alpha=alpha,
+            engine=step.get("engine"),
+        )
         
         return {
             "method": get_method("survival_km"),
@@ -612,7 +649,15 @@ class ProtocolEngine:
         
         method_id = "logistic_regression" if kind == "logistic" else "linear_regression"
         
-        raw_res = run_analysis(df, method_id, target, predictors[0], predictors=predictors, alpha=alpha)
+        raw_res = run_analysis(
+            df,
+            method_id,
+            target,
+            predictors[0],
+            predictors=predictors,
+            alpha=alpha,
+            engine=step.get("engine"),
+        )
         
         return {
             "type": "regression",

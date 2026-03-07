@@ -468,4 +468,4 @@ GO! 🚀
 
 *Версия: 1.0*  
 *Создано: 15 января 2026*  
-*Для: StatWizard Project*
+*Для: Clinimetria Project*

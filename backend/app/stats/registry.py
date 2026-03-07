@@ -89,6 +89,14 @@ METHODS = {
         min_groups=0,
         max_groups=0
     ),
+    "kendall": StatMethod(
+        id="kendall",
+        name="Kendall Tau Correlation",
+        description="Measures rank correlation (Kendall's tau). Robust for ties and ordinal data.",
+        type="correlation",
+        min_groups=0,
+        max_groups=0
+    ),
     "anova": StatMethod(
         id="anova",
         name="One-Way ANOVA",
@@ -317,6 +325,72 @@ METHODS = {
         name="Partial Correlation",
         description="Correlation between two variables while controlling for a third. Removes confounding effects.",
         type="correlation",
+        min_groups=0,
+        max_groups=0
+    ),
+    # === BAYESIAN METHODS ===
+    "bayes_t_test_one": StatMethod(
+        id="bayes_t_test_one",
+        name="Bayesian One-Sample T-Test",
+        description="Bayesian one-sample t-test with Bayes factor evidence (BF10/BF01).",
+        type="bayesian",
+        min_groups=1,
+        max_groups=1
+    ),
+    "bayes_t_test_ind": StatMethod(
+        id="bayes_t_test_ind",
+        name="Bayesian Independent T-Test",
+        description="Bayesian independent-samples t-test with Bayes factor evidence (BF10/BF01).",
+        type="bayesian",
+        min_groups=2,
+        max_groups=2
+    ),
+    "bayes_t_test_rel": StatMethod(
+        id="bayes_t_test_rel",
+        name="Bayesian Paired T-Test",
+        description="Bayesian paired-samples t-test with Bayes factor evidence (BF10/BF01).",
+        type="bayesian",
+        min_groups=2,
+        max_groups=2
+    ),
+    "bayes_correlation": StatMethod(
+        id="bayes_correlation",
+        name="Bayesian Correlation",
+        description="Bayesian correlation analysis with Bayes factor evidence (BF10/BF01).",
+        type="bayesian",
+        min_groups=0,
+        max_groups=0
+    ),
+    "bayes_anova": StatMethod(
+        id="bayes_anova",
+        name="Bayesian ANOVA",
+        description="Bayesian one-way ANOVA with Bayes factor evidence.",
+        type="bayesian",
+        min_groups=2,
+        max_groups=100
+    ),
+    "bayes_linear_regression": StatMethod(
+        id="bayes_linear_regression",
+        name="Bayesian Linear Regression",
+        description="Bayesian evidence approximation for linear regression models.",
+        type="bayesian",
+        min_groups=0,
+        max_groups=0
+    ),
+    "bayes_chi_square": StatMethod(
+        id="bayes_chi_square",
+        name="Bayesian Chi-Square",
+        description="Bayesian evidence approximation for categorical association tests.",
+        type="bayesian",
+        min_groups=2,
+        max_groups=100
+    ),
+    # === TIME SERIES ===
+    "time_series_analysis": StatMethod(
+        id="time_series_analysis",
+        name="Time Series Analysis",
+        description="Trend, stationarity (ADF), autocorrelation and optional seasonal decomposition.",
+        type="time_series",
         min_groups=0,
         max_groups=0
     )

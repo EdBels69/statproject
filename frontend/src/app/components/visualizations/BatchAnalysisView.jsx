@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table';
-import { formatP, formatNum, getGroupStatsRows, getPostHocRows } from './utils';
+import { formatP, formatNum, getGroupStatsRows, getPostHocRows, formatMultiplicityTrace } from './utils';
 import Button from '../ui/Button';
 import { StatTooltip } from '../education';
 
@@ -24,6 +24,7 @@ export default function BatchAnalysisView({
   
   const inspector = propInspector !== undefined ? propInspector : localInspector;
   const setInspector = propSetInspector || setLocalInspector;
+  const traceLabel = formatMultiplicityTrace(result?.multiplicity_trace, multiplicityLabel);
 
   if (!result || !result.items) return null;
 
@@ -48,6 +49,9 @@ export default function BatchAnalysisView({
         <div className="px-6 py-5 border-b border-[color:var(--border-color)]">
           <div className="text-xs font-black text-[color:var(--text-secondary)] uppercase tracking-widest">{t('all_quantitative')}</div>
           <div className="mt-2 text-sm text-[color:var(--text-secondary)]">{t('batch_table_desc')}</div>
+          {traceLabel ? (
+            <div className="mt-2 text-[11px] font-mono text-[color:var(--text-secondary)]">{traceLabel}</div>
+          ) : null}
         </div>
         <div className="p-6">
           <Table className="w-full text-sm">

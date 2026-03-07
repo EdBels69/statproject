@@ -1,0 +1,154 @@
+{
+  "schema": "clinimetria.model_router_benchmark_capture",
+  "version": 1,
+  "generated_at": "2026-03-01T20:18:12.664061Z",
+  "dataset_id": "26c1930f-62c9-4d2e-bb72-fe7a5f67d19c",
+  "analysis_mode": "focused",
+  "validation_profile": "focused",
+  "skip_execute": false,
+  "run_id": "run_20260301_201810_814249_4e35eb69",
+  "llm_benchmark_artifact": "/Users/eduardbelskih/Проекты Github/statproject/workspace/datasets/26c1930f-62c9-4d2e-bb72-fe7a5f67d19c/analysis/run_20260301_201810_814249_4e35eb69/artifacts/llm_benchmark.json",
+  "recommended_id": "routerai_combo",
+  "recommendation_source": "auto_metrics",
+  "variants": [
+    {
+      "id": "gemini_single",
+      "label": "Gemini Flash 2.5 (single)",
+      "status": "ok",
+      "elapsed_ms": 15829,
+      "quality_score": 60.75,
+      "step_count": 12,
+      "token_total": 26166,
+      "attempt_count": 1,
+      "fallback_used": false,
+      "planner_model": "google/gemini-2.5-flash",
+      "model_used": "google/gemini-2.5-flash",
+      "models": {
+        "planner": "google/gemini-2.5-flash",
+        "quality": "google/gemini-2.5-flash",
+        "interpret": "google/gemini-2.5-flash",
+        "report": "google/gemini-2.5-flash",
+        "codegen": "google/gemini-2.5-flash"
+      },
+      "analysis_mode": "focused",
+      "validation_profile": "focused",
+      "error": null
+    },
+    {
+      "id": "minimax_single",
+      "label": "MiniMax M2.5 (single)",
+      "status": "ok",
+      "elapsed_ms": 29796,
+      "quality_score": 57.37,
+      "step_count": 4,
+      "token_total": 23240,
+      "attempt_count": 1,
+      "fallback_used": false,
+      "planner_model": "minimax/minimax-m2.5",
+      "model_used": "minimax/minimax-m2.5",
+      "models": {
+        "planner": "minimax/minimax-m2.5",
+        "quality": "minimax/minimax-m2.5",
+        "interpret": "minimax/minimax-m2.5",
+        "report": "minimax/minimax-m2.5",
+        "codegen": "minimax/minimax-m2.5"
+      },
+      "analysis_mode": "focused",
+      "validation_profile": "focused",
+      "error": null
+    },
+    {
+      "id": "glm5_single",
+      "label": "GLM-5 (single)",
+      "status": "ok",
+      "elapsed_ms": 103630,
+      "quality_score": 59.28,
+      "step_count": 6,
+      "token_total": 26151,
+      "attempt_count": 4,
+      "fallback_used": true,
+      "planner_model": "z-ai/glm-5",
+      "model_used": "google/gemini-2.5-flash",
+      "models": {
+        "planner": "z-ai/glm-5",
+        "quality": "z-ai/glm-5",
+        "interpret": "z-ai/glm-5",
+        "report": "z-ai/glm-5",
+        "codegen": "z-ai/glm-5"
+      },
+      "analysis_mode": "focused",
+      "validation_profile": "focused",
+      "error": null
+    },
+    {
+      "id": "qwen_single",
+      "label": "Qwen 3.5 397B-A17B (single)",
+      "status": "ok",
+      "elapsed_ms": 28771,
+      "quality_score": 61.44,
+      "step_count": 15,
+      "token_total": 26618,
+      "attempt_count": 1,
+      "fallback_used": false,
+      "planner_model": "qwen/qwen3.5-397b-a17b",
+      "model_used": "qwen/qwen3.5-397b-a17b",
+      "models": {
+        "planner": "qwen/qwen3.5-397b-a17b",
+        "quality": "qwen/qwen3.5-397b-a17b",
+        "interpret": "qwen/qwen3.5-397b-a17b",
+        "report": "qwen/qwen3.5-397b-a17b",
+        "codegen": "qwen/qwen3.5-397b-a17b"
+      },
+      "analysis_mode": "focused",
+      "validation_profile": "focused",
+      "error": null
+    },
+    {
+      "id": "routerai_combo",
+      "label": "Combo: M2.5 + GLM-5 + Qwen 3.5",
+      "status": "ok",
+      "elapsed_ms": 30618,
+      "quality_score": 66.49,
+      "step_count": 8,
+      "token_total": 23254,
+      "attempt_count": 1,
+      "fallback_used": false,
+      "planner_model": "minimax/minimax-m2.5",
+      "model_used": "minimax/minimax-m2.5",
+      "models": {
+        "planner": "minimax/minimax-m2.5",
+        "quality": "z-ai/glm-5",
+        "interpret": "qwen/qwen3.5-397b-a17b",
+        "report": "qwen/qwen3.5-397b-a17b",
+        "codegen": "deepseek/deepseek-chat-v3-0324:floor"
+      },
+      "analysis_mode": "focused",
+      "validation_profile": "focused",
+      "error": null
+    }
+  ],
+  "snapshot": {
+    "json": "/Users/eduardbelskih/Проекты Github/statproject/release/model_router_benchmark_report.json",
+    "markdown": "/Users/eduardbelskih/Проекты Github/statproject/release/model_router_benchmark_report.md",
+    "summary": {
+      "runs_total": 3,
+      "variants_total": 15,
+      "distinct_variants": 5,
+      "status_counts": {
+        "ok": 15
+      },
+      "profiles": {
+        "publication": 0,
+        "focused": 3,
+        "exploratory": 0
+      },
+      "unique_recommended_variants": 3
+    },
+    "coverage_gate": {
+      "runs_total": 3,
+      "min_runs": 0,
+      "meets_threshold": true,
+      "deficit": 0
+    }
+  }
+}

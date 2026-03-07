@@ -7,7 +7,7 @@ Combines a strictly validated Python statistical engine with a user-friendly Rea
 
 - **20+ Statistical Methods**: Including t-tests, ANOVA, non-parametric tests, survival analysis, regression, and ROC analysis
 - **AI-Powered Protocol Design**: Automated test selection based on data characteristics
-- **Interactive Wizard**: Step-by-step analysis workflow with visual feedback
+- **Interactive Sorcerer**: Step-by-step analysis workflow with visual feedback
 - **Alpha Parameter Selection**: Customize significance level (0.01, 0.05, 0.10)
 - **Quick Start Guide**: Onboarding for new users
 - **Error Boundary**: Graceful error handling throughout the application
@@ -23,7 +23,7 @@ Combines a strictly validated Python statistical engine with a user-friendly Rea
   - `app/modules/`: Data parsing, quality checks, reporting, and text generation
   - `tests/`: Integration tests, E2E tests, and stress tests
 - `frontend/`: React application (Vite + Tailwind)
-  - `src/app/pages/`: Dataset list, upload, wizard, settings, and analysis pages
+  - `src/app/pages/`: Dataset list, upload, sorcerer, settings, and analysis pages
   - `src/app/components/`: Layout components, charts, and reusable UI elements
 - `docs/`: Project documentation and specifications
 
@@ -61,7 +61,7 @@ The frontend application will be available at `http://localhost:5173`
 ## Quick Start
 
 1. **Upload Data**: Navigate to the Upload page and import your CSV or Excel file
-2. **Select Analysis**: Use the Wizard to choose your analysis goal and variables
+2. **Select Analysis**: Use the Sorcerer to choose your analysis goal and variables
 3. **Run Analysis**: Execute the protocol and view results with AI-generated interpretations
 4. **Export Report**: Download the HTML report for documentation
 
@@ -205,6 +205,13 @@ The interface follows WCAG AA guidelines with:
 ./restart.sh
 ```
 
+```powershell
+# Windows 11 (PowerShell)
+.\deploy-win11.ps1
+.\stop-win11.ps1
+.\restart-win11.ps1
+```
+
 ### Using Docker Compose
 
 ```bash
@@ -225,7 +232,24 @@ docker build -t stat-analyzer-frontend .
 
 ### Production Deployment
 
-For detailed deployment instructions, including SSL configuration, monitoring, and scaling, see [DEPLOYMENT.md](DEPLOYMENT.md).
+For Linux/macOS instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).  
+For Windows 11 instructions, see [DEPLOYMENT_WIN11.md](DEPLOYMENT_WIN11.md).
+
+### Operations and Release Gates
+
+- Operator runbook: [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)
+- Production smoke gate script:
+
+```bash
+./scripts/release_production_smoke.sh
+```
+
+- Workspace backup/restore scripts:
+
+```bash
+./scripts/ops_backup_workspace.sh
+./scripts/ops_restore_workspace.sh /absolute/path/to/backup.tar.gz --yes
+```
 
 ## Development
 

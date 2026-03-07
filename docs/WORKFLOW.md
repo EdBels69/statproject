@@ -9,7 +9,7 @@ Use the smartest model (**Gemini 1.5 Pro / "Antigravity"**) for high-leverage de
 
 ### 1. 🧠 Antigravity (Gemini 3 Pro) — **Tech Lead & Architect**
 *   **Responsibility**:
-    *   Analyzing complex features ("Protocol Wizard", "Mixed Models").
+    *   Analyzing complex features ("Protocol Sorcerer", "Mixed Models").
     *   Writing the **Implementation Plan** (5 steps + verification).
     *   **Reviewing Code**: Checking logic, architecture, and "smells".
     *   Solving "Hard" Bugs that stump others.

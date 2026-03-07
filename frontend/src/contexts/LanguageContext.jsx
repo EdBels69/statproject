@@ -25,7 +25,7 @@ export const LanguageProvider = ({ children }) => {
     const savedLanguage = localStorage.getItem('preferredLanguage');
     const browserLanguage = navigator.language.startsWith('ru') ? 'ru' : 'en';
 
-    const savedLevel = localStorage.getItem('statwizard_education_level');
+    const savedLevel = localStorage.getItem('clinimetria_education_level');
     if (savedLevel && ['junior', 'mid', 'senior'].includes(savedLevel)) {
       setEducationLevel(savedLevel);
     }
@@ -55,7 +55,7 @@ export const LanguageProvider = ({ children }) => {
     if (!['junior', 'mid', 'senior'].includes(nextLevel)) return;
     setEducationLevel(nextLevel);
     try {
-      localStorage.setItem('statwizard_education_level', nextLevel);
+      localStorage.setItem('clinimetria_education_level', nextLevel);
     } catch {
       void 0;
     }

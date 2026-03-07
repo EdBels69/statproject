@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getAlphaSetting, exportDocx, exportReport } from './api';
+import {
+  getAlphaSetting,
+  exportDocx,
+  exportReport,
+  getStudyDesign,
+  executeProtocolV2,
+  runBatchAnalysis,
+  getDatasetDesignReview,
+  confirmDatasetDesignReview,
+  revokeDatasetDesignReview,
+  getDatasetPipelineState,
+  downloadProtocolReleaseBundle,
+  getModelRouterBenchmarkSnapshot,
+} from './api';
 
 describe('getAlphaSetting', () => {
   beforeEach(() => {
@@ -11,7 +24,7 @@ describe('getAlphaSetting', () => {
   });
 
   it('parses stored alpha', () => {
-    localStorage.setItem('statwizard_alpha', '0.1');
+    localStorage.setItem('clinimetria_alpha', '0.1');
     expect(getAlphaSetting()).toBe(0.1);
   });
 });
@@ -71,5 +84,265 @@ describe('exportReport', () => {
       expect.objectContaining({ method: 'POST' })
     );
     expect(res).toBe(fakeBlob);
+  });
+});
+
+describe('getStudyDesign', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('loads study design from dataset endpoint', async () => {
+    const payload = { design: { design_type: 'cross_sectional' } };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await getStudyDesign('dataset-1');
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/datasets\/dataset-1\/study_design$/),
+      expect.any(Object)
+    );
+    expect(res).toEqual(payload);
+  });
+});
+
+describe('design review api', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('loads design review artifact status', async () => {
+    const payload = { dataset_id: 'dataset-1', confirmed: true, artifact_exists: true };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await getDatasetDesignReview('dataset-1');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/datasets\/dataset-1\/design_review$/),
+      expect.any(Object)
+    );
+    expect(res).toEqual(payload);
+  });
+
+  it('confirms design review via dataset endpoint', async () => {
+    const payload = { dataset_id: 'dataset-1', confirmed: true, artifact_exists: true };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await confirmDatasetDesignReview('dataset-1', { actor: 'ui', source: 'test' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/datasets\/dataset-1\/design_review\/confirm$/),
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(res.confirmed).toBe(true);
+  });
+
+  it('revokes design review via dataset endpoint', async () => {
+    const payload = { dataset_id: 'dataset-1', confirmed: false, artifact_exists: true };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await revokeDatasetDesignReview('dataset-1', { reason: 'changed' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/datasets\/dataset-1\/design_review\/revoke$/),
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(res.confirmed).toBe(false);
+  });
+});
+
+describe('dataset pipeline state api', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('loads dataset pipeline state from dataset endpoint', async () => {
+    const payload = { dataset_id: 'dataset-1', state: 'freeze', artifact_exists: true };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await getDatasetPipelineState('dataset-1');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/datasets\/dataset-1\/pipeline_state$/),
+      expect.any(Object)
+    );
+    expect(res).toEqual(payload);
+  });
+});
+
+describe('protocol release bundle api', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('downloads release bundle as blob', async () => {
+    const payload = new Blob(['zip'], { type: 'application/zip' });
+    fetch.mockResolvedValue({ ok: true, blob: async () => payload });
+
+    const res = await downloadProtocolReleaseBundle('dataset-1', 'run-1', { refresh: true });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/analysis\/protocol\/release\/run-1\/zip\?/),
+      expect.any(Object)
+    );
+    expect(res).toBe(payload);
+  });
+
+  it('throws when release bundle request fails', async () => {
+    fetch.mockResolvedValue({ ok: false, text: async () => 'fail' });
+
+    await expect(downloadProtocolReleaseBundle('dataset-1', 'run-1')).rejects.toThrow('fail');
+  });
+});
+
+describe('model router benchmark snapshot api', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('loads benchmark snapshot with query params', async () => {
+    const payload = {
+      schema: 'clinimetria.model_router_benchmark_report',
+      summary: { runs_total: 12 },
+      winners_by_profile: {},
+      variants: [],
+    };
+    fetch.mockResolvedValue({ ok: true, json: async () => payload });
+
+    const res = await getModelRouterBenchmarkSnapshot({ minRuns: 12, includeMarkdown: true, topN: 5 });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [url] = fetch.mock.calls[0];
+    expect(String(url)).toMatch(/\/v2\/analysis\/benchmark\/model-router\?/);
+    expect(String(url)).toContain('min_runs=12');
+    expect(String(url)).toContain('top_n=5');
+    expect(String(url)).toContain('include_markdown=true');
+    expect(res).toEqual(payload);
+  });
+
+  it('throws backend error detail on failed request', async () => {
+    fetch.mockResolvedValue({ ok: false, text: async () => 'backend fail' });
+
+    await expect(getModelRouterBenchmarkSnapshot({ minRuns: 1 })).rejects.toThrow('backend fail');
+  });
+});
+
+describe('executeProtocolV2', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends design review globals when provided', async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ run_id: 'run_1' }) });
+
+    await executeProtocolV2(
+      'dataset-1',
+      [{ id: 's1', method: 'descriptive_compare', config: { outcome: 'x', group: 'g' } }],
+      0.05,
+      'Protocol',
+      { design_confirmed: true, source: 'analysis_design_ai' }
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const options = fetch.mock.calls[0][1];
+    const body = JSON.parse(options.body);
+    expect(body.dataset_id).toBe('dataset-1');
+    expect(body.globals).toEqual(
+      expect.objectContaining({
+        design_confirmed: true,
+        source: 'analysis_design_ai',
+      })
+    );
+  });
+});
+
+describe('runBatchAnalysis', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('uses canonical execute endpoint and normalizes legacy shape', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        run_id: 'run_batch_1',
+        results: [
+          {
+            step_id: 'legacy_batch',
+            results: {
+              method_id: 'batch_analysis',
+              type: 'batch_analysis',
+              items: [
+                {
+                  target: 'score',
+                  method: 't_test_ind',
+                  p_value: 0.01,
+                  stat_value: 2.3,
+                  significant: true,
+                  groups: [
+                    { group: 'A', n: 12, mean: 10.1, sd: 2.0, shapiro_p: 0.2 },
+                    { group: 'B', n: 11, mean: 12.4, sd: 2.1, shapiro_p: 0.1 },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+
+    const res = await runBatchAnalysis('dataset-1', ['score'], 'group', { designConfirmed: true });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/v2\/analysis\/execute$/),
+      expect.objectContaining({ method: 'POST' })
+    );
+
+    const options = fetch.mock.calls[0][1];
+    const body = JSON.parse(options.body);
+    expect(body.protocol?.[0]?.method).toBe('batch_analysis');
+    expect(body.globals?.design_confirmed).toBe(true);
+
+    expect(res.run_id).toBe('run_batch_1');
+    expect(res.results.score?.method?.id).toBe('t_test_ind');
+    expect(Array.isArray(res.descriptives)).toBe(true);
+    expect(res.descriptives.length).toBe(2);
   });
 });

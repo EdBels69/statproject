@@ -55,3 +55,41 @@ export const getGroupStatsRows = (plotStats) => {
     .sort(([a], [b]) => String(a).localeCompare(String(b)))
     .map(([groupName, s]) => ({ groupName, s }));
 };
+
+export const getEffectColor = (val) => {
+    if (typeof val !== 'number') return 'text-[color:var(--text-muted)]';
+    const v = Math.abs(val);
+    if (v < 0.2) return 'text-yellow-600'; 
+    if (v < 0.5) return 'text-orange-500';
+    return 'text-[color:var(--success)]';
+};
+
+export const formatMultiplicityTrace = (trace, fallbackMethod = '') => {
+  if (!trace || typeof trace !== 'object') return '';
+  const rawMethod = String(trace.method || fallbackMethod || '').trim();
+  const methodKey = rawMethod.toLowerCase();
+  const methodMap = {
+    bh: 'FDR (Benjamini-Hochberg)',
+    fdr_bh: 'FDR (Benjamini-Hochberg)',
+    by: 'FDR (Benjamini-Yekutieli)',
+    fdr_by: 'FDR (Benjamini-Yekutieli)',
+    bky: 'FDR (Benjamini-Krieger-Yekutieli, two-stage)',
+    fdr_tsbky: 'FDR (Benjamini-Krieger-Yekutieli, two-stage)',
+    bonf: 'Bonferroni',
+    bonferroni: 'Bonferroni',
+    holm: 'Holm',
+    'holm-sidak': 'Holm-Sidak',
+    holmsidak: 'Holm-Sidak',
+    sidak: 'Sidak',
+    none: 'none',
+  };
+  const method = methodMap[methodKey] || rawMethod;
+  const nValid = Number.isFinite(Number(trace.n_valid)) ? Number(trace.n_valid) : null;
+  const nTotal = Number.isFinite(Number(trace.n_total)) ? Number(trace.n_total) : null;
+  const alpha = Number.isFinite(Number(trace.alpha)) ? Number(trace.alpha) : null;
+
+  const head = method ? `Correction: ${method}` : 'Correction';
+  const stats = nValid !== null && nTotal !== null ? `tests=${nValid}/${nTotal}` : '';
+  const alphaPart = alpha !== null ? `alpha=${alpha.toFixed(3)}` : '';
+  return [head, stats, alphaPart].filter(Boolean).join(' · ');
+};

@@ -235,6 +235,10 @@ export default function EditableDataGrid({
                         onGridReady={onGridReady}
                         loading={Boolean(loading)}
                         animateRows
+                        undoRedoCellEditing={true}
+                        undoRedoCellEditingLimit={20}
+                        enableCellTextSelection={true}
+                        ensureDomOrder={true}
                     />
                 ) : agGridLoadState.status === 'error' ? (
                     <div className="h-full w-full flex items-center justify-center">

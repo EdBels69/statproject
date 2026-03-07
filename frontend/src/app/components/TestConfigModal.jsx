@@ -231,6 +231,12 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           min: 0.01,
           max: 0.10,
           step: 0.01
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы (95%)',
+          default: true
         }
       ]
     },
@@ -238,47 +244,125 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     // Group Comparison (t-test, etc.)
     t_test_ind: {
       variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }]
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы',
+          default: true
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'cohen', label: "Cohen's d" },
+            { value: 'hedges', label: "Hedges' g" },
+            { value: 'glass', label: "Glass's Δ" }
+          ],
+          default: 'cohen'
+        },
+        {
+          id: 'missing_values',
+          type: 'select',
+          label: 'Пропущенные значения',
+          options: [
+            { value: 'exclude_analysis', label: 'Исключить для анализа (pairwise)' },
+            { value: 'exclude_listwise', label: 'Исключить целиком (listwise)' }
+          ],
+          default: 'exclude_analysis'
+        }
+      ]
     },
     mann_whitney: {
       variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }]
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы',
+          default: true
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'rank_biserial', label: 'Rank-Biserial' }
+          ],
+          default: 'rank_biserial'
+        }
+      ]
     },
     anova: {
       variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05,
-        min: 0.01,
-        max: 0.10,
-        step: 0.01
-      }],
-      postHoc: [{
-        id: 'post_hoc',
-        type: 'select',
-        label: 'Post-hoc тест',
-        options: [{ value: 'tukey', label: 'Tukey HSD' }, { value: 'games_howell', label: 'Games-Howell' }, { value: 'dunn', label: 'Dunn (rank)' }, { value: 'none', label: 'Нет' }],
-        default: 'tukey'
-      },
-      {
-        id: 'post_hoc_correction',
-        type: 'select',
-        label: 'Поправка для post-hoc',
-        options: [{ value: 'bky', label: 'Benjamini-Krieger-Yekutieli (BKY)' }, { value: 'bh', label: 'Benjamini-Hochberg (BH)' }, { value: 'none', label: 'Нет' }],
-        default: 'bky'
-      }]
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05,
+          min: 0.01,
+          max: 0.10,
+          step: 0.01
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'eta_squared', label: 'η² (Eta-squared)' },
+            { value: 'partial_eta_squared', label: 'η²p (Partial Eta-squared)' },
+            { value: 'omega_squared', label: 'ω² (Omega-squared)' }
+          ],
+          default: 'eta_squared'
+        }
+      ],
+      postHoc: [
+        {
+          id: 'post_hoc',
+          type: 'select',
+          label: 'Post-hoc тест',
+          options: [
+            { value: 'tukey', label: 'Tukey' },
+            { value: 'bonferroni', label: 'Bonferroni' },
+            { value: 'holm', label: 'Holm' },
+            { value: 'scheffe', label: 'Scheffe' },
+            { value: 'none', label: 'Нет' }
+          ],
+          default: 'tukey'
+        }
+      ]
     },
     anova_twoway: {
       variables: [
@@ -307,17 +391,44 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           min: 0.01,
           max: 0.10,
           step: 0.01
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'partial_eta_squared', label: 'η²p (Partial Eta-squared)' }
+          ],
+          default: 'partial_eta_squared'
         }
       ]
     },
     kruskal: {
       variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05
-      }],
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'epsilon_squared', label: 'ε² (Epsilon-squared)' },
+            { value: 'eta_squared', label: 'η² (Eta-squared)' }
+          ],
+          default: 'epsilon_squared'
+        }
+      ],
       postHoc: [{
         id: 'post_hoc',
         type: 'select',
@@ -329,45 +440,104 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
         id: 'post_hoc_correction',
         type: 'select',
         label: 'Поправка для post-hoc',
-        options: [{ value: 'bky', label: 'Benjamini-Krieger-Yekutieli (BKY)' }, { value: 'bh', label: 'Benjamini-Hochberg (BH)' }, { value: 'none', label: 'Нет' }],
-        default: 'bky'
+        options: [{ value: 'bonferroni', label: 'Bonferroni' }, { value: 'holm', label: 'Holm' }, { value: 'bh', label: 'Benjamini-Hochberg' }, { value: 'none', label: 'Нет' }],
+        default: 'holm'
       }]
     },
     anova_welch: {
       variables: [targetField, groupField],
-      advanced: [{
-        id: 'alpha',
-        type: 'number',
-        label: 'Уровень значимости',
-        default: 0.05,
-        min: 0.01,
-        max: 0.10,
-        step: 0.01
-      }],
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'eta_squared', label: 'η² (Eta-squared)' },
+            { value: 'omega_squared', label: 'ω² (Omega-squared)' }
+          ],
+          default: 'eta_squared'
+        }
+      ],
       postHoc: [{
         id: 'post_hoc',
         type: 'select',
         label: 'Post-hoc тест',
         options: [{ value: 'games_howell', label: 'Games-Howell' }, { value: 'none', label: 'Нет' }],
         default: 'games_howell'
-      },
-      {
-        id: 'post_hoc_correction',
-        type: 'select',
-        label: 'Поправка для post-hoc',
-        options: [{ value: 'bky', label: 'Benjamini-Krieger-Yekutieli (BKY)' }, { value: 'bh', label: 'Benjamini-Hochberg (BH)' }, { value: 'none', label: 'Нет' }],
-        default: 'bky'
       }]
     },
 
     // Paired
     t_test_rel: {
-      variables: [targetField, groupField], // Assuming long format or change to paired inputs? keeping simple used case
-      advanced: []
+      variables: [targetField, groupField],
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы',
+          default: true
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'cohen', label: "Cohen's d" },
+            { value: 'hedges', label: "Hedges' g" }
+          ],
+          default: 'cohen'
+        }
+      ]
     },
     wilcoxon: {
       variables: [targetField, groupField],
-      advanced: []
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'rank_biserial', label: 'Rank-Biserial' }
+          ],
+          default: 'rank_biserial'
+        }
+      ]
     },
     rm_anova: {
       variables: [
@@ -394,7 +564,30 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           default: ''
         }
       ],
-      advanced: []
+      advanced: [
+        {
+          id: 'alpha',
+          type: 'number',
+          label: 'Уровень значимости',
+          default: 0.05
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'partial_eta_squared', label: 'η²p (Partial Eta-squared)' },
+            { value: 'eta_squared', label: 'η² (Eta-squared)' }
+          ],
+          default: 'partial_eta_squared'
+        },
+        {
+          id: 'sphericity',
+          type: 'boolean',
+          label: 'Test Sphericity (Mauchly)',
+          default: true
+        }
+      ]
     },
 
     friedman: {
@@ -417,6 +610,15 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           min: 0.01,
           max: 0.10,
           step: 0.01
+        },
+        {
+          id: 'effect_size',
+          type: 'select',
+          label: 'Размер эффекта',
+          options: [
+            { value: 'kendall_w', label: "Kendall's W" }
+          ],
+          default: 'kendall_w'
         }
       ]
     },
@@ -446,11 +648,31 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
     },
     pearson: {
       variables: [targetsField],
-      advanced: []
+      advanced: [
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы',
+          default: true
+        },
+        {
+          id: 'descriptives',
+          type: 'boolean',
+          label: 'Описательные статистики',
+          default: true
+        }
+      ]
     },
     spearman: {
       variables: [targetsField],
-      advanced: []
+      advanced: [
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы (Bootstrapped)',
+          default: false
+        }
+      ]
     },
 
     // Survival
@@ -472,7 +694,19 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
         },
         groupField
       ],
-      advanced: []
+      advanced: [
+        {
+          id: 'confidence_type',
+          type: 'select',
+          label: 'Тип доверительного интервала',
+          options: [
+            { value: 'log', label: 'Log (Greenwood)' },
+            { value: 'log-log', label: 'Log-Log' },
+            { value: 'linear', label: 'Linear' }
+          ],
+          default: 'log'
+        }
+      ]
     },
 
     linear_regression: {
@@ -492,6 +726,18 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           min: 0.01,
           max: 0.10,
           step: 0.01
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'Доверительные интервалы коэффициентов',
+          default: true
+        },
+        {
+          id: 'vif',
+          type: 'boolean',
+          label: 'Диагностика коллинеарности (VIF)',
+          default: true
         }
       ]
     },
@@ -523,6 +769,12 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
           min: 0.01,
           max: 0.10,
           step: 0.01
+        },
+        {
+          id: 'ci',
+          type: 'boolean',
+          label: 'CI для Odds Ratio',
+          default: true
         }
       ]
     },
@@ -668,7 +920,22 @@ const TestConfigModalContent = ({ method, initialConfig, onClose, onConfigSave, 
   };
 
   const handleSave = () => {
-    onConfigSave(effectiveConfig);
+    // Ensure all fields have at least their default values
+    const defaults = {};
+    const allFields = [
+      ...(methodTemplate.variables || []),
+      ...(methodTemplate.advanced || []),
+      ...(methodTemplate.postHoc || [])
+    ];
+
+    allFields.forEach(field => {
+      if (field.default !== undefined) {
+        defaults[field.id] = field.default;
+      }
+    });
+
+    const finalConfig = { ...defaults, ...effectiveConfig };
+    onConfigSave(finalConfig);
     onClose();
   };
 

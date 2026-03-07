@@ -1,4 +1,4 @@
-# 🔬 SCIENTIFIC_STANDARDS.md —# Scientific Standards for StatWizard
+# 🔬 SCIENTIFIC_STANDARDS.md —# Scientific Standards for Clinimetria
 
 > Стандарты научного кода для AI-агентов и разработчиков.  
 > Основано на: Python Data Science Handbook, Nathan Yau "Visualize This", de Smith "Statistical Analysis Handbook"

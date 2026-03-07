@@ -1,0 +1,309 @@
+status	path
+ M	.agent/docs/AI_PROMPT.md
+ M	.agent/docs/AI_PROMPT_V2.md
+ M	.agent/docs/ANALYSIS_DESIGN_REDESIGN.md
+ M	.agent/docs/IMPLEMENTATION_PLAN.md
+ M	.agent/skills/biostat-protocol-expert/SKILL.md
+ M	.gitignore
+ M	AGENTS.md
+ M	AI_AGENT_GUIDE.md
+ M	AI_CONTEXT.md
+ M	AI_PROMPT_PRODUCTION.md
+ M	AI_QUICK_START.md
+ M	CODE_REVIEW.md
+ M	CODE_REVIEW_REPORT.md
+ M	CONTRIBUTING.md
+ M	DEPLOYMENT.md
+ M	HOW_TO_USE_AI_DOCS.md
+ M	PRODUCT_VISION.md
+ M	README.md
+ M	README_AI_DOCS.md
+ M	REFACTORING_PLAN.md
+ M	ROADMAP.md
+ M	SCIENTIFIC_STANDARDS.md
+ M	VISUALIZATION_STYLE_GUIDE.md
+ D	_backups/2026-01-31/statproject_2026-01-31.bundle
+ D	_backups/2026-01-31/statproject_2026-01-31.tar.gz
+ D	_backups/2026-02-01/statproject_2026-02-01.bundle
+ D	_backups/2026-02-01/statproject_2026-02-01.tar.gz
+ D	_backups/pre_ai_rewrite_20260201.zip
+ D	app/api/routes/wizard.py
+ M	backend/.env.example
+ M	backend/ai_expert_module_proposal.md
+ D	backend/app/ai_system_archived/__init__.py
+ D	backend/app/ai_system_archived/advanced_statistics.py
+ D	backend/app/ai_system_archived/ai_content_generator.py
+ D	backend/app/ai_system_archived/column_standardizer.py
+ D	backend/app/ai_system_archived/coordinator.py
+ D	backend/app/ai_system_archived/data_cleaner.py
+ D	backend/app/ai_system_archived/design_advisor.py
+ D	backend/app/ai_system_archived/diamag_report.py
+ D	backend/app/ai_system_archived/docx_generator.py
+ D	backend/app/ai_system_archived/executor.py
+ D	backend/app/ai_system_archived/llm_client.py
+ D	backend/app/ai_system_archived/metadata_extractor.py
+ D	backend/app/ai_system_archived/responder_analyzer.py
+ D	backend/app/ai_system_archived/router.py
+ D	backend/app/ai_system_archived/script_generator.py
+ D	backend/app/ai_system_archived/study_detector.py
+ D	backend/app/ai_system_archived/subgroup_analyzer.py
+ D	backend/app/ai_system_archived/universal_longitudinal.py
+ D	backend/app/ai_system_archived/verifier.py
+ M	backend/app/api/ai_module.py
+ M	backend/app/api/analysis.py
+ M	backend/app/api/datasets.py
+ M	backend/app/api/knowledge.py
+ M	backend/app/api/quality.py
+ M	backend/app/api/routes.py
+ M	backend/app/api/v2.py
+ M	backend/app/api/v2_datasets_async.py
+ D	backend/app/api/wizard.py
+ M	backend/app/copilot/engine.py
+ M	backend/app/copilot/executor.py
+ M	backend/app/copilot/prompts.py
+ M	backend/app/copilot/report.py
+ M	backend/app/copilot/router.py
+ M	backend/app/core/config.py
+ M	backend/app/core/pipeline.py
+ M	backend/app/core/protocol_engine.py
+ M	backend/app/generators/html_report.py
+ M	backend/app/llm/__init__.py
+ M	backend/app/llm/adapters/gemini.py
+ M	backend/app/main.py
+ M	backend/app/modules/docx_generator.py
+ M	backend/app/modules/reporting.py
+ M	backend/app/modules/smart_scanner.py
+ M	backend/app/modules/text_generator.py
+ M	backend/app/schemas/analysis.py
+ M	backend/app/schemas/dataset.py
+ M	backend/app/services/upload_service.py
+ M	backend/app/stats/engine.py
+ M	backend/app/stats/mixed_effects.py
+ M	backend/artifacts/openapi.json
+ M	backend/report.md
+ M	backend/requirements.txt
+ M	backend/scripts/run_diamag_analysis.py
+ M	backend/scripts/run_diamag_full.py
+ D	backend/temp_design_test/ds_design/analysis/run_20260105_175638/protocol.json
+ D	backend/temp_design_test/ds_design/analysis/run_20260105_175638/results.json
+ D	backend/temp_design_test/ds_design/processed/data.csv
+ D	backend/temp_design_test/ds_design/processed/dtypes.json
+ D	backend/temp_protocol_test/ds_proto_01/analysis/run_20260105_143321/protocol.json
+ D	backend/temp_protocol_test/ds_proto_01/analysis/run_20260105_143321/results.json
+ D	backend/temp_protocol_test/ds_proto_01/processed/data.csv
+ D	backend/temp_protocol_test/ds_proto_01/processed/dtypes.json
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104454/protocol_report.docx
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104454/protocol_report.html
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104454/protocol_report.pdf
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104454/results.json
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104705/protocol_report.docx
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104705/protocol_report.html
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104705/protocol_report.pdf
+ D	backend/temp_workdoc_run/84477c43-51ff-43cd-b47d-5f9903fd80ac/run_20260119_104705/results.json
+ D	backend/temp_workdoc_run/cbc6bbc3-958b-4d69-9592-e090a537577f/run_20260119_113039/protocol_report.docx
+ D	backend/temp_workdoc_run/cbc6bbc3-958b-4d69-9592-e090a537577f/run_20260119_113039/protocol_report.html
+ D	backend/temp_workdoc_run/cbc6bbc3-958b-4d69-9592-e090a537577f/run_20260119_113039/protocol_report.pdf
+ D	backend/temp_workdoc_run/cbc6bbc3-958b-4d69-9592-e090a537577f/run_20260119_113039/results.json
+ M	backend/tests/system_verification.py
+ D	backend/tests/test_ai_system_isolated.py
+ M	backend/tests/test_api_v2.py
+ M	backend/tests/test_engine_integration.py
+ D	backend/tests/test_wizard_apply_test_config.py
+ M	docs/USER_MANUAL.md
+ M	docs/WORKFLOW.md
+ D	docs/exports/primaryka_full_report_run_20260120_190708_203955_b79108de.docx
+ D	docs/exports/primaryka_full_report_run_20260120_190708_203955_b79108de.pdf
+ D	docs/exports/primaryka_full_report_run_20260120_190708_203955_b79108de_formatted.docx
+ D	docs/exports/primaryka_full_report_run_20260120_190708_203955_b79108de_formatted.pdf
+ D	docs/exports/primaryka_updrs3_delta_protocol_run_20260120_182319_371301_05375d84.docx
+ D	docs/exports/primaryka_updrs3_delta_protocol_run_20260120_182319_371301_05375d84.pdf
+ M	frontend/package-lock.json
+ M	frontend/package.json
+ M	frontend/src/App.jsx
+ M	frontend/src/app/components/TestConfigModal.jsx
+ M	frontend/src/app/components/VariableWorkspace.jsx
+ M	frontend/src/app/components/layout/Sidebar.jsx
+ M	frontend/src/app/components/layout/TopNavBar.jsx
+ M	frontend/src/app/components/visualizations/SingleResultView.jsx
+ M	frontend/src/app/pages/AnalysisDesign.jsx
+ M	frontend/src/app/pages/Analyze.jsx
+ M	frontend/src/app/pages/DatasetList.jsx
+ M	frontend/src/app/pages/Profile.jsx
+ D	frontend/src/app/pages/ProtocolWizard.jsx
+ M	frontend/src/app/pages/Settings.jsx
+ M	frontend/src/app/pages/Settings.test.jsx
+ M	frontend/src/app/pages/Upload.jsx
+ D	frontend/src/app/pages/protocol/ProtocolWizardOptionCard.jsx
+ D	frontend/src/app/pages/protocol/ProtocolWizardResultsModal.jsx
+ D	frontend/src/app/pages/protocol/ProtocolWizardStepFlow.jsx
+ D	frontend/src/app/store/useProtocolWizardStore.js
+ M	frontend/src/contexts/LanguageContext.jsx
+ M	frontend/src/features/ai_system/AIAnalysisPage.jsx
+ M	frontend/src/features/copilot/CopilotPage.jsx
+ M	frontend/src/lib/api.js
+ M	frontend/src/lib/api.test.js
+ M	frontend/src/locales/en.json
+ M	frontend/src/locales/ru.json
+ D	frontend/test-results/.last-run.json
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium-retry1/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium-retry1/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium-retry1/trace.zip
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-chromium/trace.zip
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox-retry1/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox-retry1/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox-retry1/trace.zip
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-firefox/trace.zip
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit-retry1/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit-retry1/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit-retry1/trace.zip
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit/error-context.md
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit/test-failed-1.png
+ D	frontend/test-results/prepare-rollback-prepare-m-a72ca-derived-column-and-rollback-webkit/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-chromium-retry1/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-chromium-retry1/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-chromium-retry1/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-chromium/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-chromium/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-chromium/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-firefox-retry1/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-firefox-retry1/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-firefox-retry1/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-firefox/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-firefox/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-firefox/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-webkit-retry1/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-webkit-retry1/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-webkit-retry1/trace.zip
+ D	frontend/test-results/settings-settings-language-persists-webkit/error-context.md
+ D	frontend/test-results/settings-settings-language-persists-webkit/test-failed-1.png
+ D	frontend/test-results/settings-settings-language-persists-webkit/trace.zip
+ M	workspace/datasets/test_dataset_data_prep/processed/data.csv
+ M	workspace/datasets/test_dataset_data_prep/processed/dtypes.json
+ M	workspace/datasets/test_dataset_data_prep/processed/scan_report.json
+ M	workspace/datasets/test_dataset_data_prep/processed/test_dataset_data_prep.parquet
+ D	workspace/datasets/test_dataset_integration/processed/backups/variable_mapping.20260123_155830.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_953284/scan_report.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_953284/test_dataset_integration.parquet
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_964340/cleaning_log.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_964340/dtypes.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_964340/scan_report.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_964340/test_dataset_integration.parquet
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_974756/cleaning_log.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_974756/dtypes.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_974756/scan_report.json
+ D	workspace/datasets/test_dataset_integration/processed/history/20260123_155830_974756/test_dataset_integration.parquet
+ D	workspace/datasets/test_stress_fisher/analysis/run_20260123_155834_350982_609f5fb1/protocol.json
+ D	workspace/datasets/test_stress_fisher/analysis/run_20260123_155834_350982_609f5fb1/results.json
+ D	workspace/datasets/test_stress_fisher/processed/scan_report.json
+ D	workspace/datasets/test_stress_fisher/processed/test_stress_fisher.parquet
+ D	workspace/datasets/test_stress_roc_analysis/analysis/run_20260123_155835_332497_e6748e9b/protocol.json
+ D	workspace/datasets/test_stress_roc_analysis/analysis/run_20260123_155835_332497_e6748e9b/results.json
+??	DEPLOYMENT_WIN11.md
+??	app/api/routes/sorcerer.py
+??	backend/.archive/
+??	backend/app/api/sorcerer.py
+??	backend/app/copilot/clinical_utils.py
+??	backend/app/copilot/pdf_exporter.py
+??	backend/app/copilot/r_engine.py
+??	backend/app/core/check_health.py
+??	backend/app/llm/smart_sampling.py
+??	backend/app/modules/ai_context.py
+??	backend/app/modules/analysis_result_v2.py
+??	backend/app/modules/analysis_set.py
+??	backend/app/modules/delta_log.py
+??	backend/app/modules/design_review.py
+??	backend/app/modules/knowledge_store.py
+??	backend/app/modules/legacy_telemetry.py
+??	backend/app/modules/plot_templates.py
+??	backend/app/modules/protocol_quality.py
+??	backend/app/modules/protocol_rules.py
+??	backend/app/modules/semantics.py
+??	backend/app/modules/study_design.py
+??	backend/app/stats/method_coverage.py
+??	backend/app/stats/r_engine.R
+??	backend/app/stats/r_engine.py
+??	backend/backend/
+??	backend/copilot_sessions.json
+??	backend/scripts/generate_covid_glycemia_structured_report.py
+??	backend/scripts/render_analysis_prompt.py
+??	backend/test_covid_e2e.py
+??	backend/test_covid_simple.py
+??	backend/test_phase_d_full.py
+??	backend/test_r_exec.py
+??	backend/tests/test_ai_templates.py
+??	backend/tests/test_analysis_result_v2_contract.py
+??	backend/tests/test_analysis_set_artifact.py
+??	backend/tests/test_analysis_templates.py
+??	backend/tests/test_auto_discovery.py
+??	backend/tests/test_backend_config.py
+??	backend/tests/test_copilot_engine.py
+??	backend/tests/test_copilot_report.py
+??	backend/tests/test_covid_smoke_v2_flow.py
+??	backend/tests/test_data_editing.py
+??	backend/tests/test_data_editing_sync.py
+??	backend/tests/test_datasets_ingest.py
+??	backend/tests/test_descriptives.py
+??	backend/tests/test_design_review_artifact.py
+??	backend/tests/test_design_review_roundtrip.py
+??	backend/tests/test_design_review_soft_check.py
+??	backend/tests/test_effect_size_verification.py
+??	backend/tests/test_engine_coverage_validation.py
+??	backend/tests/test_engine_parity_advanced_batch_modes.py
+??	backend/tests/test_engine_parity_complex_protocol_e2e.py
+??	backend/tests/test_engine_parity_extended.py
+??	backend/tests/test_engine_parity_long_tail.py
+??	backend/tests/test_engine_parity_top10.py
+??	backend/tests/test_knowledge_store.py
+??	backend/tests/test_legacy_telemetry.py
+??	backend/tests/test_logistic_one_vs_rest.py
+??	backend/tests/test_prompt_brief.py
+??	backend/tests/test_protocol_execution.py
+??	backend/tests/test_protocol_quality.py
+??	backend/tests/test_protocol_rules.py
+??	backend/tests/test_publication_workflow.py
+??	backend/tests/test_report_design_gate.py
+??	backend/tests/test_report_generation.py
+??	backend/tests/test_report_quality_checklist.py
+??	backend/tests/test_reporting_batch_tables.py
+??	backend/tests/test_reporting_design_quality.py
+??	backend/tests/test_reporting_manuscript_sections.py
+??	backend/tests/test_reporting_plot_preset.py
+??	backend/tests/test_result_tables.py
+??	backend/tests/test_smart_sampling.py
+??	backend/tests/test_sorcerer_apply_test_config.py
+??	backend/tests/test_study_design.py
+??	backend/tests/test_v2_method_aliases.py
+??	backend/tests/test_variable_mapping.py
+??	backend/tests/test_visualization.py
+??	copilot_sessions.json
+??	deploy-win11.bat
+??	deploy-win11.ps1
+??	docs/AI_END_TO_END_WORKFLOW_PLAN.md
+??	docs/ARCHITECTURE_REWORK_PLAN_2026-02-07.md
+??	docs/COVID_GLYCEMIA_PROMPT.md
+??	docs/ENGINE_WORKFLOW.md
+??	docs/METHOD_COVERAGE_MATRIX.md
+??	docs/WIKI_STAT_METHODS.md
+??	docs/prompt_templates/
+??	frontend/src/app/components/visualizations/AnovaTable.jsx
+??	frontend/src/app/components/visualizations/RegressionTable.jsx
+??	frontend/src/app/pages/Analyze.test.jsx
+??	frontend/src/app/pages/PromptBuilder.jsx
+??	frontend/src/app/pages/PromptBuilder.test.jsx
+??	frontend/src/app/pages/ProtocolSorcerer.jsx
+??	frontend/src/app/pages/protocol/ProtocolSorcererOptionCard.jsx
+??	frontend/src/app/pages/protocol/ProtocolSorcererResultsModal.jsx
+??	frontend/src/app/pages/protocol/ProtocolSorcererStepFlow.jsx
+??	frontend/src/app/store/useProtocolSorcererStore.js
+??	frontend/src/app/utils/analysisSet.js
+??	frontend/src/app/utils/analysisSet.test.js
+??	frontend/src/features/copilot/CopilotPage.test.jsx
+??	release/
+??	restart-win11.bat
+??	restart-win11.ps1
+??	stop-win11.bat
+??	stop-win11.ps1

@@ -25,7 +25,7 @@ class ClusteredCorrelationEngine:
         self,
         df: pd.DataFrame,
         variables: List[str],
-        method: Literal["pearson", "spearman"] = "pearson",
+        method: Literal["pearson", "spearman", "kendall"] = "pearson",
         linkage_method: Literal["ward", "complete", "average", "single"] = "ward",
         n_clusters: Optional[int] = None,
         distance_threshold: Optional[float] = None,
@@ -41,7 +41,7 @@ class ClusteredCorrelationEngine:
         variables : List[str]
             Column names to include in correlation matrix
         method : str
-            Correlation method: 'pearson' or 'spearman'
+            Correlation method: 'pearson', 'spearman', or 'kendall'
         linkage_method : str
             Hierarchical clustering linkage: 'ward', 'complete', 'average', 'single'
         n_clusters : int, optional
@@ -72,6 +72,8 @@ class ClusteredCorrelationEngine:
         # 2. Compute correlation matrix
         if method == "pearson":
             corr_matrix = data.corr(method="pearson")
+        elif method == "kendall":
+            corr_matrix = data.corr(method="kendall")
         else:
             corr_matrix = data.corr(method="spearman")
         
@@ -215,6 +217,8 @@ class ClusteredCorrelationEngine:
                 if len(common) >= 3:
                     if method == "pearson":
                         _, p = stats.pearsonr(x, y)
+                    elif method == "kendall":
+                        _, p = stats.kendalltau(x, y)
                     else:
                         _, p = stats.spearmanr(x, y)
                     

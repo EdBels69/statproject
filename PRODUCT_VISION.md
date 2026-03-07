@@ -1,4 +1,4 @@
-# StatWizard — Product Vision
+# Clinimetria — Product Vision
 
 > **Миссия:** Сделать статистический анализ понятным для врачей и медицинских аналитиков.
 
@@ -38,7 +38,7 @@
 - Jamovi не веб-приложение и не на русском
 - Все инструменты предполагают что юзер знает статистику
 
-### Решение StatWizard
+### Решение Clinimetria
 
 **"Умный ассистент для статистики"** — не просто калькулятор, а наставник который:
 
@@ -200,9 +200,9 @@ GraphPad (не заблудишься) + Jamovi (гибко) + Образова�
 - [ ] WhyThisTest integration
 - [ ] FlowingData plot style
 
-### v1.2 — Data Preparation & Smart Wizard 🔮
+### v1.2 — Data Preparation & Smart Sorcerer 🔮
 
-**Smart Variable Wizard:**
+**Smart Variable Sorcerer:**
 
 - [ ] Авто-сортировка: categorical ← | → numeric
 - [ ] Группировка похожих колонок ("все про анемию")

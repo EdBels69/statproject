@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table';
 import Button from '../ui/Button';
-import { formatP, formatNum, getGroupStatsRows, getPostHocRows } from './utils';
+import { formatP, formatNum, getGroupStatsRows, getPostHocRows, getEffectColor, formatMultiplicityTrace } from './utils';
 import { StatTooltip } from '../education';
 
 export default function TimepointBatchAnalysisView({ 
@@ -25,6 +25,20 @@ export default function TimepointBatchAnalysisView({
 
   const inspector = propInspector !== undefined ? propInspector : localInspector;
   const setInspector = propSetInspector || setLocalInspector;
+  const traceSummary = formatMultiplicityTrace(result?.multiplicity_trace, multiplicityLabel);
+  const traceBySlice = result?.multiplicity_trace_by_slice && typeof result.multiplicity_trace_by_slice === 'object'
+    ? result.multiplicity_trace_by_slice
+    : {};
+  const sliceTraceSummary = Object.entries(traceBySlice)
+    .slice(0, 3)
+    .map(([sliceKey, trace]) => {
+      const nValid = Number.isFinite(Number(trace?.n_valid)) ? Number(trace.n_valid) : null;
+      const nTotal = Number.isFinite(Number(trace?.n_total)) ? Number(trace.n_total) : null;
+      if (nValid === null || nTotal === null) return null;
+      return `${sliceKey}: ${nValid}/${nTotal}`;
+    })
+    .filter(Boolean)
+    .join(' · ');
 
   if (!result) return null;
 
@@ -126,6 +140,12 @@ export default function TimepointBatchAnalysisView({
             <div className="px-6 py-5 border-b border-[color:var(--border-color)]">
               <div className="text-xs font-black text-[color:var(--text-secondary)] uppercase tracking-widest">{t('all_quant_timepoints')}</div>
               <div className="mt-2 text-sm text-[color:var(--text-secondary)]">{t('timepoints_table_desc')}</div>
+              {traceSummary ? (
+                <div className="mt-2 text-[11px] font-mono text-[color:var(--text-secondary)]">{traceSummary}</div>
+              ) : null}
+              {sliceTraceSummary ? (
+                <div className="mt-1 text-[11px] font-mono text-[color:var(--text-secondary)]">{sliceTraceSummary}</div>
+              ) : null}
             </div>
             <div className="p-6">
               <Table className="w-full text-sm">
@@ -173,6 +193,10 @@ export default function TimepointBatchAnalysisView({
                               <TableCell className="py-3 pr-4 font-mono font-black text-[color:var(--text-primary)]">{formatP(p)}</TableCell>
                               <TableCell className="py-3 pr-4 font-mono text-[color:var(--text-secondary)]">{formatP(pAdj)}</TableCell>
                               <TableCell className="py-3 pr-4 font-mono text-[color:var(--text-secondary)]">{formatNum(stat, 2)}</TableCell>
+                              <TableCell className={`py-3 pr-4 font-mono font-bold ${getEffectColor(r?.effect_size)}`}>
+                                {formatNum(r?.effect_size, 2)}
+                                {r?.effect_size_name ? <span className="ml-1 text-[10px] opacity-60 font-normal">{r.effect_size_name}</span> : null}
+                              </TableCell>
                               <TableCell className="py-3">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-[2px] border text-xs font-black tracking-wide ${sig ? 'border-[color:var(--success)] text-[color:var(--success)]' : 'border-[color:var(--border-color)] text-[color:var(--text-muted)]'}`}>
                                   {sig ? t('yes') : t('no')}

@@ -5,6 +5,7 @@ class ProtocolRequest(BaseModel):
     dataset_id: str = Field(..., min_length=1, description="Unique identifier for the dataset")
     protocol: Dict[str, Any] = Field(..., description="Analysis protocol configuration")
     alpha: float = Field(default=0.05, ge=0.001, le=0.25, description="Significance level (alpha) for p-value threshold")
+    engine: Optional[str] = Field(None, description="Analysis engine (python|r)")
 
     @field_validator("protocol")
     @classmethod
@@ -42,6 +43,7 @@ class AnalysisRequest(BaseModel):
     # Optional overrides
     method_override: Optional[str] = Field(None, description="Override auto-selected statistical method")
     is_paired: bool = Field(default=False, description="Whether data is paired")
+    engine: Optional[str] = Field(None, description="Analysis engine (python|r)")
     
     @field_validator("features")
     @classmethod
@@ -57,7 +59,8 @@ class StatMethod(BaseModel):
     type: Literal[
         "parametric", "non-parametric", "correlation", "categorical", 
         "survival", "diagnostic", "assumption", "agreement", 
-        "reliability", "dimension_reduction", "clustering"
+        "reliability", "dimension_reduction", "clustering",
+        "bayesian", "time_series"
     ]
     min_groups: int = 1
     max_groups: int = 100
@@ -65,6 +68,9 @@ class StatMethod(BaseModel):
 
 class AnalysisResult(BaseModel):
     method: StatMethod
+    # Compatibility fields for AnalysisResultV2 contract on legacy endpoints.
+    method_id: Optional[str] = None
+    engine: Literal["python", "r"] = "python"
     p_value: Optional[float] = None
     effect_size: Optional[float] = None
     effect_size_name: Optional[str] = None  # Cohen's d, r, etc.
@@ -78,8 +84,10 @@ class AnalysisResult(BaseModel):
     # FDR / Correction
     adjusted_p_value: Optional[float] = None
     significant_adj: Optional[bool] = None
-    
-    warnings: List[str] = []
+
+    diagnostics: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+    plots: List[Dict[str, Any]] = Field(default_factory=list)
     
     # Regression specific
     r_squared: Optional[float] = None
@@ -139,11 +147,21 @@ class BatchAnalysisResponse(BaseModel):
 # API v2 Schemas: Advanced Statistical Methods
 # ============================================================
 
+class AnalysisResultV2(BaseModel):
+    method_id: str
+    engine: Literal["python", "r"] = "python"
+    stat_value: Optional[float] = None
+    p_value: Optional[float] = None
+    effect_size: Optional[float] = None
+    diagnostics: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+    plots: List[Dict[str, Any]] = Field(default_factory=list)
+
 class ClusteredCorrelationRequest(BaseModel):
     """Request schema for clustered correlation analysis (jYS-style)."""
     dataset_id: str = Field(..., min_length=1, description="Unique identifier for the dataset")
     variables: List[str] = Field(..., min_length=2, description="Variables to include in correlation matrix (at least 2)")
-    method: Literal["pearson", "spearman"] = Field(default="pearson", description="Correlation method")
+    method: Literal["pearson", "spearman", "kendall"] = Field(default="pearson", description="Correlation method")
     linkage_method: Literal["ward", "complete", "average", "single"] = Field(default="ward", description="Hierarchical clustering linkage")
     n_clusters: Optional[int] = Field(None, ge=2, description="Number of clusters (auto-detect if None)")
     distance_threshold: Optional[float] = Field(None, gt=0, description="Distance threshold for clustering (alternative to n_clusters)")

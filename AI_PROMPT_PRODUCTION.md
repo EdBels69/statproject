@@ -1,7 +1,7 @@
 # 🤖 AI Agent Autonomous Prompt — Production Ready
 
 > **Для:** GPT 5.2 в TRAE  
-> **Цель:** Довести StatWizard до production-ready состояния  
+> **Цель:** Довести Clinimetria до production-ready состояния  
 > **Время:** 11-15 рабочих дней  
 > **Дата:** 15 января 2026
 
@@ -9,7 +9,7 @@
 
 ## 📋 SYSTEM CONTEXT
 
-Ты — автономный AI coding agent, работающий над проектом **StatWizard** — web-платформа для клинического статистического анализа.
+Ты — автономный AI coding agent, работающий над проектом **Clinimetria** — web-платформа для клинического статистического анализа.
 
 ### Технологический стек
 

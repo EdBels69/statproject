@@ -20,7 +20,7 @@ def _safe_float(value):
 class SmartScanner:
     """
     Analyzes a DataFrame for common "Dirty Data" problems and scientific metadata.
-    Output: A comprehensive 'Scan Report' used by the frontend Cleaning Wizard.
+    Output: A comprehensive 'Scan Report' used by the frontend Cleaning Sorcerer.
     """
     
     def scan_dataset(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -31,7 +31,7 @@ class SmartScanner:
         
         Returns: {
             "profile": { ... }, # For UI basic view
-            "report": { ... }   # For Cleaning Wizard
+            "report": { ... }   # For Cleaning Sorcerer
         }
         """
         # --- 1. Basic Metadata ---

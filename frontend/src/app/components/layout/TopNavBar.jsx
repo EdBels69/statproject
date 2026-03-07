@@ -1,43 +1,9 @@
-import React, { useMemo } from 'react';
-import { Link, matchPath, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import ResearchFlowNav from '../ResearchFlowNav';
 
 export default function TopNavBar() {
     const location = useLocation();
-    const pathname = location.pathname;
-
-    const datasetId = useMemo(() => {
-        const patterns = [
-            '/prep/:id',
-            '/prepare/:id',
-            '/profile/:id',
-            '/analyze/:id',
-            '/results/:id',
-            '/graphs/:id',
-            '/report/:id',
-            '/design/:id',
-            '/tests/:id',
-            '/ai/:id',
-            '/protocol/:id',
-        ];
-
-        for (const pattern of patterns) {
-            const hit = matchPath({ path: pattern, end: false }, pathname);
-            if (hit?.params?.id) return hit.params.id;
-        }
-        return null;
-    }, [pathname]);
-
-    const activeFlowStep = useMemo(() => {
-        if (pathname.startsWith('/prep/') || pathname.startsWith('/profile/')) return 'variables';
-        if (pathname.startsWith('/prepare/')) return 'data';
-        if (pathname.startsWith('/design') || pathname.startsWith('/tests') || pathname.startsWith('/ai') || pathname.startsWith('/protocol')) return 'design';
-        if (pathname.startsWith('/analyze/')) return 'results';
-        if (pathname.startsWith('/results/')) return 'results';
-        if (pathname.startsWith('/graphs/')) return 'graphs';
-        if (pathname.startsWith('/report/')) return 'report';
-        return 'data';
-    }, [pathname]);
 
     const isActive = (path) => {
         if (path === '/') return location.pathname === '/';
@@ -45,37 +11,34 @@ export default function TopNavBar() {
     };
 
     const navItems = [
-        { path: '/tests', label: 'Тесты' },
-        { path: '/design', label: 'Конструктор' },
         { path: '/calculator', label: 'Выборка' },
         { path: '/wiki', label: 'Вики' },
-        { path: '/ai', label: 'ИИ' },
-        { path: '/settings', label: 'Настройки' },
+        { path: '/copilot', label: '🤖 Copilot' },
     ];
 
     return (
         <nav className="fixed top-0 left-0 right-0 h-14 bg-[color:var(--white)] border-b border-[color:var(--border-color)] z-10">
             <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6">
                 <Link to="/" className="text-xl font-bold text-[color:var(--text-primary)]">
-                    StatWizard
+                    Clinimetria
                 </Link>
                 <div className="flex items-center gap-6">
-                    <ResearchFlowNav
-                        variant="topnav"
-                        active={activeFlowStep}
-                        datasetId={datasetId}
-                        topLabel="Данные"
-                        highlight={isActive('/datasets') || isActive('/upload')}
-                        className=""
-                        showNextButton={false}
-                    />
+                    <Link
+                        to="/datasets"
+                        className={`text-sm font-semibold ${isActive('/datasets') || isActive('/upload') || isActive('/prep')
+                            ? 'text-[color:var(--accent)]'
+                            : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
+                            }`}
+                    >
+                        Данные
+                    </Link>
                     {navItems.map(item => (
                         <Link
                             key={item.path}
                             to={item.path}
                             className={`text-sm font-semibold ${isActive(item.path)
-                                    ? 'text-[color:var(--accent)]'
-                                    : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
+                                ? 'text-[color:var(--accent)]'
+                                : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
                                 }`}
                         >
                             {item.label}

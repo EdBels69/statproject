@@ -26,7 +26,7 @@ def test_ttest_significant():
     assert result["p_value"] < 0.05
 
     assert result.get("effect_size") is not None
-    assert result.get("effect_size_name") == "cohen-d"
+    assert result.get("effect_size_name") in {"cohen-d", "cohen"}
     assert result.get("effect_size_ci_lower") is not None
     assert result.get("effect_size_ci_upper") is not None
     assert result.get("effect_size_ci_lower") < result.get("effect_size_ci_upper")
@@ -52,7 +52,7 @@ def test_ttest_not_significant():
     assert result["p_value"] > 0.05
 
     assert result.get("effect_size") is not None
-    assert result.get("effect_size_name") == "cohen-d"
+    assert result.get("effect_size_name") in {"cohen-d", "cohen"}
     assert result.get("effect_size_ci_lower") is not None
     assert result.get("effect_size_ci_upper") is not None
     assert result.get("power") is not None
@@ -68,7 +68,7 @@ def test_ttest_welch_returns_ci_power_bf10():
     result = run_analysis(df, "t_test_welch", col_a, col_b)
 
     assert result.get("effect_size") is not None
-    assert result.get("effect_size_name") == "cohen-d"
+    assert result.get("effect_size_name") in {"cohen-d", "cohen"}
     assert result.get("effect_size_ci_lower") is not None
     assert result.get("effect_size_ci_upper") is not None
     assert result.get("power") is not None

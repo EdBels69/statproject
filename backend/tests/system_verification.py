@@ -49,8 +49,8 @@ def test_1_dataset_management(dataset_id):
     assert len(data["columns"]) == 6
     assert len(data["data"]) == 9
 
-def test_2_wizard_workflow(dataset_id):
-    """Verifies Wizard Logic."""
+def test_2_sorcerer_workflow(dataset_id):
+    """Verifies Sorcerer Logic."""
     payload = {
         "dataset_id": dataset_id,
         "goal": "compare_groups",
@@ -239,8 +239,8 @@ if __name__ == "__main__":
         did = setup_dataset()
         print("1. Dataset Management: PASS")
         test_1_dataset_management(did)
-        print("2. Wizard Workflow: PASS")
-        test_2_wizard_workflow(did)
+        print("2. Sorcerer Workflow: PASS")
+        test_2_sorcerer_workflow(did)
         print("3. Analysis Engines: PASS")
         test_3_analysis_engines(did)
         print("4. Contingency Analysis: PASS")

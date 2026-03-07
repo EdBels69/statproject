@@ -1,0 +1,9 @@
+{
+  "action": "mice_imputation",
+  "columns": [
+    "Value",
+    "Other"
+  ],
+  "max_iter": 5,
+  "n_imputations": 2
+}

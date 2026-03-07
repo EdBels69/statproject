@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback, useRef, useState } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
+import Fuse from 'fuse.js';
 import {
     MagnifyingGlassIcon,
     FunnelIcon,
@@ -80,6 +81,7 @@ export default function VariableWorkspace({
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState(null); // null = all
     const [roleFilter, setRoleFilter] = useState('all');
+    const [missingFilter, setMissingFilter] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [sortKey, setSortKey] = useState('name');
     const [sortDir, setSortDir] = useState('asc');
@@ -123,6 +125,14 @@ export default function VariableWorkspace({
             });
         }
 
+        if (missingFilter) {
+            result = result.filter((col) => {
+                const stats = columnStatsByName?.[col.name];
+                const count = stats?.missing_count ?? col.missing_count;
+                return typeof count === 'number' && count > 0;
+            });
+        }
+
         const dir = sortDir === 'desc' ? -1 : 1;
         const typeOrder = { numeric: 0, categorical: 1, datetime: 2, text: 3 };
         const roleOrder = { target: 0, group: 1, covariate: 2, unused: 3 };
@@ -144,7 +154,7 @@ export default function VariableWorkspace({
 
             return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) * dir;
         });
-    }, [processedColumns, typeFilter, search, roleFilter, roleByName, sortKey, sortDir]);
+    }, [processedColumns, typeFilter, search, roleFilter, roleByName, sortKey, sortDir, columnStatsByName, missingFilter]);
 
     const safeFocusedIndex = filteredColumns.length > 0
         ? Math.max(0, Math.min(focusedIndex, filteredColumns.length - 1))
@@ -250,7 +260,7 @@ export default function VariableWorkspace({
         if (!name) return;
         setPreviewName(name);
         setDraggingName(name);
-        e.dataTransfer.setData('application/x-statwizard-variable', name);
+        e.dataTransfer.setData('application/x-clinimetria-variable', name);
         e.dataTransfer.setData('variable', name);
         e.dataTransfer.setData('text/plain', name);
         e.dataTransfer.effectAllowed = 'move';
@@ -263,7 +273,7 @@ export default function VariableWorkspace({
 
     const handleDrop = (e, roleKey) => {
         e.preventDefault();
-        const name = e.dataTransfer.getData('application/x-statwizard-variable')
+        const name = e.dataTransfer.getData('application/x-clinimetria-variable')
             || e.dataTransfer.getData('variable')
             || e.dataTransfer.getData('text/plain');
         assignRole(roleKey, name);
@@ -612,6 +622,19 @@ export default function VariableWorkspace({
                                 {opt.label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => {
+                                setMissingFilter(!missingFilter);
+                                setFocusedIndex(0);
+                            }}
+                            className={`px-2 py-1 text-xs rounded-[2px] border transition-colors ${missingFilter
+                                ? 'bg-[color:var(--error)] border-[color:var(--error)] text-[color:var(--white)]'
+                                : 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]'
+                                }`}
+                            type="button"
+                        >
+                            С пропусками
+                        </button>
                     </div>
                 )}
             </div>

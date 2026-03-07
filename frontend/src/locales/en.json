@@ -166,6 +166,7 @@
   "bic": "BIC",
   "beta": "β",
   "effect_size": "Effect size",
+  "interpretation": "Interpretation",
   "confidence_interval": "Confidence interval",
   "power": "Power",
   "bf10": "Bayes factor (BF10)",
@@ -742,5 +743,12 @@
   "test": "Test",
   "mass_dynamics_title": "Mass Dynamics",
   "export_word": "Word",
-  "export_failed_status": "Export error: {{status}}"
+  "export_failed_status": "Export error: {{status}}",
+  "effect_size_interpretation": {
+    "trivial": "trivial",
+    "small": "small",
+    "medium": "medium",
+    "large": "large",
+    "very_large": "very large"
+  }
 }

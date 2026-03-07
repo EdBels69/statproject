@@ -12,7 +12,7 @@ export default function Settings() {
     ];
     const [alpha, setAlpha] = useState(() => {
         try {
-            const savedAlpha = typeof window !== 'undefined' ? localStorage.getItem('statwizard_alpha') : null;
+            const savedAlpha = typeof window !== 'undefined' ? localStorage.getItem('clinimetria_alpha') : null;
             const parsed = savedAlpha ? Number.parseFloat(savedAlpha) : Number.NaN;
             return Number.isFinite(parsed) ? parsed : 0.05;
         } catch {
@@ -23,7 +23,7 @@ export default function Settings() {
 
     const handleAlphaChange = (value) => {
         setAlpha(value);
-        localStorage.setItem('statwizard_alpha', value.toString());
+        localStorage.setItem('clinimetria_alpha', value.toString());
         setShowToast(true);
         setTimeout(() => setShowToast(false), 2000);
     };

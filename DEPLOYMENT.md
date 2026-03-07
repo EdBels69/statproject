@@ -1,5 +1,7 @@
 # 🚀 Deployment Guide
 
+For Windows 11 deployment, use [DEPLOYMENT_WIN11.md](DEPLOYMENT_WIN11.md).
+
 ## 📋 Prerequisites
 
 - Docker (>= 20.10)

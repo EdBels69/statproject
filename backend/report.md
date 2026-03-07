@@ -324,7 +324,7 @@ results = await run_in_threadpool(run_tests_async)
 
 **Что сделано:**
 - Удалён дублирующий компонент `AnalysisDesign.jsx` из `/frontend/src/app/components/`.
-- Роут `/wizard` переключён на страницу проектирования анализа.
+- Роут `/sorcerer` переключён на страницу проектирования анализа.
 
 **Файлы:**
 - `/frontend/src/App.jsx`
@@ -777,7 +777,7 @@ function App() {
             <Route path="/datasets" element={<DatasetList />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/analyze/:id" element={<Analyze />} />
-            <Route path="/wizard" element={<NewWizard />} />
+            <Route path="/sorcerer" element={<NewSorcerer />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </MainLayout>
@@ -817,10 +817,10 @@ function App() {
         <h3 className="font-semibold text-gray-900 mb-2">Select Analysis</h3>
         <p className="text-sm text-gray-600 mb-4">Choose from 20+ statistical tests powered by AI recommendations</p>
         <Link 
-          to="/wizard"
+          to="/sorcerer"
           className="text-purple-600 text-sm font-medium hover:underline"
         >
-          Start wizard &rarr;
+          Start sorcerer &rarr;
         </Link>
       </div>
 
@@ -1062,7 +1062,7 @@ def test_all_methods():
 ## Features
 - **20+ Statistical Methods**: Including t-tests, ANOVA, non-parametric tests, survival analysis, regression, and ROC analysis
 - **AI-Powered Protocol Design**: Automated test selection based on data characteristics
-- **Interactive Wizard**: Step-by-step analysis workflow with visual feedback
+- **Interactive Sorcerer**: Step-by-step analysis workflow with visual feedback
 - **Alpha Parameter Selection**: Customize significance level (0.01, 0.05, 0.10)
 - **Quick Start Guide**: Onboarding for new users
 - **Error Boundary**: Graceful error handling throughout the application
@@ -1071,7 +1071,7 @@ def test_all_methods():
 
 ## Quick Start
 1. **Upload Data**: Navigate to the Upload page and import your CSV or Excel file
-2. **Select Analysis**: Use the Wizard to choose your analysis goal and variables
+2. **Select Analysis**: Use the Sorcerer to choose your analysis goal and variables
 3. **Run Analysis**: Execute the protocol and view results with AI-generated interpretations
 4. **Export Report**: Download the HTML report for documentation
 
@@ -2210,9 +2210,9 @@ statproject_frontend_1   Up                  0.0.0.0:3000->3000/tcp
 **Изменения:** Удалён дубликат компонента, который конфликтовал по имени с page-версией.
 **Причина:** Исключить неоднозначность импортов и «случайные» рендеры не той версии компонента.
 
-#### 2) Роутинг: перевод старого Wizard на новый Analysis Design
+#### 2) Роутинг: перевод старого Sorcerer на новый Analysis Design
 **Файл:** `/frontend/src/App.jsx`
-**Изменения:** Роут `/wizard` переведён на `/design` (и/или `/design/:id`) с использованием `AnalysisDesign`.
+**Изменения:** Роут `/sorcerer` переведён на `/design` (и/или `/design/:id`) с использованием `AnalysisDesign`.
 **Причина:** Свести продуктовый флоу к одному экрану проектирования анализа (JAMOVI-подобная логика).
 
 #### 3) AnalysisDesign: поддержка роут-параметра и выбор датасета
@@ -2247,7 +2247,7 @@ statproject_frontend_1   Up                  0.0.0.0:3000->3000/tcp
 - `/frontend/eslint.config.js` (react-refresh правило)
 - `/frontend/src/main.jsx`, `/frontend/src/app/components/ErrorBoundary.jsx`
 - `/frontend/src/app/components/VisualizePlot.jsx`, `/frontend/src/app/components/ClusteredHeatmap.jsx`, `/frontend/src/app/components/AnalyticsChart.jsx`
-- `/frontend/src/app/components/StepEditor.jsx`, `/frontend/src/app/pages/Settings.jsx`, `/frontend/src/app/pages/ProtocolWizard.jsx`, `/frontend/src/app/pages/Profile.jsx`, `/frontend/src/app/pages/NewWizard.jsx`, `/frontend/src/app/pages/steps/StepData.jsx`
+- `/frontend/src/app/components/StepEditor.jsx`, `/frontend/src/app/pages/Settings.jsx`, `/frontend/src/app/pages/ProtocolSorcerer.jsx`, `/frontend/src/app/pages/Profile.jsx`, `/frontend/src/app/pages/NewSorcerer.jsx`, `/frontend/src/app/pages/steps/StepData.jsx`
 **Изменения:** Убраны неиспользуемые импорты/переменные, исправлены зависимости хуков, устранены проблемы сборки и линтера.
 **Причина:** Без «зелёного» билда невозможно безопасно добавлять UI-фичи и визуализации.
 
@@ -2279,7 +2279,7 @@ statproject_frontend_1   Up                  0.0.0.0:3000->3000/tcp
 Реализована критическая функциональность обработки пропущенных значений в соответствии с review.md (P0 gap):
 - Backend расширён новыми методами импутации (median, LOCF, NOCB, mode)
 - SmartScanner генерирует отчёты по пропущенным значениям
-- Frontend UI интегрирован с импутационными контролами в CleaningWizardAlert
+- Frontend UI интегрирован с импутационными контролами в CleaningSorcererAlert
 - Разрешены ошибки линтера путём замены TS API файла на JS
 
 ### Выполненные изменения
@@ -2374,12 +2374,12 @@ def scan_dataset(self, df: pd.DataFrame) -> Dict[str, Any]:
 
 ---
 
-#### 3) Frontend: CleaningWizardAlert импутационные контролы
+#### 3) Frontend: CleaningSorcererAlert импутационные контролы
 
 **Файл:** `/frontend/src/app/pages/steps/StepData.jsx`
 **Изменения:**
 ```jsx
-const CleaningWizardAlert = ({ report, onFix }) => {
+const CleaningSorcererAlert = ({ report, onFix }) => {
     if (!report) return null;
     const issues = Array.isArray(report.issues) ? report.issues : [];
     const hasIssues = issues.length > 0;
@@ -2472,7 +2472,7 @@ def ingest_csv(file_path: str, dataset_id: str) -> pd.DataFrame:
 |-----------|---------------------|
 | Backend endpoints extended | 1 (clean_column) |
 | Backend scanner reports | 1 (missing_report) |
-| Frontend UI controls | 1 (CleaningWizardAlert) |
+| Frontend UI controls | 1 (CleaningSorcererAlert) |
 | Frontend API refactoring | 1 (TS → JS) |
 | **Итого Phase 4** | **4 файла, 4 изменения** |
 

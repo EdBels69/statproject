@@ -1,6 +1,6 @@
-# 🔧 StatWizard — Refactoring Plan to Usable State
+# 🔧 Clinimetria — Refactoring Plan to Usable State
 
-> **Goal:** Transform StatWizard from "working backend + broken UX" to "fully usable app"
+> **Goal:** Transform Clinimetria from "working backend + broken UX" to "fully usable app"
 
 ---
 
@@ -45,7 +45,7 @@
 
 - [MODIFY] [TestSelectionPanel.jsx](file:///Users/eduardbelskih/Проекты Github/statproject/frontend/src/app/components/analysis/TestSelectionPanel.jsx) ✅ Done
 - [MODIFY] [TestConfigModal.jsx](file:///Users/eduardbelskih/Проекты Github/statproject/frontend/src/app/components/TestConfigModal.jsx)
-- [MODIFY] [ProtocolWizard.jsx](file:///Users/eduardbelskih/Проекты Github/statproject/frontend/src/app/pages/ProtocolWizard.jsx)
+- [MODIFY] [ProtocolSorcerer.jsx](file:///Users/eduardbelskih/Проекты Github/statproject/frontend/src/app/pages/ProtocolSorcerer.jsx)
 
 **Changes:**
 
@@ -245,7 +245,7 @@ cd backend && python3 -m pytest tests/ -v
 
 ## 📋 Immediate Next Steps
 
-1. **Fix remaining method ID mismatches** in TestConfigModal and ProtocolWizard
+1. **Fix remaining method ID mismatches** in TestConfigModal and ProtocolSorcerer
 2. **Add search input** to variable dropdowns (30 min)
 3. **Create VariableWorkspace** component with search + filter (2-3 hours)
 4. **E2E test** full flow after each change

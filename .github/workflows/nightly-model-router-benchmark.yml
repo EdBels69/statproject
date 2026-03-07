@@ -1,0 +1,85 @@
+name: Nightly Model Router Benchmark
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      min_runs:
+        description: "Minimum benchmark runs required for coverage gate"
+        required: false
+        default: "10"
+      strict_coverage:
+        description: "Fail job when runs_total < min_runs"
+        required: false
+        type: boolean
+        default: false
+      capture_run:
+        description: "Run live benchmark capture before snapshot (requires workspace datasets + API keys)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  benchmark-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies (capture mode)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.capture_run == 'true' }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+
+      - name: Capture live model-router benchmark run
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.capture_run == 'true' && (secrets.OPENROUTER_API_KEY != '' || secrets.GLM_API_KEY != '') }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          BENCHMARK_MIN_RUNS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.min_runs || '10' }}
+        run: |
+          python backend/scripts/run_model_router_benchmark_capture.py \
+            --workspace-dir workspace \
+            --analysis-mode focused \
+            --max-protocol-steps 1 \
+            --allow-empty \
+            --snapshot-output release/model_router_benchmark_report.json \
+            --snapshot-markdown release/model_router_benchmark_report.md \
+            --capture-output release/model_router_benchmark_capture_last.json \
+            --min-runs "${BENCHMARK_MIN_RUNS}" \
+            --pretty
+
+      - name: Build model-router benchmark snapshot
+        env:
+          BENCHMARK_MIN_RUNS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.min_runs || '10' }}
+          BENCHMARK_STRICT_COVERAGE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.strict_coverage || 'false' }}
+        run: |
+          STRICT_FLAG=""
+          if [ "${BENCHMARK_STRICT_COVERAGE}" = "true" ]; then
+            STRICT_FLAG="--strict-min-runs"
+          fi
+          python backend/scripts/benchmark_model_router.py \
+            --workspace-dir workspace \
+            --output release/model_router_benchmark_report.json \
+            --markdown-out release/model_router_benchmark_report.md \
+            --min-runs "${BENCHMARK_MIN_RUNS}" \
+            ${STRICT_FLAG} \
+            --pretty
+
+      - name: Upload benchmark snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-router-benchmark-report
+          path: |
+            release/model_router_benchmark_report.json
+            release/model_router_benchmark_report.md
+            release/model_router_benchmark_capture_last.json
+          if-no-files-found: error

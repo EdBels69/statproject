@@ -1,4 +1,4 @@
-# AI Agent Remaining Tasks — StatWizard
+# AI Agent Remaining Tasks — Clinimetria
 
 > **Дата:** 16 января 2026  
 > **Статус:** ~75% Phase 8 выполнено, осталось 5 конкретных задач

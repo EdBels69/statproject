@@ -26,8 +26,8 @@ We have successfully breached the "Architecture Hygiene" phase and initiated the
 *   **Frontend Safety:** Removed the catastrophic `window.onerror` DOM injection hack.
 
 ### Phase 2: Frontend Modernization (PARTIAL)
-*   **State Management:** Successfully introduced `Zustand` (`useProtocolWizardStore.js`).
-*   **De-Bloating:** Refactored `ProtocolWizard.jsx` to delegate state management to the store.
+*   **State Management:** Successfully introduced `Zustand` (`useProtocolSorcererStore.js`).
+*   **De-Bloating:** Refactored `ProtocolSorcerer.jsx` to delegate state management to the store.
     *   *Impact:* Component is now focused on *render logic*, not *state orchestration*.
     *   *Metric:* Removed 15+ `useState` hooks from the main component.
 
@@ -37,7 +37,7 @@ We have successfully breached the "Architecture Hygiene" phase and initiated the
 
 ### Phase 2: Component Encapsulation (NEXT)
 *   **Visualization Factory:** `ResultsViewer.jsx` still relies on "prop drilling" for rendering steps. Need to create a `VisualizationFactory` that autonomously decides how to render `hypothesis_test` vs `correlation`.
-*   **UI/UX Polish:** The `ApplyForm` inside `ProtocolWizard` is still a monolithic block of JSX. It needs to be broken down into `AnalysisConfigurationForm.jsx`.
+*   **UI/UX Polish:** The `ApplyForm` inside `ProtocolSorcerer` is still a monolithic block of JSX. It needs to be broken down into `AnalysisConfigurationForm.jsx`.
 
 ### Phase 3: The "Avant-Garde" Interface
 *   **Motion Design:** Integrate `framer-motion` for page transitions and result card reveals.

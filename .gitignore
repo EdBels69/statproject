@@ -41,8 +41,19 @@ yarn-error.log*
 # Project specific
 workspace/data/
 workspace/tasks/
+workspace/knowledge/
+workspace/datasets/????????-????-????-????-????????????/
+workspace/datasets/test_*/
 backend/temp_reports/
 backend/workspace/
 backend/output/
+backend/temp_design_test/
+backend/temp_protocol_test/
+backend/temp_workdoc_run/
 *.log
 backend_new.log
+_backups/
+frontend/test-results/
+docs/exports/
+docs/plan_quality_compare_*.json
+.pytest_cache/

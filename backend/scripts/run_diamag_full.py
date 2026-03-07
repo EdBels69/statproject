@@ -448,7 +448,7 @@ def _try_parse_json(text: str):
 def generate_ai_artifact_explanations(
     *,
     artifacts: List[Dict[str, Any]],
-    preferred_model: str = "glm-4.7",
+    preferred_model: str = "google/gemini-2.5-flash",
     chunk_size: int = 6,
 ) -> Dict[str, Dict[str, Any]]:
     if not artifacts:
@@ -500,7 +500,7 @@ def generate_ai_artifact_explanations(
 def generate_ai_rewrites(
     *,
     items: List[Dict[str, Any]],
-    preferred_model: str = "glm-4.7",
+    preferred_model: str = "google/gemini-2.5-flash",
     chunk_size: int = 8,
 ) -> Dict[str, str]:
     if not items:
@@ -598,7 +598,7 @@ def generate_ai_discussion_chunked(
     all_results: Dict[str, Any],
     active_vs_placebo: Dict[str, Any],
     responders: Dict[str, Any],
-    preferred_model: str = "glm-4.7",
+    preferred_model: str = "google/gemini-2.5-flash",
     chunk_size: int = 2,
 ) -> Optional[Dict[str, List[str]]]:
     endpoints_payload: List[Dict[str, Any]] = []

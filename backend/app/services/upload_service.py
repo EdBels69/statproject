@@ -13,6 +13,9 @@ from app.core.pipeline import PipelineManager
 from app.modules.data_normalizer import DataNormalizer
 from app.modules.parsers import parse_file
 from app.modules.smart_scanner import SmartScanner
+from app.modules.semantics import rebuild_and_save_semantics
+from app.modules.study_design import rebuild_and_save_study_design
+from app.modules.delta_log import append_delta_log
 from app.services.job_store import JobStore
 
 
@@ -23,6 +26,92 @@ def _normalize_auto_impute(value: Any) -> str:
     if s in {"mice", "iterative"}:
         return "mice"
     return "simple"
+
+
+def _run_quality_gate_ingest(
+    pipeline: PipelineManager,
+    *,
+    dataset_id: str,
+    raw_path: str,
+    original_filename: str,
+    header_row: Optional[int] = None,
+    sheet_name: Optional[str] = None,
+    outlier_policy: str = "flag",
+    missing_threshold: float = 0.7,
+) -> Dict[str, Any]:
+    if not hasattr(pipeline, "process_with_quality_gate"):
+        return {}
+    try:
+        result = pipeline.process_with_quality_gate(
+            dataset_id=dataset_id,
+            file_path=raw_path,
+            original_filename=original_filename,
+            header_row=header_row,
+            sheet_name=sheet_name,
+            outlier_policy=outlier_policy,
+            missing_threshold=missing_threshold,
+            persist=False,
+        )
+        return result if isinstance(result, dict) else {}
+    except Exception as e:
+        logger.warning("quality_gate_ingest_failed dataset=%s: %s", dataset_id, e)
+        return {
+            "quality_gate_applied": False,
+            "error": str(e),
+        }
+
+
+def _quality_gate_summary(result: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not isinstance(result, dict):
+        return {"applied": False}
+
+    report = result.get("quality_report")
+    report = report if isinstance(report, dict) else {}
+
+    issues = report.get("issues")
+    warnings = report.get("warnings")
+    if not isinstance(issues, list):
+        issues = []
+    if not isinstance(warnings, list):
+        warnings = []
+
+    summary: Dict[str, Any] = {
+        "applied": bool(result.get("quality_gate_applied")),
+        "is_ready": bool(report.get("is_ready")) if report.get("is_ready") is not None else None,
+        "overall_score": report.get("overall_score"),
+        "issues_count": int(len(issues)),
+        "warnings_count": int(len(warnings)),
+    }
+    error = result.get("error")
+    if isinstance(error, str) and error.strip():
+        summary["error"] = error
+    return summary
+
+
+def _persist_quality_gate_artifacts(
+    pipeline: PipelineManager,
+    *,
+    dataset_id: str,
+    result: Optional[Dict[str, Any]],
+) -> None:
+    if not isinstance(result, dict):
+        return
+
+    processed_dir = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed")
+    payload_map = {
+        "cleaning_plan": "cleaning_plan.json",
+        "data_contract": "data_contract.json",
+        "lineage": "data_lineage.json",
+    }
+    for key, filename in payload_map.items():
+        payload = result.get(key)
+        if not isinstance(payload, dict):
+            continue
+        path = os.path.join(processed_dir, filename)
+        try:
+            pipeline.write_json_atomic(path, payload, allow_nan=False)
+        except Exception as e:
+            logger.warning("quality_gate_artifact_write_failed dataset=%s artifact=%s err=%s", dataset_id, filename, e)
 
 
 def _auto_clean_and_impute(
@@ -187,16 +276,45 @@ async def ingest_saved_raw_to_parquet_job(
 
         job_store.update(job_id, status="running", stage="parsing", progress=10, message="parsing")
 
-        def parse_logic() -> pd.DataFrame:
-            df, used_header = parse_file(
-                raw_path,
-                header_row=header_row,
-                sheet_name=sheet_name,
-                original_filename=original_filename,
-            )
-            return df, used_header
+        quality_gate_result: Dict[str, Any] = {}
+        quality_gate_header: Optional[int] = None
+        quality_gate_df: Optional[pd.DataFrame] = None
 
-        df, used_header = await run_in_threadpool(parse_logic)
+        if hasattr(pipeline, "process_with_quality_gate"):
+            job_store.update(job_id, stage="quality_gate", progress=18, message="quality gate")
+
+            def quality_gate_logic() -> Dict[str, Any]:
+                return _run_quality_gate_ingest(
+                    pipeline,
+                    dataset_id=dataset_id,
+                    raw_path=raw_path,
+                    original_filename=original_filename,
+                    header_row=header_row,
+                    sheet_name=sheet_name,
+                )
+
+            quality_gate_result = await run_in_threadpool(quality_gate_logic)
+            quality_gate_df = quality_gate_result.get("dataframe")
+            if isinstance(quality_gate_df, pd.DataFrame):
+                try:
+                    quality_gate_header = int(quality_gate_result.get("header_row"))
+                except Exception:
+                    quality_gate_header = None
+
+        if isinstance(quality_gate_df, pd.DataFrame):
+            df = quality_gate_df
+            used_header = quality_gate_header if quality_gate_header is not None else int(header_row or 0)
+        else:
+            def parse_logic() -> pd.DataFrame:
+                df_local, used_header_local = parse_file(
+                    raw_path,
+                    header_row=header_row,
+                    sheet_name=sheet_name,
+                    original_filename=original_filename,
+                )
+                return df_local, used_header_local
+
+            df, used_header = await run_in_threadpool(parse_logic)
 
         job_store.update(job_id, stage="normalizing", progress=30, message="normalizing", extra={"header_row": used_header})
         normalizer = DataNormalizer()
@@ -223,11 +341,26 @@ async def ingest_saved_raw_to_parquet_job(
             df = await run_in_threadpool(scanner.optimize_dtypes, df)
 
         job_store.update(job_id, stage="parquet", progress=70, message="writing parquet")
+        quality_gate_meta = _quality_gate_summary(quality_gate_result)
+        cleaning_log_payload: Dict[str, Any] = {
+            "action": "ingest_pipeline",
+            "header_row": used_header,
+            "normalization": normalization,
+            "auto": auto_stats,
+            "quality_gate": quality_gate_meta,
+        }
+        quality_gate_log = quality_gate_result.get("cleaning_log")
+        if isinstance(quality_gate_log, dict):
+            cleaning_log_payload["quality_gate_log"] = quality_gate_log
+        structure_log = quality_gate_result.get("structure_log")
+        if isinstance(structure_log, dict):
+            cleaning_log_payload["structure_log"] = structure_log
+
         parquet_path = await run_in_threadpool(
             lambda: pipeline.create_processed_snapshot(
                 dataset_id,
                 df,
-                cleaning_log={"header_row": used_header, "normalization": normalization, "auto": auto_stats},
+                cleaning_log=cleaning_log_payload,
             )
         )
 
@@ -241,6 +374,26 @@ async def ingest_saved_raw_to_parquet_job(
 
         scan_path = os.path.join(ds_dir, "processed", "scan_report.json")
         await run_in_threadpool(lambda: pipeline.write_json_atomic(scan_path, scan_report, allow_nan=False))
+        await run_in_threadpool(
+            lambda: _persist_quality_gate_artifacts(
+                pipeline,
+                dataset_id=dataset_id,
+                result=quality_gate_result,
+            )
+        )
+
+        rebuild_and_save_semantics(
+            dataset_id=dataset_id,
+            base_dir=data_dir,
+            scan_report=scan_report,
+            source="auto",
+        )
+        rebuild_and_save_study_design(
+            dataset_id=dataset_id,
+            base_dir=data_dir,
+            scan_report=scan_report,
+            source="auto",
+        )
 
         meta_path = os.path.join(ds_dir, "source", "meta.json")
         try:
@@ -255,6 +408,20 @@ async def ingest_saved_raw_to_parquet_job(
             "parquet_path": parquet_path,
             "scan_report_path": scan_path,
         }
+
+        append_delta_log(
+            base_dir=data_dir,
+            dataset_id=dataset_id,
+            action="ingest",
+            actor="auto",
+            details={
+                "header_row": used_header,
+                "sheet_name": sheet_name,
+                "normalization": normalization,
+                "auto": auto_stats,
+                "quality_gate": quality_gate_meta,
+            },
+        )
         job_store.complete(job_id, artifacts=artifacts)
         return {
             "status": "completed",

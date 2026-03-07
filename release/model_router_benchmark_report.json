@@ -1,0 +1,179 @@
+{
+  "schema": "clinimetria.model_router_benchmark_report",
+  "version": 1,
+  "generated_at": "2026-03-01T20:18:14.855115Z",
+  "workspace_dir": "/Users/eduardbelskih/Проекты Github/statproject/workspace",
+  "summary": {
+    "runs_total": 3,
+    "variants_total": 15,
+    "distinct_variants": 5,
+    "status_counts": {
+      "ok": 15
+    },
+    "profiles": {
+      "publication": 0,
+      "focused": 3,
+      "exploratory": 0
+    },
+    "unique_recommended_variants": 3
+  },
+  "winners_by_profile": {
+    "publication": {
+      "variant_id": null,
+      "count": 0,
+      "share": 0.0,
+      "total_runs": 0
+    },
+    "focused": {
+      "variant_id": "routerai_combo",
+      "count": 1,
+      "share": 0.3333,
+      "total_runs": 3
+    },
+    "exploratory": {
+      "variant_id": null,
+      "count": 0,
+      "share": 0.0,
+      "total_runs": 0
+    }
+  },
+  "variants": [
+    {
+      "id": "minimax_single",
+      "label": "MiniMax M2.5 (single)",
+      "runs": 3,
+      "ok_runs": 3,
+      "success_rate": 1.0,
+      "recommended_count": 1,
+      "recommendation_share": 0.3333,
+      "fallback_rate": 0.0,
+      "mean_quality_score": 67.96333333333334,
+      "mean_auto_score": 0.6100636666666667,
+      "mean_elapsed_ms": 47310.333333333336,
+      "mean_token_total": 23241.666666666668,
+      "mean_attempt_count": 1.6666666666666667,
+      "profiles": [
+        "focused"
+      ],
+      "analysis_modes": [
+        "focused"
+      ]
+    },
+    {
+      "id": "routerai_combo",
+      "label": "Combo: M2.5 + GLM-5 + Qwen 3.5",
+      "runs": 3,
+      "ok_runs": 3,
+      "success_rate": 1.0,
+      "recommended_count": 1,
+      "recommendation_share": 0.3333,
+      "fallback_rate": 0.0,
+      "mean_quality_score": 61.89666666666667,
+      "mean_auto_score": 0.5959720000000001,
+      "mean_elapsed_ms": 28041.0,
+      "mean_token_total": 23255.666666666668,
+      "mean_attempt_count": 1.0,
+      "profiles": [
+        "focused"
+      ],
+      "analysis_modes": [
+        "focused"
+      ]
+    },
+    {
+      "id": "gemini_single",
+      "label": "Gemini Flash 2.5 (single)",
+      "runs": 3,
+      "ok_runs": 3,
+      "success_rate": 1.0,
+      "recommended_count": 1,
+      "recommendation_share": 0.3333,
+      "fallback_rate": 0.0,
+      "mean_quality_score": 60.48666666666667,
+      "mean_auto_score": 0.5928193333333334,
+      "mean_elapsed_ms": 14346.333333333334,
+      "mean_token_total": 26167.333333333332,
+      "mean_attempt_count": 1.0,
+      "profiles": [
+        "focused"
+      ],
+      "analysis_modes": [
+        "focused"
+      ]
+    },
+    {
+      "id": "qwen_single",
+      "label": "Qwen 3.5 397B-A17B (single)",
+      "runs": 3,
+      "ok_runs": 3,
+      "success_rate": 1.0,
+      "recommended_count": 0,
+      "recommendation_share": 0.0,
+      "fallback_rate": 0.0,
+      "mean_quality_score": 60.586666666666666,
+      "mean_auto_score": 0.5864626666666667,
+      "mean_elapsed_ms": 29170.0,
+      "mean_token_total": 26494.666666666668,
+      "mean_attempt_count": 1.0,
+      "profiles": [
+        "focused"
+      ],
+      "analysis_modes": [
+        "focused"
+      ]
+    },
+    {
+      "id": "glm5_single",
+      "label": "GLM-5 (single)",
+      "runs": 3,
+      "ok_runs": 3,
+      "success_rate": 1.0,
+      "recommended_count": 0,
+      "recommendation_share": 0.0,
+      "fallback_rate": 0.6667,
+      "mean_quality_score": 59.166666666666664,
+      "mean_auto_score": 0.372164,
+      "mean_elapsed_ms": 81454.33333333333,
+      "mean_token_total": 25384.333333333332,
+      "mean_attempt_count": 3.3333333333333335,
+      "profiles": [
+        "focused"
+      ],
+      "analysis_modes": [
+        "focused"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "dataset_id": "26c1930f-62c9-4d2e-bb72-fe7a5f67d19c",
+      "run_id": "run_20260301_200423_254021_8727f591",
+      "artifact_path": "/Users/eduardbelskih/Проекты Github/statproject/workspace/datasets/26c1930f-62c9-4d2e-bb72-fe7a5f67d19c/analysis/run_20260301_200423_254021_8727f591/artifacts/llm_benchmark.json",
+      "validation_profile": "focused",
+      "analysis_mode": "focused",
+      "expected_step_count": 9,
+      "recommended_id": "minimax_single",
+      "variant_count": 5
+    },
+    {
+      "dataset_id": "26c1930f-62c9-4d2e-bb72-fe7a5f67d19c",
+      "run_id": "run_20260301_201145_294371_61667d9a",
+      "artifact_path": "/Users/eduardbelskih/Проекты Github/statproject/workspace/datasets/26c1930f-62c9-4d2e-bb72-fe7a5f67d19c/analysis/run_20260301_201145_294371_61667d9a/artifacts/llm_benchmark.json",
+      "validation_profile": "focused",
+      "analysis_mode": "focused",
+      "expected_step_count": 10,
+      "recommended_id": "gemini_single",
+      "variant_count": 5
+    },
+    {
+      "dataset_id": "26c1930f-62c9-4d2e-bb72-fe7a5f67d19c",
+      "run_id": "run_20260301_201810_814249_4e35eb69",
+      "artifact_path": "/Users/eduardbelskih/Проекты Github/statproject/workspace/datasets/26c1930f-62c9-4d2e-bb72-fe7a5f67d19c/analysis/run_20260301_201810_814249_4e35eb69/artifacts/llm_benchmark.json",
+      "validation_profile": "focused",
+      "analysis_mode": "focused",
+      "expected_step_count": 9,
+      "recommended_id": "routerai_combo",
+      "variant_count": 5
+    }
+  ]
+}

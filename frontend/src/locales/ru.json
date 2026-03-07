@@ -190,6 +190,7 @@
   "bic": "BIC",
   "beta": "β",
   "effect_size": "Размер эффекта",
+  "interpretation": "Интерпретация",
   "confidence_interval": "Доверительный интервал",
   "power": "Мощность",
   "bf10": "Фактор Байеса (BF10)",
@@ -792,5 +793,12 @@
   "ai_ultrathink_desc": "Анализирую размерность и генерирую массивный протокол...",
   "ai_powered_badge": "AI Powered",
   "export_word": "Word",
-  "export_failed_status": "Ошибка экспорта: {{status}}"
+  "export_failed_status": "Ошибка экспорта: {{status}}",
+  "effect_size_interpretation": {
+    "trivial": "пренебрежимо малый",
+    "small": "малый",
+    "medium": "средний",
+    "large": "большой",
+    "very_large": "очень большой"
+  }
 }

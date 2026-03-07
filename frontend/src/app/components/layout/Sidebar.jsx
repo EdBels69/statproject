@@ -7,7 +7,8 @@ import {
     ChartBarIcon,
     Cog6ToothIcon,
     SparklesIcon,
-    LanguageIcon
+    LanguageIcon,
+    DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import LanguageSelector from '../LanguageSelector';
 
@@ -38,7 +39,7 @@ export default function Sidebar() {
                 <div className="flex items-center space-x-2 text-[color:var(--accent)]">
                     <SparklesIcon className="w-6 h-6" />
                     <span className="text-lg font-bold tracking-tight text-[color:var(--text-primary)]">
-                        StatWizard
+                        Clinimetria
                     </span>
                 </div>
             </div>
@@ -48,8 +49,9 @@ export default function Sidebar() {
                     Анализ
                 </div>
                 <NavigationItem to="/" icon={HomeIcon} label="Главная" />
-                <NavigationItem to="/wizard" icon={BeakerIcon} label="Новый анализ" />
+                <NavigationItem to="/sorcerer" icon={BeakerIcon} label="Новый анализ" />
                 <NavigationItem to="/datasets" icon={FolderIcon} label="Файлы данных" />
+                <NavigationItem to="/prompt-builder" icon={DocumentTextIcon} label="Конструктор промпта" />
 
                 <div className="px-4 mt-8 mb-2 text-xs font-semibold text-[color:var(--text-muted)] uppercase tracking-wider">
                     Отчёты

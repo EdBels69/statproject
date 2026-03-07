@@ -1,6 +1,6 @@
 # 📖 README — AI Documentation Suite
 
-> **Навигация по AI-документам для StatWizard**  
+> **Навигация по AI-документам для Clinimetria**  
 > **Версия:** 1.0  
 > **Дата:** 15 января 2026
 
@@ -8,7 +8,7 @@
 
 ## 🎯 Что это?
 
-Comprehensive набор документов для автономной работы AI-агентов над проектом StatWizard.
+Comprehensive набор документов для автономной работы AI-агентов над проектом Clinimetria.
 
 **Цель:** Довести проект до production-ready состояния за 11-15 дней с помощью AI-агента в TRAE.
 
@@ -299,7 +299,7 @@ cat AI_PROMPT_PRODUCTION.md | pbcopy
 - ✅ PDF/DOCX export
 - ✅ E2E testing
 
-**RESULT:** Production-ready StatWizard!
+**RESULT:** Production-ready Clinimetria!
 
 ---
 
@@ -333,4 +333,4 @@ cat AI_PROMPT_PRODUCTION.md | pbcopy
 
 *Версия: 1.0*  
 *Создано: 15 января 2026*  
-*Для: StatWizard Production Ready*
+*Для: Clinimetria Production Ready*
