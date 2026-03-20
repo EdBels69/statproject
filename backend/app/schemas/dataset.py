@@ -26,13 +26,21 @@ class DatasetReparse(BaseModel):
     sheet_name: Optional[str] = None
 
 class ModificationAction(BaseModel):
-    type: str = Field(..., description="rename_col, drop_col, change_type, update_cell, drop_row")
+    type: str = Field(
+        ...,
+        description=(
+            "rename_col, drop_col, change_type, update_cell, drop_row, "
+            "split_column, recode_values, derive_column, bin_variable, string_clean"
+        ),
+    )
     # Args depend on type
     column: Optional[str] = None
     new_name: Optional[str] = None
-    new_type: Optional[str] = None # numeric, categorical, datetime, text
+    new_type: Optional[str] = None  # numeric, categorical, datetime, text
     row_index: Optional[int] = None
     value: Optional[Any] = None
+    # Extended config for wrangling actions
+    config: Optional[Dict[str, Any]] = None
 
 class DatasetModification(BaseModel):
     actions: List[ModificationAction]

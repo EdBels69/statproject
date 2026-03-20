@@ -6,7 +6,8 @@ import aiofiles
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 from app.schemas.dataset import (
     DatasetUpload,
@@ -31,6 +32,239 @@ pipeline = PipelineManager(DATA_DIR)
 
 def get_variable_mapping_path(dataset_id: str) -> str:
     return os.path.join(DATA_DIR, dataset_id, "processed", "variable_mapping.json")
+
+
+# ── Data Wrangling Helpers ────────────────────────────────────────────────────
+
+_WRANGLING_ACTIONS = frozenset(
+    {"split_column", "recode_values", "derive_column", "bin_variable", "string_clean"}
+)
+
+
+def _append_transform_log(
+    *,
+    dataset_id: str,
+    actions: List[Any],
+    rows_before: int,
+    cols_before: int,
+    rows_after: int,
+    cols_after: int,
+) -> None:
+    """Append wrangling-action records to processed/transform_log.json."""
+    wrangling = [a for a in actions if getattr(a, "type", None) in _WRANGLING_ACTIONS]
+    if not wrangling:
+        return
+
+    log_path = os.path.join(DATA_DIR, dataset_id, "processed", "transform_log.json")
+    entries: List[Dict[str, Any]] = []
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            if isinstance(existing, list):
+                entries = existing
+    except Exception:
+        entries = []
+
+    for a in wrangling:
+        entries.append(
+            {
+                "timestamp": datetime.utcnow().isoformat(),
+                "action": a.type,
+                "column": a.column,
+                "config": getattr(a, "config", None) or {},
+                "rows_before": rows_before,
+                "rows_after": rows_after,
+                "cols_before": cols_before,
+                "cols_after": cols_after,
+            }
+        )
+
+    try:
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False, indent=2, default=str)
+    except Exception:
+        pass  # transform_log is best-effort
+
+
+def _action_split_column(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
+    """
+    split_column: разбить значения колонки по разделителю.
+
+    config:
+        separator : str  — разделитель (default ",")
+        mode      : "rows" | "columns"
+        trim      : bool — убрать пробелы (default True)
+        prefix    : str  — префикс новых колонок (только mode=columns)
+    """
+    col = action.column
+    if not col or col not in df.columns:
+        raise ValueError(f"Колонка не найдена: {col}")
+
+    cfg = getattr(action, "config", None) or {}
+    sep = str(cfg.get("separator", ","))
+    mode = str(cfg.get("mode", "rows"))
+    trim = bool(cfg.get("trim", True))
+    prefix = str(cfg.get("prefix", f"{col}_"))
+
+    series = df[col].astype(str)
+    split_series = series.str.split(sep)
+    if trim:
+        split_series = split_series.apply(
+            lambda parts: [p.strip() for p in parts] if isinstance(parts, list) else parts
+        )
+
+    if mode == "rows":
+        df = df.assign(**{col: split_series}).explode(col).reset_index(drop=True)
+    elif mode == "columns":
+        expanded = split_series.apply(pd.Series)
+        expanded.columns = [f"{prefix}{i + 1}" for i in range(len(expanded.columns))]
+        df = pd.concat([df, expanded], axis=1)
+    else:
+        raise ValueError(f"Неизвестный mode для split_column: {mode}")
+
+    return df
+
+
+def _action_recode_values(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
+    """
+    recode_values: перекодировать значения колонки по словарю.
+
+    config:
+        mapping  : dict  — {"старое": "новое", ...}
+        unmapped : "keep" | "null"  (default "keep")
+    """
+    col = action.column
+    if not col or col not in df.columns:
+        raise ValueError(f"Колонка не найдена: {col}")
+
+    cfg = getattr(action, "config", None) or {}
+    mapping: Dict[str, Any] = cfg.get("mapping") or {}
+    unmapped = str(cfg.get("unmapped", "keep"))
+
+    if not mapping:
+        raise ValueError("Для recode_values нужен непустой mapping")
+
+    str_series = df[col].astype(str)
+    mapped = str_series.map(mapping)
+
+    if unmapped == "keep":
+        df[col] = mapped.where(mapped.notna(), other=str_series)
+    else:
+        df[col] = mapped
+
+    return df
+
+
+def _action_derive_column(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
+    """
+    derive_column: создать новую колонку по формуле через pd.DataFrame.eval().
+
+    config:
+        formula        : str
+        source_columns : list[str]
+    """
+    new_col = action.column
+    if not new_col:
+        raise ValueError("Нужно указать column — имя новой колонки")
+
+    cfg = getattr(action, "config", None) or {}
+    formula = str(cfg.get("formula", "")).strip()
+    if not formula:
+        raise ValueError("Для derive_column нужна формула в config.formula")
+
+    source_columns = cfg.get("source_columns") or []
+    for src in source_columns:
+        if src not in df.columns:
+            raise ValueError(f"Исходная колонка не найдена: {src}")
+
+    try:
+        result = df.eval(formula)
+    except Exception as e:
+        raise ValueError(f"Ошибка в формуле: {e}")
+
+    df[new_col] = result
+    return df
+
+
+def _action_bin_variable(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
+    """
+    bin_variable: разбить числовую переменную на категориальные группы.
+
+    config:
+        new_column : str
+        method     : "custom" | "equal_width" | "quantile"
+        bins       : list[float]  (для custom)
+        labels     : list[str]
+        n_bins     : int  (default 4)
+    """
+    col = action.column
+    if not col or col not in df.columns:
+        raise ValueError(f"Колонка не найдена: {col}")
+
+    cfg = getattr(action, "config", None) or {}
+    new_col = str(cfg.get("new_column", f"{col}_bin"))
+    method = str(cfg.get("method", "equal_width"))
+    n_bins = int(cfg.get("n_bins", 4))
+    bins = cfg.get("bins")
+    labels = cfg.get("labels") or None
+
+    numeric_col = pd.to_numeric(df[col], errors="coerce")
+
+    if method == "custom":
+        if not bins or len(bins) < 2:
+            raise ValueError("Для method=custom нужен список bins с минимум 2 значениями")
+        df[new_col] = pd.cut(numeric_col, bins=bins, labels=labels, include_lowest=True)
+    elif method == "equal_width":
+        df[new_col] = pd.cut(numeric_col, bins=n_bins, labels=labels)
+    elif method == "quantile":
+        df[new_col] = pd.qcut(numeric_col, q=n_bins, labels=labels, duplicates="drop")
+    else:
+        raise ValueError(f"Неизвестный method для bin_variable: {method}")
+
+    df[new_col] = df[new_col].astype(str).replace("nan", None)
+    return df
+
+
+def _action_string_clean(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
+    """
+    string_clean: строковые операции над колонкой.
+
+    config:
+        operations   : list[str]  — ["trim", "lowercase", "uppercase", "replace"]
+        replace_from : str
+        replace_to   : str  (default "")
+    """
+    col = action.column
+    if not col or col not in df.columns:
+        raise ValueError(f"Колонка не найдена: {col}")
+
+    cfg = getattr(action, "config", None) or {}
+    operations = list(cfg.get("operations") or [])
+    replace_from = str(cfg.get("replace_from", ""))
+    replace_to = str(cfg.get("replace_to", ""))
+
+    series = df[col].astype(str)
+
+    for op in operations:
+        if op == "trim":
+            series = series.str.strip()
+        elif op == "lowercase":
+            series = series.str.lower()
+        elif op == "uppercase":
+            series = series.str.upper()
+        elif op == "replace":
+            if replace_from:
+                series = series.str.replace(replace_from, replace_to, regex=False)
+        else:
+            raise ValueError(f"Неизвестная операция string_clean: {op}")
+
+    df[col] = series
+    return df
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def load_variable_mapping(dataset_id: str) -> dict:
@@ -328,6 +562,9 @@ def modify_dataset(
         df = get_dataframe(dataset_id, DATA_DIR)
         actions = list((modification.actions or []))
 
+        rows_before = len(df)
+        cols_before = len(df.columns)
+
         for action in actions:
             if action.type == "drop_col":
                 if action.column and action.column in df.columns:
@@ -362,6 +599,19 @@ def modify_dataset(
                     if v == "":
                         v = None
                     df.at[action.row_index, action.column] = v
+
+            # ── Data Wrangling Actions ─────────────────────────────────────────
+            elif action.type == "split_column":
+                df = _action_split_column(df, action)
+            elif action.type == "recode_values":
+                df = _action_recode_values(df, action)
+            elif action.type == "derive_column":
+                df = _action_derive_column(df, action)
+            elif action.type == "bin_variable":
+                df = _action_bin_variable(df, action)
+            elif action.type == "string_clean":
+                df = _action_string_clean(df, action)
+            # ──────────────────────────────────────────────────────────────────
             else:
                 raise ValueError(f"Unknown modification type: {action.type}")
 
@@ -390,6 +640,15 @@ def modify_dataset(
         report_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "scan_report.json")
         with open(report_path, "w") as f:
             json.dump(scan_report, f, indent=2, default=str)
+
+        _append_transform_log(
+            dataset_id=dataset_id,
+            actions=actions,
+            rows_before=rows_before,
+            cols_before=cols_before,
+            rows_after=len(df),
+            cols_after=len(df.columns),
+        )
 
         total_pages = max(1, math.ceil(len(df) / limit))
         safe_page = min(page, total_pages)
