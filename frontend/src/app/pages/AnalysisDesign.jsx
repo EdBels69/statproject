@@ -11,6 +11,7 @@ import TestConfigModal from '../components/TestConfigModal';
 import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
 import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
 import VariableWorkspace from '../components/VariableWorkspace';
+import StudyDAG from '../components/StudyDAG';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 import SaveProtocolModal, { ProtocolLibraryModal, exportProtocolAsJsonFile } from '../components/SaveProtocolModal';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
@@ -254,6 +255,7 @@ const AnalysisDesign = () => {
   const [workspaceRoles, setWorkspaceRoles] = useState({ target: '', group: '', covariates: [] });
   const [aiRecommendations, setAIRecommendations] = useState([]);
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
+  const [showDAG, setShowDAG] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -1203,6 +1205,30 @@ const AnalysisDesign = () => {
                 statsByName={columnStatsByName}
               />
             ) : null}
+
+            {/* DAG toggle + diagram */}
+            <div className="px-4 pb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDAG(v => !v)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-[2px] border transition-colors ${
+                    showDAG
+                      ? 'bg-[color:var(--accent)] text-white border-[color:var(--accent)]'
+                      : 'bg-[color:var(--white)] text-[color:var(--text-secondary)] border-[color:var(--border-color)] hover:bg-[color:var(--bg-secondary)]'
+                  }`}
+                >
+                  {showDAG ? 'Скрыть диаграмму' : 'Схема исследования'}
+                </button>
+              </div>
+              {showDAG && (
+                <StudyDAG
+                  roles={workspaceRoles}
+                  onRolesChange={setWorkspaceRoles}
+                  columns={columns}
+                />
+              )}
+            </div>
 
             <StepPreviewPanel title="📊 PREVIEW" steps={previewSteps} />
 
