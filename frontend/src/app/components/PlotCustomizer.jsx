@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 
+export const COLOR_PALETTES = {
+  default:    { label: 'Default',    colors: ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3B1F2B', '#6B8E23'] },
+  nature:     { label: 'Nature',     colors: ['#003f5c', '#7a5195', '#ef5675', '#ffa600', '#58508d', '#bc5090'] },
+  lancet:     { label: 'Lancet',     colors: ['#00468B', '#ED0000', '#42B540', '#0099B4', '#925E9F', '#FDAF91'] },
+  nejm:       { label: 'NEJM',       colors: ['#BC3C29', '#0072B5', '#E18727', '#20854E', '#7876B1', '#6F99AD'] },
+  colorblind: { label: 'CB-safe',    colors: ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00'] },
+  grayscale:  { label: 'Grayscale',  colors: ['#1a1a1a', '#555555', '#888888', '#aaaaaa', '#cccccc', '#eeeeee'] },
+};
+
 export default function PlotCustomizer({
   isROC,
   showGrid,
@@ -23,6 +32,8 @@ export default function PlotCustomizer({
   setRocCurveWidth,
   rocShowDots,
   setRocShowDots,
+  colorPalette,
+  setColorPalette,
 }) {
   const { t, hasTranslation } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
@@ -180,6 +191,37 @@ export default function PlotCustomizer({
                 <span style={value}>{typeof rawPointSize === 'number' ? rawPointSize : 3}</span>
               </label>
             </>
+          )}
+
+          {/* Color palette selector */}
+          {setColorPalette && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                Palette
+              </span>
+              {Object.entries(COLOR_PALETTES).map(([key, pal]) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={pal.label}
+                  onClick={() => setColorPalette(key)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    padding: '3px 5px',
+                    border: `1.5px solid ${colorPalette === key ? 'var(--accent)' : 'var(--border-color)'}`,
+                    borderRadius: '2px',
+                    background: colorPalette === key ? 'var(--accent-light, #eff6ff)' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {pal.colors.slice(0, 4).map((c) => (
+                    <span key={c} style={{ width: 8, height: 8, borderRadius: '1px', background: c, display: 'inline-block' }} />
+                  ))}
+                </button>
+              ))}
+            </div>
           )}
         </>
       )}

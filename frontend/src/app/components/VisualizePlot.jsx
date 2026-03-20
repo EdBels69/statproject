@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 
 import { useTranslation } from '../../hooks/useTranslation';
-import PlotCustomizer from './PlotCustomizer';
+import PlotCustomizer, { COLOR_PALETTES } from './PlotCustomizer';
 import ExportSettingsModal from './ExportSettingsModal';
 import { exportPlot } from '../utils/exportPlot';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
@@ -121,6 +121,9 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
     const [showRandomLine, setShowRandomLine] = useState(true);
     const [rocCurveWidth, setRocCurveWidth] = useState(3);
     const [rocShowDots, setRocShowDots] = useState(false);
+    const [colorPalette, setColorPalette] = useState('default');
+
+    const paletteColors = useMemo(() => COLOR_PALETTES[colorPalette]?.colors || COLOR_PALETTES.default.colors, [colorPalette]);
 
     useEffect(() => {
         const handler = (e) => {
@@ -276,6 +279,8 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
             setRocCurveWidth={setRocCurveWidth}
             rocShowDots={rocShowDots}
             setRocShowDots={setRocShowDots}
+            colorPalette={colorPalette}
+            setColorPalette={setColorPalette}
         />
     );
 
@@ -326,7 +331,7 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                         <Line
                             type="monotone"
                             dataKey="y"
-                            stroke={GRAPHPAD_STYLE.colors.primary}
+                            stroke={paletteColors[0]}
                             strokeWidth={rocCurveWidth}
                             dot={rocShowDots ? { r: 3 } : false}
                             name={t('roc_curve')}
@@ -359,7 +364,7 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
     const rawShape = (shapeProps) => {
         const { cx, cy } = shapeProps;
         if (cx == null || cy == null) return null;
-        return <circle cx={cx} cy={cy} r={rawPointSize} fill={GRAPHPAD_STYLE.colors.primary} fillOpacity={rawOpacity} />;
+        return <circle cx={cx} cy={cy} r={rawPointSize} fill={paletteColors[0]} fillOpacity={rawOpacity} />;
     };
 
     const meanShape = (shapeProps) => {
@@ -371,7 +376,7 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                 cy={cy}
                 r={5}
                 fill="var(--white)"
-                stroke={GRAPHPAD_STYLE.colors.tertiary}
+                stroke={paletteColors[2] || paletteColors[0]}
                 strokeWidth={2}
             />
         );
@@ -481,20 +486,20 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                         />
                     )}
 
-                    {/* 2. Mean + CI (Orange, Large) */}
+                    {/* 2. Mean + CI */}
                     {showMeanCI && (
                         <Scatter
                             data={summaryData}
                             name={t('mean_ci')}
                             dataKey="mean"
-                            fill={GRAPHPAD_STYLE.colors.tertiary}
+                            fill={paletteColors[2] || paletteColors[0]}
                             shape={meanShape}
                         >
                             <ErrorBar
                                 dataKey="error"
                                 width={GRAPHPAD_STYLE.errorBar.capWidth}
                                 strokeWidth={GRAPHPAD_STYLE.errorBar.strokeWidth}
-                                stroke={GRAPHPAD_STYLE.colors.tertiary}
+                                stroke={paletteColors[2] || paletteColors[0]}
                                 direction="y"
                             />
                         </Scatter>
