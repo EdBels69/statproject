@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
     cleanColumn,
     getDataset,
@@ -12,6 +12,7 @@ import {
 import { DocumentIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import ColumnSettingsModal from '../../components/ColumnSettingsModal';
 import DataTableWithTypes from '../../components/DataTableWithTypes';
+import WranglingPanel from '../../components/WranglingPanel';
 import Button from '../../components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/Tabs';
 import VariableListView from '../../components/VariableListView';
@@ -335,6 +336,29 @@ const StepData = ({ goal, onDataReady, onNext }) => {
         }
     };
 
+    // Перезагрузить профиль и scan report (используется WranglingPanel)
+    const refreshDataset = useCallback(async () => {
+        if (!selectedDataset) return;
+        const [p, sr] = await Promise.all([
+            getDataset(selectedDataset, 1, 60),
+            getScanReport(selectedDataset),
+        ]);
+        setProfile(p);
+        setScanReport(sr);
+        const colInfos = Array.isArray(p?.columns) ? p.columns : [];
+        setUiColumns(colInfos.map((c) => {
+            const name = typeof c === 'string' ? c : c?.name;
+            const mapEntry = name ? mapping[name] : null;
+            const dataType = safeString(mapEntry?.data_type) || safeString(typeof c === 'string' ? '' : c?.type);
+            return {
+                name: safeString(name),
+                uiType: uiTypeFromBackendType(dataType),
+                role: safeString(mapEntry?.role),
+                example: typeof c === 'string' ? '' : c?.example,
+            };
+        }).filter(c => c.name));
+    }, [selectedDataset, mapping]);
+
     const derivedVariables = useMemo(() => {
         if (!usePhase7Flow) return variables;
         const cols = Array.isArray(uiColumns) ? uiColumns : [];
@@ -500,6 +524,13 @@ const StepData = ({ goal, onDataReady, onNext }) => {
 
             <div className="lg:col-span-2">
                 <CleaningWizardAlert report={scanReport} onFix={handleClean} onMice={handleMice} />
+
+                <WranglingPanel
+                    datasetId={selectedDataset}
+                    columns={uiColumns}
+                    profile={profile}
+                    onRefresh={refreshDataset}
+                />
 
                 {!selectedDataset ? (
                     <div className="rounded-[2px] border border-dashed border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] p-10 text-center">
