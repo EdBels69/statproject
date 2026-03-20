@@ -169,31 +169,108 @@ class ProtocolReport:
         self.dataset_name = dataset_name
         self.style = style or "apa7"
         self.html_parts = []
-        
+        self.fig_counter = 0
+        self.table_counter = 0
+
     def generate_html(self) -> str:
         self._add_header()
-        
+
         results = self.data.get("results", {})
-        
+
         # 1. Look for Table 1 (Descriptive)
-        # Sort keys to preserve order if possible, or rely on step IDs if logical
         for step_id, res in results.items():
             if res.get("type") == "table_1":
                 self._add_table_one(res, step_id)
-                
+
         # 2. Look for Hypothesis Tests
         for step_id, res in results.items():
             if res.get("type") in ["compare", "hypothesis_test", "correlation", "regression", "survival"]:
                 self._add_analysis_section(res, step_id)
             elif res.get("type") == "batch_compare_by_factor":
-                 self._add_longitudinal_section(res, step_id)
+                self._add_longitudinal_section(res, step_id)
 
         self._add_footer()
         return "\n".join(self.html_parts)
 
     def _add_header(self):
         style_key = str(self.style or "apa7").strip().lower()
-        if style_key == "gost":
+        if style_key == "nature":
+            css = """
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap');
+                body { font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 22px; font-weight: 700; color: #003f5c; margin: 0 0 6px; letter-spacing: -0.3px; }
+                h2 { font-size: 15px; font-weight: 700; color: #003f5c; margin-top: 32px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #003f5c; text-transform: uppercase; letter-spacing: 0.5px; }
+                h3 { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-top: 14px; }
+                .card { margin-bottom: 28px; padding: 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+                thead tr { border-top: 2px solid #1a1a1a; border-bottom: 1px solid #1a1a1a; }
+                tbody tr:last-child td { border-bottom: 2px solid #1a1a1a; }
+                th, td { padding: 8px 10px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 11.5px; color: #444; margin-top: 6px; font-style: italic; }
+                .table-caption { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #666; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #f7f7f7; border-left: 3px solid #003f5c; padding: 10px 14px; margin-top: 14px; font-size: 13px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 28px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "lancet":
+            css = """
+            <style>
+                body { font-family: 'Georgia', 'Times New Roman', serif; font-size: 14px; line-height: 1.65; color: #111; max-width: 840px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 22px; font-weight: 700; color: #8b0000; margin: 0 0 6px; }
+                h2 { font-size: 16px; font-weight: 700; color: #8b0000; margin-top: 30px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1.5px solid #8b0000; }
+                h3 { font-size: 14px; font-weight: 700; font-style: italic; margin-top: 14px; }
+                .card { margin-bottom: 28px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+                thead tr { border-top: 2px solid #111; border-bottom: 1px solid #111; }
+                tbody tr:last-child td { border-bottom: 2px solid #111; }
+                th, td { padding: 8px 12px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 12px; color: #333; margin-top: 5px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; font-family: 'Courier New', monospace; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #555; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #fff8f8; border-left: 3px solid #8b0000; padding: 10px 14px; margin-top: 14px; font-size: 13px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 24px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "nejm":
+            css = """
+            <style>
+                body { font-family: 'Arial', 'Helvetica Neue', sans-serif; font-size: 13.5px; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 20px; font-weight: 700; color: #002b5c; margin: 0 0 6px; }
+                h2 { font-size: 14px; font-weight: 700; color: #002b5c; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 28px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #002b5c; }
+                h3 { font-size: 13px; font-weight: 700; margin-top: 14px; }
+                .card { margin-bottom: 26px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+                thead tr { border-top: 2px solid #1a1a1a; border-bottom: 1px solid #1a1a1a; }
+                tbody tr:last-child td { border-bottom: 2px solid #1a1a1a; }
+                th, td { padding: 7px 10px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 11.5px; color: #444; margin-top: 6px; }
+                .table-caption { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #666; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #f0f4f8; border-left: 3px solid #002b5c; padding: 10px 14px; margin-top: 14px; font-size: 12.5px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 24px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "gost":
             css = """
             <style>
                 body { font-family: 'Times New Roman', 'Times', serif; line-height: 1.5; color: #111; max-width: 820px; margin: 0 auto; padding: 48px; font-size: 14px; }
@@ -204,6 +281,8 @@ class ProtocolReport:
                 table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
                 th, td { padding: 10px 12px; border-bottom: 1px solid #e6e6e6; text-align: left; vertical-align: top; }
                 th { background-color: #f7f7f7; font-weight: 700; color: #111; }
+                .fig-caption { font-size: 12px; color: #444; margin-top: 6px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
                 .stat-val { font-family: 'Courier New', monospace; font-weight: 700; }
                 .sig-yes { color: #0f5132; font-weight: 700; }
                 .sig-no { color: #495057; }
@@ -225,6 +304,8 @@ class ProtocolReport:
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
                 th, td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; text-align: left; }
                 th { font-weight: 700; color: #111; background: #fafafa; }
+                .fig-caption { font-size: 11px; color: #64748b; margin-top: 5px; font-style: italic; }
+                .table-caption { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
                 .stat-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 600; }
                 .sig-yes { color: #111; font-weight: 700; }
                 .sig-no { color: #64748b; }
@@ -236,6 +317,7 @@ class ProtocolReport:
             </style>
             """
         else:
+            # apa7 (default)
             css = """
             <style>
                 body { font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; }
@@ -247,6 +329,8 @@ class ProtocolReport:
                 th, td { padding: 12px 15px; border-bottom: 1px solid #e1e4e8; text-align: left; }
                 th { background-color: #f8f9fa; font-weight: 600; color: #444; }
                 tr:last-child td { border-bottom: none; }
+                .fig-caption { font-size: 12px; color: #555; margin-top: 8px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
                 .stat-val { font-family: 'SF Mono', 'Monaco', monospace; font-weight: 600; }
                 .sig-yes { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 2px 6px; border-radius: 4px; }
                 .sig-no { color: #7f8c8d; }
@@ -276,12 +360,13 @@ class ProtocolReport:
     def _add_table_one(self, res: Dict, step_id: str):
         stats = res.get("data", {})
         if not stats: return
-        
+
+        self.table_counter += 1
         groups = [k for k in stats.keys() if k != 'overall']
-        
+
         html = f"""
         <div class="card">
-            <h2>Table 1: Descriptive Statistics</h2>
+            <div class="table-caption">Table {self.table_counter}. Descriptive Statistics</div>
             <table>
                 <thead>
                     <tr>
@@ -379,8 +464,22 @@ class ProtocolReport:
         # Generate Plot
         img_b64 = self._generate_plot_image(res)
         if img_b64:
-            html += f'<div class="plot-container"><img src="data:image/png;base64,{img_b64}" alt="Analysis Plot" /></div>'
-            
+            self.fig_counter += 1
+            p_caption = ""
+            p_val = res.get("p_value")
+            if p_val is not None:
+                try:
+                    p_fmt = "< 0.001" if float(p_val) < 0.001 else f"{float(p_val):.4f}"
+                    p_caption = f" (p = {p_fmt})"
+                except Exception:
+                    pass
+            html += (
+                f'<div class="plot-container">'
+                f'<img src="data:image/png;base64,{img_b64}" alt="Figure {self.fig_counter}" />'
+                f'<div class="fig-caption">Figure {self.fig_counter}. {method_name}{p_caption}</div>'
+                f'</div>'
+            )
+
         if res.get("conclusion"):
             html += f'<div class="ai-box"><strong>AI Interpretation:</strong><br>{res["conclusion"]}</div>'
             
@@ -388,10 +487,11 @@ class ProtocolReport:
         self.html_parts.append(html)
 
     def _add_longitudinal_section(self, res: Dict, step_id: str):
+        self.table_counter += 1
         html = f"""
         <div class="card">
             <h2>Longitudinal Analysis: {step_id}</h2>
-            <p style="margin-bottom: 15px;">Analysis split by: <strong>{res.get('split_by')}</strong></p>
+            <div class="table-caption">Table {self.table_counter}. Results split by: {res.get('split_by', '')}</div>
             <table>
                 <thead>
                     <tr>
