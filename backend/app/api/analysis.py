@@ -18,7 +18,7 @@ from app.core.pipeline import PipelineManager
 from app.core.protocol_engine import ProtocolEngine
 from app.modules.parsers import get_dataframe, get_dataset_path
 from app.core.study_designer import StudyDesignEngine
-from app.modules.reporting import generate_pdf_report, generate_protocol_pdf_report, generate_protocol_docx_report
+from app.modules.reporting import generate_pdf_report, generate_protocol_pdf_report, generate_protocol_pdf_with_plots, generate_protocol_docx_report
 from app.modules.docx_generator import create_results_document
 from app.core.logging import logger
 
@@ -276,7 +276,7 @@ def get_protocol_report_pdf(run_id: str, dataset_id: str, sections: Optional[str
 
         res = _apply_report_customization(res, sections, order)
 
-        pdf_bytes = generate_protocol_pdf_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+        pdf_bytes = generate_protocol_pdf_with_plots(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
         filename = f"protocol_report_{run_id}.pdf"
         return Response(
             content=pdf_bytes,

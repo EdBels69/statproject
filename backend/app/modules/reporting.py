@@ -873,3 +873,195 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
         pdf.ln(3)
 
     return _pdf_bytes(pdf)
+
+
+# ── PDF с графиками (fpdf2 + PIL) ──────────────────────────────────────────────
+
+def generate_protocol_pdf_with_plots(
+    run_data: Dict[str, Any],
+    dataset_name: str = "Dataset",
+    style: Optional[str] = None,
+) -> bytes:
+    """
+    Генерирует PDF-отчёт с графиками.
+
+    Стратегия:
+    - Строим FPDF как обычно (текст + таблицы)
+    - Дополнительно рисуем matplotlib-графики из plot_data каждого шага
+      и вставляем их как PNG-изображения через PIL + FPDF.image()
+    - Требует только fpdf2 + Pillow (matplotlib уже есть)
+    """
+    try:
+        from PIL import Image as PILImage
+        _pil_available = True
+    except ImportError:
+        _pil_available = False
+
+    def _safe_text(value: Any) -> str:
+        text = str(value or "")
+        return text.encode("latin-1", errors="replace").decode("latin-1")
+
+    def _fmt_p(value: Any) -> str:
+        try:
+            p = float(value)
+            return "< 0.001" if p < 0.001 else f"{p:.4f}"
+        except Exception:
+            return "-"
+
+    def _fmt_num(value: Any, digits: int = 3) -> str:
+        try:
+            return f"{float(value):.{digits}f}" if value is not None else "-"
+        except Exception:
+            return "-"
+
+    def _pdf_bytes(pdf: FPDF) -> bytes:
+        try:
+            out = pdf.output()
+        except TypeError:
+            out = pdf.output(dest="S")
+        return bytes(out) if isinstance(out, (bytes, bytearray)) else str(out).encode("latin-1", errors="replace")
+
+    def _make_plot_png(res: Dict[str, Any]) -> Optional[bytes]:
+        """Рисуем график из plot_data шага через matplotlib → PNG bytes."""
+        try:
+            plot_data = res.get("plot_data") or []
+            if not plot_data:
+                return None
+
+            apply_publication_config()
+            fig, ax = plt.subplots(figsize=(6.5, 3.8))
+
+            groups: Dict[str, List] = {}
+            for pt in plot_data:
+                g = str(pt.get("group", ""))
+                groups.setdefault(g, []).append(float(pt.get("value", 0)))
+
+            colors = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"]
+            for i, (grp, vals) in enumerate(groups.items()):
+                color = colors[i % len(colors)]
+                ax.scatter([grp] * len(vals), vals, alpha=0.45, s=20, color=color, zorder=3)
+                mean_val = np.mean(vals)
+                ax.plot([grp], [mean_val], "D", color=color, ms=9, zorder=5)
+                ci = 1.96 * np.std(vals) / max(np.sqrt(len(vals)), 1)
+                ax.errorbar([grp], [mean_val], yerr=[[ci], [ci]], color=color, capsize=5, lw=1.5, zorder=4)
+
+            # p-value annotation
+            p_val = res.get("p_value")
+            if p_val is not None:
+                try:
+                    p = float(p_val)
+                    sig = "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else "ns"))
+                    ax.set_title(f"p = {_fmt_p(p_val)}  {sig}", fontsize=9, pad=4)
+                except Exception:
+                    pass
+
+            ax.set_xlabel("")
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+            plt.close(fig)
+            buf.seek(0)
+            return buf.read()
+        except Exception as exc:
+            logger.debug(f"_make_plot_png failed: {exc}")
+            try:
+                plt.close("all")
+            except Exception:
+                pass
+            return None
+
+    def _insert_png(pdf: FPDF, png_bytes: bytes) -> None:
+        """Вставить PNG bytes в FPDF через временный in-memory файл."""
+        if not _pil_available:
+            return
+        try:
+            img = PILImage.open(io.BytesIO(png_bytes))
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+            # fpdf2 принимает file-like object
+            page_w = pdf.w - pdf.l_margin - pdf.r_margin
+            img_w = min(page_w * 0.85, 160)
+            pdf.image(buf, w=img_w)
+            pdf.ln(4)
+        except Exception as exc:
+            logger.debug(f"_insert_png failed: {exc}")
+
+    style_key = str(style or "apa7").strip().lower()
+    is_ru = style_key in {"gost"}
+
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Заголовок
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, _safe_text("Отчёт по протоколу" if is_ru else "Protocol Analysis Report"),
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _safe_text(f"Dataset: {dataset_name}"), new_x="LMARGIN", new_y="NEXT")
+    protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
+    if protocol_name:
+        pdf.cell(0, 6, _safe_text(f"Protocol: {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
+    fig_counter = 0
+
+    for step_id, res in (results or {}).items():
+        if not isinstance(res, dict):
+            continue
+
+        # Шапка шага
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.multi_cell(0, 7, _safe_text(f"{'Шаг' if is_ru else 'Step'}: {step_id}"))
+        pdf.set_font("Helvetica", "", 10)
+
+        method = res.get("method")
+        if isinstance(method, dict):
+            method_name = method.get("name") or method.get("id") or "Statistical Test"
+        else:
+            method_name = "Statistical Test"
+        pdf.cell(0, 6, _safe_text(f"Method: {method_name}"), new_x="LMARGIN", new_y="NEXT")
+
+        if "p_value" in res:
+            pdf.cell(0, 6, _safe_text(f"P-value: {_fmt_p(res.get('p_value'))}"), new_x="LMARGIN", new_y="NEXT")
+        if "stat_value" in res or "stats" in res:
+            pdf.cell(0, 6, _safe_text(f"Statistic: {_fmt_num(res.get('stat_value', res.get('stats')))}"),
+                     new_x="LMARGIN", new_y="NEXT")
+
+        effect_size = res.get("effect_size")
+        if effect_size is not None:
+            label = res.get("effect_size_name") or "effect"
+            pdf.cell(0, 6, _safe_text(f"Effect size ({label}): {_fmt_num(effect_size, 2)}"),
+                     new_x="LMARGIN", new_y="NEXT")
+        ci_lo, ci_hi = res.get("effect_size_ci_lower"), res.get("effect_size_ci_upper")
+        if ci_lo is not None and ci_hi is not None:
+            pdf.cell(0, 6, _safe_text(f"Effect CI: [{_fmt_num(ci_lo, 2)}, {_fmt_num(ci_hi, 2)}]"),
+                     new_x="LMARGIN", new_y="NEXT")
+        if res.get("power") is not None:
+            pdf.cell(0, 6, _safe_text(f"Power: {_fmt_num(res['power'], 2)}"), new_x="LMARGIN", new_y="NEXT")
+        if res.get("bf10") is not None:
+            pdf.cell(0, 6, _safe_text(f"BF10: {res['bf10']}"), new_x="LMARGIN", new_y="NEXT")
+
+        conclusion = res.get("conclusion")
+        if conclusion:
+            pdf.ln(1)
+            pdf.multi_cell(0, 5, _safe_text(f"Conclusion: {conclusion}"))
+
+        # График
+        png_bytes = _make_plot_png(res)
+        if png_bytes:
+            fig_counter += 1
+            pdf.ln(3)
+            _insert_png(pdf, png_bytes)
+            # Подпись рисунка
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.multi_cell(0, 4, _safe_text(
+                f"Figure {fig_counter}. {method_name}"
+                + (f" (p = {_fmt_p(res.get('p_value'))})" if "p_value" in res else "")
+            ))
+            pdf.set_font("Helvetica", "", 10)
+
+        pdf.ln(5)
+
+    return _pdf_bytes(pdf)
