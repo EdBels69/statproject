@@ -844,3 +844,25 @@ def get_dataset_content(dataset_id: str, page: int = 1, limit: int = 100, sheet:
         "limit": limit,
         "columns": list(df.columns)
     }
+
+
+@router.get("/{dataset_id}/methods_text")
+def get_methods_text(dataset_id: str, dataset_name: Optional[str] = None):
+    """
+    Returns an auto-generated Methods paragraph based on the wrangling
+    transform_log.json recorded during dataset preprocessing.
+    """
+    from app.modules.reporting import generate_methods_section
+
+    log_path = os.path.join(pipeline.get_dataset_dir(dataset_id), "processed", "transform_log.json")
+    transform_log: List[Dict[str, Any]] = []
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
+                transform_log = json.load(f)
+    except Exception:
+        pass
+
+    name = dataset_name or f"dataset {dataset_id[:8]}"
+    text = generate_methods_section(transform_log, dataset_name=name)
+    return {"methods_text": text, "steps": len(transform_log)}

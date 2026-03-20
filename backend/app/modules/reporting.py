@@ -1165,3 +1165,129 @@ def generate_protocol_pdf_with_plots(
         pdf.ln(5)
 
     return _pdf_bytes(pdf)
+
+
+# ── Phase 4.1: Auto-Methods from transform_log ────────────────────────────────
+
+_ACTION_TEMPLATES: Dict[str, str] = {
+    "split_column": (
+        "Values in the column '{column}' were split by the delimiter '{sep}' "
+        "into {mode} (trim={trim}). "
+        "The dataset changed from {rows_before} rows / {cols_before} columns "
+        "to {rows_after} rows / {cols_after} columns."
+    ),
+    "recode_values": (
+        "Values in '{column}' were recoded according to a user-defined mapping table "
+        "({n_mappings} substitution(s) defined). "
+        "Missing mapping entries were left unchanged."
+    ),
+    "derive_column": (
+        "A new variable '{new_col}' was derived using the formula: {formula}."
+    ),
+    "bin_variable": (
+        "The continuous variable '{column}' was discretised into {n_bins} bins "
+        "using the '{method}' method{labels_note}. "
+        "The resulting variable was stored as '{new_col}'."
+    ),
+    "string_clean": (
+        "Text values in '{column}' were cleaned: {ops}."
+    ),
+}
+
+
+def _render_action_sentence(entry: Dict[str, Any]) -> str:
+    """Convert a single transform_log entry into one English sentence."""
+    action = entry.get("action", "")
+    col = entry.get("column") or ""
+    cfg = entry.get("config") or {}
+
+    rows_before = entry.get("rows_before", "?")
+    rows_after  = entry.get("rows_after",  "?")
+    cols_before = entry.get("cols_before", "?")
+    cols_after  = entry.get("cols_after",  "?")
+
+    if action == "split_column":
+        return _ACTION_TEMPLATES["split_column"].format(
+            column=col,
+            sep=cfg.get("separator", ","),
+            mode=cfg.get("mode", "rows"),
+            trim=cfg.get("trim", True),
+            rows_before=rows_before, rows_after=rows_after,
+            cols_before=cols_before, cols_after=cols_after,
+        )
+    elif action == "recode_values":
+        mappings = cfg.get("mapping") or {}
+        return _ACTION_TEMPLATES["recode_values"].format(
+            column=col,
+            n_mappings=len(mappings) if isinstance(mappings, dict) else "?",
+        )
+    elif action == "derive_column":
+        return _ACTION_TEMPLATES["derive_column"].format(
+            new_col=cfg.get("new_column") or col,
+            formula=cfg.get("formula") or "—",
+        )
+    elif action == "bin_variable":
+        labels = cfg.get("labels")
+        labels_note = f" with labels {labels}" if labels else ""
+        return _ACTION_TEMPLATES["bin_variable"].format(
+            column=col,
+            n_bins=cfg.get("n_bins", "?"),
+            method=cfg.get("method", "equal_width"),
+            labels_note=labels_note,
+            new_col=cfg.get("new_column") or f"{col}_bin",
+        )
+    elif action == "string_clean":
+        ops_list = []
+        if cfg.get("strip"):      ops_list.append("leading/trailing whitespace removed")
+        if cfg.get("lowercase"):  ops_list.append("converted to lowercase")
+        if cfg.get("uppercase"):  ops_list.append("converted to uppercase")
+        repl = cfg.get("replace")
+        if isinstance(repl, dict) and repl:
+            ops_list.append(f"substring replacements applied ({len(repl)} rule(s))")
+        ops = "; ".join(ops_list) if ops_list else "no specific operations recorded"
+        return _ACTION_TEMPLATES["string_clean"].format(column=col, ops=ops)
+    else:
+        return f"Action '{action}' was applied to column '{col}'."
+
+
+def generate_methods_section(
+    transform_log: List[Dict[str, Any]],
+    dataset_name: str = "the dataset",
+) -> str:
+    """
+    Generate a publication-ready Methods paragraph from a transform_log list.
+
+    Parameters
+    ----------
+    transform_log : list of dicts loaded from transform_log.json
+    dataset_name  : display name for the dataset
+
+    Returns
+    -------
+    str — plain-text paragraph suitable for embedding in a Methods section.
+    """
+    if not transform_log:
+        return (
+            f"Data wrangling: no preprocessing transformations were recorded "
+            f"for {dataset_name}."
+        )
+
+    sentences = []
+    for entry in transform_log:
+        try:
+            sentences.append(_render_action_sentence(entry))
+        except Exception as exc:
+            logger.debug(f"generate_methods_section: failed to render entry: {exc}")
+
+    if not sentences:
+        return (
+            f"Data were loaded from {dataset_name}. "
+            "No structured preprocessing steps were recorded."
+        )
+
+    preamble = (
+        f"Data preparation was performed in the following sequence "
+        f"({len(sentences)} step(s) recorded)."
+    )
+    body = " ".join(sentences)
+    return f"{preamble} {body}"

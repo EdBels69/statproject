@@ -385,6 +385,17 @@ const StepResults = ({ runId, datasetId }) => {
     const [sectionEnabled, setSectionEnabled] = useState({});
     const [reportFormat, setReportFormat] = useState('docx');
     const [reportStyle, setReportStyle] = useState('apa7');
+    const [methodsText, setMethodsText] = useState(null);
+    const [showMethods, setShowMethods] = useState(false);
+
+    useEffect(() => {
+        if (!datasetId) return;
+        const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
+        fetch(`${apiBase}/datasets/${datasetId}/methods_text`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => d?.methods_text ? setMethodsText(d.methods_text) : null)
+            .catch(() => {});
+    }, [datasetId]);
 
     useEffect(() => {
         if (!runId || !datasetId) return;
@@ -524,6 +535,9 @@ const StepResults = ({ runId, datasetId }) => {
                                 aria-label="Стиль отчёта"
                             >
                                 <option value="apa7">APA 7</option>
+                                <option value="nature">Nature</option>
+                                <option value="lancet">Lancet</option>
+                                <option value="nejm">NEJM</option>
                                 <option value="gost">ГОСТ</option>
                                 <option value="simple">Простой</option>
                             </select>
@@ -591,6 +605,32 @@ const StepResults = ({ runId, datasetId }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Methods text panel */}
+            {methodsText && (
+                <div className="mb-6 rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] overflow-hidden">
+                    <button
+                        type="button"
+                        onClick={() => setShowMethods((v) => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-[color:var(--text-primary)] bg-[color:var(--bg-secondary)] hover:bg-[color:var(--bg-tertiary)] border-b border-[color:var(--border-color)]"
+                    >
+                        <span>Раздел Methods (автогенерация)</span>
+                        <span className="text-[10px] font-mono text-[color:var(--text-muted)]">{showMethods ? 'скрыть' : 'показать'}</span>
+                    </button>
+                    {showMethods && (
+                        <div className="px-4 py-3">
+                            <p className="text-sm text-[color:var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{methodsText}</p>
+                            <button
+                                type="button"
+                                className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)]"
+                                onClick={() => { try { navigator.clipboard.writeText(methodsText); } catch {} }}
+                            >
+                                Копировать
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="border-b border-[color:var(--border-color)] mb-6">
