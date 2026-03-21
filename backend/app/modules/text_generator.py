@@ -472,6 +472,21 @@ class TextGenerator:
         return text
 
     @staticmethod
+    def interpret_correlation_strength(r: float) -> str:
+        """Interpret correlation coefficient magnitude (Cohen 1988)."""
+        ar = abs(r) if r is not None else 0
+        if ar < 0.10:
+            return "negligible"
+        elif ar < 0.30:
+            return "weak"
+        elif ar < 0.50:
+            return "moderate"
+        elif ar < 0.70:
+            return "strong"
+        else:
+            return "very strong"
+
+    @staticmethod
     def _interpret_correlation(results: Dict[str, Any], variables: Dict[str, str]) -> str:
         p_text = TextGenerator.format_p_value(results['p_value'])
         var1 = variables.get('target', 'Variable 1')

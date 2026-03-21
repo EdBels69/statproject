@@ -10,6 +10,7 @@ import TestConfigModal from '../components/TestConfigModal';
 import AIRecommendationsPanel from '../components/analysis/AIRecommendationsPanel';
 import ProtocolTemplateSelector from '../components/analysis/ProtocolTemplateSelector';
 import SearchableSelect from '../components/SearchableSelect';
+import StudyDAG from '../components/StudyDAG';
 import ResearchFlowNav from '../components/ResearchFlowNav';
 import VariableWorkspace from '../components/VariableWorkspace';
 import SaveProtocolModal, { ProtocolLibraryModal, exportProtocolAsJsonFile } from '../components/SaveProtocolModal';
@@ -845,6 +846,7 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
   const [workspaceRoles, setWorkspaceRoles] = useState({ target: '', group: '', covariates: [] });
   const [aiRecommendations, setAIRecommendations] = useState([]);
   const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
+  const [showDAG, setShowDAG] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [aiHasRequested, setAiHasRequested] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -2207,6 +2209,35 @@ const AnalysisDesign = ({ mode = 'constructor' }) => {
           ) : (
             <>
               <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                {/* DAG toggle + diagram */}
+                <div className="px-4 py-2 border-b border-[color:var(--border-color)] bg-[color:var(--white)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDAG(v => !v)}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-[2px] border transition-colors ${
+                        showDAG
+                          ? 'bg-[color:var(--accent)] text-white border-[color:var(--accent)]'
+                          : 'bg-[color:var(--white)] text-[color:var(--text-secondary)] border-[color:var(--border-color)] hover:bg-[color:var(--bg-secondary)]'
+                      }`}
+                    >
+                      {showDAG ? 'Скрыть диаграмму' : 'Схема исследования'}
+                    </button>
+                  </div>
+                  {showDAG && (
+                    <StudyDAG
+                      roles={workspaceRoles}
+                      onRolesChange={setWorkspaceRoles}
+                      columns={columns}
+                      datasetId={datasetId}
+                      onRunComplete={(result) => {
+                        setResults(result);
+                        setIsResultsOpen(true);
+                      }}
+                    />
+                  )}
+                </div>
+
                 <div className="flex-1 overflow-hidden">
                   <ProtocolBuilder
                     protocol={protocol}

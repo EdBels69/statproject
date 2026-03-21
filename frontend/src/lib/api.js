@@ -346,6 +346,23 @@ export async function runAnalysisProtocol(datasetId, protocol) {
   return response.json();
 }
 
+export async function runAutoProtocol(datasetId, roles) {
+  const response = await fetch(`${API_URL}/analysis/protocol/auto`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataset_id: datasetId,
+      protocol: roles, // { target, group, covariates: [] }
+      alpha: getAlphaSetting(),
+    }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Auto protocol failed");
+  }
+  return response.json();
+}
+
 export async function checkAssumptions({ datasetId, methodId, config, alpha, signal } = {}) {
   const payload = {
     dataset_id: datasetId,

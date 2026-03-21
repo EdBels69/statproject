@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 
 def _load_dotenv(env_path: str) -> None:
@@ -89,8 +89,8 @@ class Settings:
 
         self.API_KEYS = self._parse_api_keys(self.API_KEYS_RAW)
 
-    def _parse_api_keys(self, raw: str) -> dict[str, dict[str, str]]:
-        keys: dict[str, dict[str, str]] = {}
+    def _parse_api_keys(self, raw: str) -> Dict[str, Dict[str, str]]:
+        keys: Dict[str, Dict[str, str]] = {}
         if not raw:
             return keys
         for entry in raw.split(","):
@@ -106,7 +106,7 @@ class Settings:
             keys[key] = {"role": role, "name": name}
         return keys
 
-    def get_user_by_key(self, api_key: str | None) -> dict[str, str] | None:
+    def get_user_by_key(self, api_key: Optional[str] = None) -> Optional[Dict[str, str]]:
         if not api_key:
             return None
         user = self.API_KEYS.get(api_key)

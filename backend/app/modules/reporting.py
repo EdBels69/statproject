@@ -699,16 +699,23 @@ class ProtocolReport:
     V2 Report Engine supporting multi-step protocols.
     """
     
-    def __init__(self, run_data: Dict, dataset_name: str = "Dataset", style: str = "gost", options: Optional[Dict[str, Any]] = None):
+    def __init__(self, run_data: Dict, dataset_name: str = "Dataset", style: str = "gost",
+                 options: Optional[Dict[str, Any]] = None, dataset_id: Optional[str] = None):
         self.data = run_data # The full results.json
         self.dataset_name = dataset_name
+        self.dataset_id = dataset_id
         self.style = style or "gost"
         self.options = options if isinstance(options, dict) else {}
         self.html_parts = []
+        self.fig_counter = 0
+        self.table_counter = 0
         self.is_ru = False
-        
+
     def generate_html(self) -> str:
         self._add_header()
+
+        # 0. Methods section from transform_log
+        self._add_methods_section()
 
         try:
             from app.core.pipeline import PipelineManager
@@ -726,7 +733,7 @@ class ProtocolReport:
         self._add_overview()
 
         self._add_toc(blocks if blocks else results)
-        
+
         def iter_steps():
             if blocks:
                 for block in blocks:
@@ -761,6 +768,32 @@ class ProtocolReport:
 
         self._add_footer()
         return "\n".join(self.html_parts)
+
+    def _add_methods_section(self):
+        """Insert auto-generated Methods paragraph from transform_log.json."""
+        dataset_id = self.dataset_id or (self.data.get("dataset_id") if isinstance(self.data, dict) else None)
+        if not dataset_id:
+            return
+        try:
+            workspace_dir = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+            log_path = os.path.join(workspace_dir, "datasets", str(dataset_id), "processed", "transform_log.json")
+            if not os.path.exists(log_path):
+                return
+            with open(log_path, "r", encoding="utf-8") as f:
+                transform_log = json.load(f)
+            if not transform_log:
+                return
+            methods_text = generate_methods_section(transform_log, dataset_name=self.dataset_name)
+            style_key = str(self.style or "apa7").strip().lower()
+            heading = "Методы" if style_key == "gost" else "Methods"
+            self.html_parts.append(f"""
+            <div class="card">
+                <h2>{heading}</h2>
+                <p style="text-align: justify;">{methods_text}</p>
+            </div>
+            """)
+        except Exception as exc:
+            logger.debug(f"_add_methods_section failed: {exc}")
 
     def _resolve_dataset_dir(self, dataset_id: str) -> Optional[str]:
         if not dataset_id:
@@ -1178,7 +1211,83 @@ class ProtocolReport:
             pad = "46px"
             body_font = "15px"
 
-        if style_key == "gost":
+        if style_key == "nature":
+            css = """
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap');
+                body { font-family: 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 22px; font-weight: 700; color: #003f5c; margin: 0 0 6px; letter-spacing: -0.3px; }
+                h2 { font-size: 15px; font-weight: 700; color: #003f5c; margin-top: 32px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #003f5c; text-transform: uppercase; letter-spacing: 0.5px; }
+                h3 { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-top: 14px; }
+                .card { margin-bottom: 28px; padding: 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+                thead tr { border-top: 2px solid #1a1a1a; border-bottom: 1px solid #1a1a1a; }
+                tbody tr:last-child td { border-bottom: 2px solid #1a1a1a; }
+                th, td { padding: 8px 10px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 11.5px; color: #444; margin-top: 6px; font-style: italic; }
+                .table-caption { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #666; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #f7f7f7; border-left: 3px solid #003f5c; padding: 10px 14px; margin-top: 14px; font-size: 13px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 28px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "lancet":
+            css = """
+            <style>
+                body { font-family: 'Georgia', 'Times New Roman', serif; font-size: 14px; line-height: 1.65; color: #111; max-width: 840px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 22px; font-weight: 700; color: #8b0000; margin: 0 0 6px; }
+                h2 { font-size: 16px; font-weight: 700; color: #8b0000; margin-top: 30px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1.5px solid #8b0000; }
+                h3 { font-size: 14px; font-weight: 700; font-style: italic; margin-top: 14px; }
+                .card { margin-bottom: 28px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+                thead tr { border-top: 2px solid #111; border-bottom: 1px solid #111; }
+                tbody tr:last-child td { border-bottom: 2px solid #111; }
+                th, td { padding: 8px 12px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 12px; color: #333; margin-top: 5px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; font-family: 'Courier New', monospace; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #555; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #fff8f8; border-left: 3px solid #8b0000; padding: 10px 14px; margin-top: 14px; font-size: 13px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 24px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "nejm":
+            css = """
+            <style>
+                body { font-family: 'Arial', 'Helvetica Neue', sans-serif; font-size: 13.5px; line-height: 1.6; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 48px 56px; background: #fff; }
+                h1 { font-size: 20px; font-weight: 700; color: #002b5c; margin: 0 0 6px; }
+                h2 { font-size: 14px; font-weight: 700; color: #002b5c; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 28px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 2px solid #002b5c; }
+                h3 { font-size: 13px; font-weight: 700; margin-top: 14px; }
+                .card { margin-bottom: 26px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+                thead tr { border-top: 2px solid #1a1a1a; border-bottom: 1px solid #1a1a1a; }
+                tbody tr:last-child td { border-bottom: 2px solid #1a1a1a; }
+                th, td { padding: 7px 10px; text-align: left; vertical-align: top; }
+                th { font-weight: 700; background: transparent; }
+                .fig-caption { font-size: 11.5px; color: #444; margin-top: 6px; }
+                .table-caption { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
+                .stat-val { font-weight: 700; }
+                .sig-yes { font-weight: 700; }
+                .sig-no { color: #666; }
+                .plot-container { text-align: center; margin: 18px 0 4px; }
+                img { max-width: 100%; height: auto; }
+                .ai-box { background: #f0f4f8; border-left: 3px solid #002b5c; padding: 10px 14px; margin-top: 14px; font-size: 12.5px; }
+                .meta-info { color: #555; font-size: 12px; margin-bottom: 24px; }
+                @media print { body { padding: 0; max-width: 100%; } .card { break-inside: avoid; } }
+            </style>
+            """
+        elif style_key == "gost":
             css = """
             <style>
                 body { font-family: 'Times New Roman', 'Times', serif; line-height: 1.5; color: #111; max-width: 820px; margin: 0 auto; padding: __PAD__; font-size: __FONT__; }
@@ -1189,6 +1298,8 @@ class ProtocolReport:
                 table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
                 th, td { padding: 10px 12px; border-bottom: 1px solid #e6e6e6; text-align: left; vertical-align: top; }
                 th { background-color: #f7f7f7; font-weight: 700; color: #111; }
+                .fig-caption { font-size: 12px; color: #444; margin-top: 6px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
                 .stat-val { font-family: 'Courier New', monospace; font-weight: 700; }
                 .sig-yes { color: #0f5132; font-weight: 700; }
                 .sig-no { color: #495057; }
@@ -1210,6 +1321,8 @@ class ProtocolReport:
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
                 th, td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; text-align: left; }
                 th { font-weight: 700; color: #111; background: #fafafa; }
+                .fig-caption { font-size: 11px; color: #64748b; margin-top: 5px; font-style: italic; }
+                .table-caption { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
                 .stat-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 600; }
                 .sig-yes { color: #111; font-weight: 700; }
                 .sig-no { color: #64748b; }
@@ -1264,6 +1377,7 @@ class ProtocolReport:
             </style>
             """
         else:
+            # apa7 (default)
             css = """
             <style>
                 :root { --accent: __ACCENT__; }
@@ -1276,6 +1390,8 @@ class ProtocolReport:
                 th, td { padding: 12px 15px; border-bottom: 1px solid #e1e4e8; text-align: left; }
                 th { background-color: #f8f9fa; font-weight: 600; color: #444; }
                 tr:last-child td { border-bottom: none; }
+                .fig-caption { font-size: 12px; color: #555; margin-top: 8px; font-style: italic; }
+                .table-caption { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
                 .stat-val { font-family: 'SF Mono', 'Monaco', monospace; font-weight: 600; }
                 .sig-yes { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 2px 6px; border-radius: 4px; }
                 .sig-no { color: #7f8c8d; }
@@ -1309,6 +1425,8 @@ class ProtocolReport:
         stats = res.get("data", {})
         if not stats: return
 
+        self.table_counter += 1
+
         def _fmt_num(value: Any, digits: int = 2) -> str:
             try:
                 if value is None:
@@ -1330,12 +1448,12 @@ class ProtocolReport:
                 return "< 0.001" if p < 0.001 else f"{p:.3f}"
             except Exception:
                 return "-"
-        
+
         groups = [k for k in stats.keys() if k != 'overall']
-        
+
         html = f"""
         <div class="card" id="step-{step_id}">
-            <h2>{'Таблица 1. Описательная статистика' if is_ru else 'Table 1: Descriptive Statistics'}</h2>
+            <div class="table-caption">Table {self.table_counter}. {'Описательная статистика' if is_ru else 'Descriptive Statistics'}</div>
             <table>
                 <thead>
                     <tr>
@@ -1407,7 +1525,7 @@ class ProtocolReport:
             if sig_val is True
             else (("Статистически незначимо" if is_ru else "Not Significant") if sig_val is False else "—")
         )
-        
+
         method_obj = res.get("method") if isinstance(res, dict) else None
         method_default = "Статистический тест" if is_ru else "Statistical Test"
         if hasattr(method_obj, "name"):
@@ -1878,8 +1996,22 @@ class ProtocolReport:
         # Generate Plot
         img_b64 = self._generate_plot_image(res)
         if img_b64:
-            section_html += f'<div class="plot-container"><img src="data:image/png;base64,{img_b64}" alt="Analysis Plot" /></div>'
-            
+            self.fig_counter += 1
+            p_caption = ""
+            p_val_plot = res.get("p_value")
+            if p_val_plot is not None:
+                try:
+                    p_fmt = "< 0.001" if float(p_val_plot) < 0.001 else f"{float(p_val_plot):.4f}"
+                    p_caption = f" (p = {p_fmt})"
+                except Exception:
+                    pass
+            section_html += (
+                f'<div class="plot-container">'
+                f'<img src="data:image/png;base64,{img_b64}" alt="Figure {self.fig_counter}" />'
+                f'<div class="fig-caption">Figure {self.fig_counter}. {method_name}{p_caption}</div>'
+                f'</div>'
+            )
+
         interpretation = None
         if is_ru:
             interpretation = res.get("ai_interpretation") or res.get("conclusion")
@@ -1893,10 +2025,11 @@ class ProtocolReport:
 
     def _add_longitudinal_section(self, res: Dict, step_id: str):
         is_ru = bool(getattr(self, "is_ru", False))
+        self.table_counter += 1
         html = f"""
         <div class="card">
             <h2>{'Продольный анализ' if is_ru else 'Longitudinal Analysis'}: {step_id}</h2>
-            <p style="margin-bottom: 15px;">{('Разбиение по' if is_ru else 'Analysis split by')}: <strong>{res.get('split_by')}</strong></p>
+            <div class="table-caption">Table {self.table_counter}. {('Разбиение по' if is_ru else 'Results split by')}: {res.get('split_by', '')}</div>
             <table>
                 <thead>
                     <tr>
@@ -1912,16 +2045,23 @@ class ProtocolReport:
         for slice_key, slice_res in res.get("slices", {}).items():
             is_sig = slice_res.get("significant", False)
             p_val = slice_res.get('p_value', 1.0)
-            p_display = "< 0.001" if p_val < 0.001 else f"{p_val:.4f}"
-            
+            p_display = "< 0.001" if p_val is not None and p_val < 0.001 else (f"{p_val:.4f}" if p_val is not None else "-")
+
+            # method can be dict or str
+            method_raw = slice_res.get('method')
+            if isinstance(method_raw, dict):
+                method_name = method_raw.get('name', '-')
+            elif isinstance(method_raw, str):
+                import re
+                m = re.search(r"name='([^']+)'", method_raw)
+                method_name = m.group(1) if m else method_raw
+            else:
+                method_name = '-'
+
             html += f"""
                 <tr>
                     <td><strong>{slice_key}</strong></td>
-                    <td>{(
-                        slice_res.get('method', {}).get('name', '-')
-                        if isinstance(slice_res.get('method'), dict)
-                        else (str(getattr(slice_res.get('method'), 'name')) if hasattr(slice_res.get('method'), 'name') else str(slice_res.get('method') or '-'))
-                    )}</td>
+                    <td>{method_name}</td>
                     <td><span class="stat-val { 'sig-yes' if is_sig else 'sig-no' }">{p_display}</span></td>
                     <td>{ ('Различия есть' if is_ru else 'Difference Detected') if is_sig else ('Различий нет' if is_ru else 'No Difference') }</td>
                 </tr>
@@ -1929,6 +2069,54 @@ class ProtocolReport:
             
         html += "</tbody></table></div>"
         self.html_parts.append(html)
+
+    def _add_regression_section(self, res: Dict, step_id: str):
+        """Render regression results (linear or logistic)."""
+        is_ru = bool(getattr(self, "is_ru", False))
+        method_raw = res.get('method')
+        if isinstance(method_raw, dict):
+            method_name = method_raw.get('name', 'Regression')
+        elif isinstance(method_raw, str):
+            import re
+            m = re.search(r"name='([^']+)'", method_raw)
+            method_name = m.group(1) if m else 'Regression'
+        else:
+            method_name = 'Regression'
+
+        p_val = res.get('p_value')
+        p_display = "< 0.001" if p_val is not None and p_val < 0.001 else (f"{p_val:.4f}" if p_val is not None else "-")
+        r_sq = res.get('r_squared')
+
+        self.table_counter += 1
+        html = f"""
+        <div class="card" id="step-{step_id}">
+            <h2>{method_name}: {step_id}</h2>
+            <p>P-value: <span class="stat-val {'sig-yes' if res.get('significant') or (p_val is not None and p_val < 0.05) else 'sig-no'}">{p_display}</span></p>
+        """
+        if r_sq is not None:
+            html += f"<p>R² = {float(r_sq):.4f}</p>"
+
+        coefficients = res.get('coefficients')
+        if coefficients and isinstance(coefficients, (list, dict)):
+            html += f"""
+            <div class="table-caption">Table {self.table_counter}. {'Коэффициенты регрессии' if is_ru else 'Regression Coefficients'}</div>
+            <table>
+                <thead><tr><th>{'Переменная' if is_ru else 'Variable'}</th><th>{'Коэффициент' if is_ru else 'Coefficient'}</th><th>{'Ст. ошибка' if is_ru else 'Std Error'}</th><th>P-value</th></tr></thead>
+                <tbody>
+            """
+            coefs = coefficients if isinstance(coefficients, list) else [coefficients]
+            for c in coefs:
+                if isinstance(c, dict):
+                    name = c.get('variable', c.get('name', '?'))
+                    coef = c.get('coef', c.get('coefficient', '-'))
+                    se = c.get('std_err', c.get('se', '-'))
+                    cp = c.get('p_value', '-')
+                    html += f"<tr><td>{name}</td><td>{coef}</td><td>{se}</td><td>{cp}</td></tr>"
+            html += "</tbody></table>"
+
+        interpretation = res.get("ai_interpretation") or res.get("conclusion") if is_ru else res.get("conclusion")
+        if interpretation:
+            html += f'<div class="ai-box"><strong>{"Интерпретация" if is_ru else "Interpretation"}:</strong><br>{interpretation}</div>'
 
     def _add_responder_section(self, res: Dict, step_id: str):
         is_ru = bool(getattr(self, "is_ru", False))
@@ -2016,6 +2204,39 @@ class ProtocolReport:
             """
 
         html += "</div>"
+        self.html_parts.append(html)
+
+    def _add_correlation_matrix_section(self, res: Dict, step_id: str):
+        """Render clustered correlation matrix."""
+        corr_matrix = res.get('correlation_matrix') or {}
+        variables = corr_matrix.get('variables', [])
+        if not variables:
+            return  # nothing to render
+        values = corr_matrix.get('values', [])
+        n_clusters = res.get('optimal_n_clusters', res.get('n_clusters', '?'))
+
+        self.table_counter += 1
+        html = f"""
+        <div class="card" id="step-{step_id}">
+            <h2>Correlation Matrix: {step_id}</h2>
+            <p>{len(variables)} variables, {n_clusters} clusters</p>
+            <div class="table-caption">Table {self.table_counter}. Correlation Matrix (Spearman)</div>
+            <table style="font-size: 11px;">
+                <thead><tr><th></th>{''.join(f'<th>{v[:12]}</th>' for v in variables)}</tr></thead>
+                <tbody>
+        """
+        for i, var in enumerate(variables):
+            row_vals = values[i] if i < len(values) else []
+            cells = ""
+            for j, val in enumerate(row_vals):
+                if val is None:
+                    cells += "<td>-</td>"
+                else:
+                    color = f"rgba(59,130,246,{min(abs(val), 1) * 0.5})" if val >= 0 else f"rgba(239,68,68,{min(abs(val), 1) * 0.5})"
+                    cells += f'<td style="background:{color}; text-align:center">{val:.2f}</td>'
+            html += f"<tr><td><strong>{var[:12]}</strong></td>{cells}</tr>"
+
+        html += "</tbody></table></div>"
         self.html_parts.append(html)
 
     def _add_footer(self):
@@ -2731,12 +2952,52 @@ def render_report(
     template = env.get_template("report.html")
     return template.render(**context)
 
-def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[str] = None, options: Optional[Dict[str, Any]] = None) -> str:
-    report = ProtocolReport(run_data, dataset_name, style=style or "gost", options=options)
+def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[str] = None,
+                           options: Optional[Dict[str, Any]] = None, dataset_id: Optional[str] = None) -> str:
+    report = ProtocolReport(run_data, dataset_name, style=style or "gost", options=options, dataset_id=dataset_id)
     return report.generate_html()
 
+# ── Common PDF helpers ─────────────────────────────────────────────────────────
+
+def _safe_text(value: Any) -> str:
+    text = str(value) if value is not None else ""
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+def _fmt_num(value: Any, digits: int = 3) -> str:
+    try:
+        if value is None:
+            return "-"
+        num = float(value)
+        if not np.isfinite(num):
+            return "-"
+        return f"{num:.{digits}f}"
+    except Exception:
+        return "-"
+
+def _fmt_p(value: Any) -> str:
+    try:
+        if value is None:
+            return "-"
+        p = float(value)
+        if not np.isfinite(p):
+            return "-"
+        return "< 0.001" if p < 0.001 else f"{p:.4f}"
+    except Exception:
+        return "-"
+
+def _pdf_bytes(pdf: FPDF) -> bytes:
+    try:
+        out = pdf.output()
+    except TypeError:
+        out = pdf.output(dest="S")
+    if isinstance(out, (bytes, bytearray)):
+        return bytes(out)
+    return str(out).encode("latin-1", errors="replace")
+
+# ── Legacy single-analysis PDF ────────────────────────────────────────────────
+
 def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = None, options: Optional[Dict[str, Any]] = None):
-    def _safe_text(value: Any, allow_unicode: bool) -> str:
+    def _safe_text_inner(value: Any, allow_unicode: bool) -> str:
         if value is None:
             return ""
         text = str(value)
@@ -2773,7 +3034,7 @@ def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = N
         except Exception:
             return None
 
-    def _fmt_num(value: Any, digits: int = 3) -> str:
+    def _fmt_num_inner(value: Any, digits: int = 3) -> str:
         try:
             if value is None:
                 return "-"
@@ -2783,26 +3044,6 @@ def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = N
             return f"{num:.{digits}f}"
         except Exception:
             return "-"
-
-    def _fmt_p(value: Any) -> str:
-        try:
-            if value is None:
-                return "-"
-            p = float(value)
-            if not np.isfinite(p):
-                return "-"
-            return "< 0.001" if p < 0.001 else f"{p:.4f}"
-        except Exception:
-            return "-"
-
-    def _pdf_bytes(pdf: FPDF) -> bytes:
-        try:
-            out = pdf.output()
-        except TypeError:
-            out = pdf.output(dest="S")
-        if isinstance(out, (bytes, bytearray)):
-            return bytes(out)
-        return str(out).encode("latin-1", errors="replace")
 
     target = variables.get("target") if isinstance(variables, dict) else None
     group = variables.get("group") if isinstance(variables, dict) else None
@@ -2902,7 +3143,7 @@ def generate_pdf_report(results, variables, dataset_id, style: Optional[str] = N
     return _pdf_bytes(pdf)
 
 
-def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "Dataset", style: Optional[str] = None, options: Optional[Dict[str, Any]] = None) -> bytes:
+def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "Dataset", style: Optional[str] = None, options: Optional[Dict[str, Any]] = None, dataset_id: Optional[str] = None) -> bytes:
     def _safe_text(value: Any, allow_unicode: bool) -> str:
         if value is None:
             return ""
@@ -3546,3 +3787,328 @@ def generate_protocol_pdf_report(run_data: Dict[str, Any], dataset_name: str = "
             pdf.ln(3)
 
     return _pdf_bytes(pdf)
+
+
+# ── PDF с графиками (fpdf2 + PIL) ──────────────────────────────────────────────
+
+def generate_protocol_pdf_with_plots(
+    run_data: Dict[str, Any],
+    dataset_name: str = "Dataset",
+    style: Optional[str] = None,
+    dataset_id: Optional[str] = None,
+) -> bytes:
+    """
+    Генерирует PDF-отчёт с графиками.
+
+    Стратегия:
+    - Строим FPDF как обычно (текст + таблицы)
+    - Дополнительно рисуем matplotlib-графики из plot_data каждого шага
+      и вставляем их как PNG-изображения через PIL + FPDF.image()
+    - Требует только fpdf2 + Pillow (matplotlib уже есть)
+    """
+    try:
+        from PIL import Image as PILImage
+        _pil_available = True
+    except ImportError:
+        _pil_available = False
+
+    def _make_plot_png(res: Dict[str, Any]) -> Optional[bytes]:
+        """Рисуем график из plot_data шага через matplotlib → PNG bytes."""
+        try:
+            plot_data = res.get("plot_data") or []
+            if not plot_data:
+                return None
+
+            apply_publication_config()
+            fig, ax = plt.subplots(figsize=(6.5, 3.8))
+
+            groups: Dict[str, List] = {}
+            for pt in plot_data:
+                g = str(pt.get("group", ""))
+                groups.setdefault(g, []).append(float(pt.get("value", 0)))
+
+            colors = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"]
+            for i, (grp, vals) in enumerate(groups.items()):
+                color = colors[i % len(colors)]
+                ax.scatter([grp] * len(vals), vals, alpha=0.45, s=20, color=color, zorder=3)
+                mean_val = np.mean(vals)
+                ax.plot([grp], [mean_val], "D", color=color, ms=9, zorder=5)
+                ci = 1.96 * np.std(vals) / max(np.sqrt(len(vals)), 1)
+                ax.errorbar([grp], [mean_val], yerr=[[ci], [ci]], color=color, capsize=5, lw=1.5, zorder=4)
+
+            # p-value annotation
+            p_val = res.get("p_value")
+            if p_val is not None:
+                try:
+                    p = float(p_val)
+                    sig = "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else "ns"))
+                    ax.set_title(f"p = {_fmt_p(p_val)}  {sig}", fontsize=9, pad=4)
+                except Exception:
+                    pass
+
+            ax.set_xlabel("")
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+            plt.close(fig)
+            buf.seek(0)
+            return buf.read()
+        except Exception as exc:
+            logger.debug(f"_make_plot_png failed: {exc}")
+            try:
+                plt.close("all")
+            except Exception:
+                pass
+            return None
+
+    def _insert_png(pdf: FPDF, png_bytes: bytes) -> None:
+        """Вставить PNG bytes в FPDF — fpdf2 принимает BytesIO напрямую."""
+        try:
+            buf = io.BytesIO(png_bytes)
+            page_w = pdf.w - pdf.l_margin - pdf.r_margin
+            img_w = min(page_w * 0.85, 160)
+            pdf.image(buf, w=img_w)
+            pdf.ln(4)
+        except Exception as exc:
+            logger.debug(f"_insert_png failed: {exc}")
+
+    style_key = str(style or "apa7").strip().lower()
+    is_ru = style_key in {"gost"}
+
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Заголовок
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, _safe_text("Отчёт по протоколу" if is_ru else "Protocol Analysis Report"),
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _safe_text(f"Dataset: {dataset_name}"), new_x="LMARGIN", new_y="NEXT")
+    protocol_name = run_data.get("protocol_name") if isinstance(run_data, dict) else None
+    if protocol_name:
+        pdf.cell(0, 6, _safe_text(f"Protocol: {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    # Methods section from transform_log
+    if dataset_id:
+        try:
+            ws_dir = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+            log_path = os.path.join(ws_dir, "datasets", dataset_id, "processed", "transform_log.json")
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as fh:
+                    tlog = json.load(fh)
+                if tlog:
+                    methods_text = generate_methods_section(tlog, dataset_name=dataset_name)
+                    pdf.ln(2)
+                    pdf.set_font("Helvetica", "B", 13)
+                    pdf.cell(0, 8, _safe_text("Methods"), new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_font("Helvetica", "", 10)
+                    pdf.multi_cell(0, 5, _safe_text(methods_text))
+                    pdf.ln(4)
+        except Exception:
+            pass
+
+    results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
+    fig_counter = 0
+
+    for step_id, res in (results or {}).items():
+        if not isinstance(res, dict):
+            continue
+        if "error" in res:
+            continue
+
+        # Шапка шага
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.multi_cell(0, 7, _safe_text(f"{'Шаг' if is_ru else 'Step'}: {step_id}"))
+        pdf.set_font("Helvetica", "", 10)
+
+        method = res.get("method")
+        if isinstance(method, dict):
+            method_name = method.get("name") or method.get("id") or "Statistical Test"
+        elif isinstance(method, str):
+            import re as _re
+            _m = _re.search(r"name='([^']+)'", method)
+            method_name = _m.group(1) if _m else method
+        else:
+            method_name = "Statistical Test"
+        pdf.cell(0, 6, _safe_text(f"Method: {method_name}"), new_x="LMARGIN", new_y="NEXT")
+
+        if "p_value" in res:
+            pdf.cell(0, 6, _safe_text(f"P-value: {_fmt_p(res.get('p_value'))}"), new_x="LMARGIN", new_y="NEXT")
+        if "stat_value" in res or "stats" in res:
+            pdf.cell(0, 6, _safe_text(f"Statistic: {_fmt_num(res.get('stat_value', res.get('stats')))}"),
+                     new_x="LMARGIN", new_y="NEXT")
+
+        effect_size = res.get("effect_size")
+        if effect_size is not None:
+            label = res.get("effect_size_name") or "effect"
+            pdf.cell(0, 6, _safe_text(f"Effect size ({label}): {_fmt_num(effect_size, 2)}"),
+                     new_x="LMARGIN", new_y="NEXT")
+        ci_lo, ci_hi = res.get("effect_size_ci_lower"), res.get("effect_size_ci_upper")
+        if ci_lo is not None and ci_hi is not None:
+            pdf.cell(0, 6, _safe_text(f"Effect CI: [{_fmt_num(ci_lo, 2)}, {_fmt_num(ci_hi, 2)}]"),
+                     new_x="LMARGIN", new_y="NEXT")
+        if res.get("power") is not None:
+            pdf.cell(0, 6, _safe_text(f"Power: {_fmt_num(res['power'], 2)}"), new_x="LMARGIN", new_y="NEXT")
+        if res.get("bf10") is not None:
+            pdf.cell(0, 6, _safe_text(f"BF10: {res['bf10']}"), new_x="LMARGIN", new_y="NEXT")
+
+        conclusion = res.get("conclusion")
+        if conclusion:
+            pdf.ln(1)
+            pdf.multi_cell(0, 5, _safe_text(f"Conclusion: {conclusion}"))
+
+        # График
+        png_bytes = _make_plot_png(res)
+        if png_bytes:
+            fig_counter += 1
+            pdf.ln(3)
+            _insert_png(pdf, png_bytes)
+            # Подпись рисунка
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.multi_cell(0, 4, _safe_text(
+                f"Figure {fig_counter}. {method_name}"
+                + (f" (p = {_fmt_p(res.get('p_value'))})" if "p_value" in res else "")
+            ))
+            pdf.set_font("Helvetica", "", 10)
+
+        pdf.ln(5)
+
+    return _pdf_bytes(pdf)
+
+
+# ── Phase 4.1: Auto-Methods from transform_log ────────────────────────────────
+
+_ACTION_TEMPLATES: Dict[str, str] = {
+    "split_column": (
+        "Values in the column '{column}' were split by the delimiter '{sep}' "
+        "into {mode} (trim={trim}). "
+        "The dataset changed from {rows_before} rows / {cols_before} columns "
+        "to {rows_after} rows / {cols_after} columns."
+    ),
+    "recode_values": (
+        "Values in '{column}' were recoded according to a user-defined mapping table "
+        "({n_mappings} substitution(s) defined). "
+        "Missing mapping entries were left unchanged."
+    ),
+    "derive_column": (
+        "A new variable '{new_col}' was derived using the formula: {formula}."
+    ),
+    "bin_variable": (
+        "The continuous variable '{column}' was discretised into {n_bins} bins "
+        "using the '{method}' method{labels_note}. "
+        "The resulting variable was stored as '{new_col}'."
+    ),
+    "string_clean": (
+        "Text values in '{column}' were cleaned: {ops}."
+    ),
+}
+
+
+def _render_action_sentence(entry: Dict[str, Any]) -> str:
+    """Convert a single transform_log entry into one English sentence."""
+    action = entry.get("action", "")
+    col = entry.get("column") or ""
+    cfg = entry.get("config") or {}
+
+    rows_before = entry.get("rows_before", "?")
+    rows_after  = entry.get("rows_after",  "?")
+    cols_before = entry.get("cols_before", "?")
+    cols_after  = entry.get("cols_after",  "?")
+
+    if action == "split_column":
+        return _ACTION_TEMPLATES["split_column"].format(
+            column=col,
+            sep=cfg.get("separator", ","),
+            mode=cfg.get("mode", "rows"),
+            trim=cfg.get("trim", True),
+            rows_before=rows_before, rows_after=rows_after,
+            cols_before=cols_before, cols_after=cols_after,
+        )
+    elif action == "recode_values":
+        mappings = cfg.get("mapping") or {}
+        return _ACTION_TEMPLATES["recode_values"].format(
+            column=col,
+            n_mappings=len(mappings) if isinstance(mappings, dict) else "?",
+        )
+    elif action == "derive_column":
+        return _ACTION_TEMPLATES["derive_column"].format(
+            new_col=cfg.get("new_column") or col,
+            formula=cfg.get("formula") or "—",
+        )
+    elif action == "bin_variable":
+        labels = cfg.get("labels")
+        labels_note = f" with labels {labels}" if labels else ""
+        # For custom method, derive n_bins from the bins list
+        bins_list = cfg.get("bins")
+        if bins_list and isinstance(bins_list, list):
+            n_bins = len(bins_list) - 1
+        else:
+            n_bins = cfg.get("n_bins", "?")
+        return _ACTION_TEMPLATES["bin_variable"].format(
+            column=col,
+            n_bins=n_bins,
+            method=cfg.get("method", "equal_width"),
+            labels_note=labels_note,
+            new_col=cfg.get("new_column") or f"{col}_bin",
+        )
+    elif action == "string_clean":
+        operations = cfg.get("operations") or []
+        ops_list = []
+        if "trim" in operations:      ops_list.append("leading/trailing whitespace removed")
+        if "lowercase" in operations:  ops_list.append("converted to lowercase")
+        if "uppercase" in operations:  ops_list.append("converted to uppercase")
+        if "replace" in operations:
+            replace_from = cfg.get("replace_from", "")
+            replace_to = cfg.get("replace_to", "")
+            if replace_from:
+                ops_list.append(f"'{replace_from}' replaced with '{replace_to}'")
+            else:
+                ops_list.append("substring replacement applied")
+        ops = "; ".join(ops_list) if ops_list else "no specific operations recorded"
+        return _ACTION_TEMPLATES["string_clean"].format(column=col, ops=ops)
+    else:
+        return f"Action '{action}' was applied to column '{col}'."
+
+
+def generate_methods_section(
+    transform_log: List[Dict[str, Any]],
+    dataset_name: str = "the dataset",
+) -> str:
+    """
+    Generate a publication-ready Methods paragraph from a transform_log list.
+
+    Parameters
+    ----------
+    transform_log : list of dicts loaded from transform_log.json
+    dataset_name  : display name for the dataset
+
+    Returns
+    -------
+    str — plain-text paragraph suitable for embedding in a Methods section.
+    """
+    if not transform_log:
+        return (
+            f"Data wrangling: no preprocessing transformations were recorded "
+            f"for {dataset_name}."
+        )
+
+    sentences = []
+    for entry in transform_log:
+        try:
+            sentences.append(_render_action_sentence(entry))
+        except Exception as exc:
+            logger.debug(f"generate_methods_section: failed to render entry: {exc}")
+
+    if not sentences:
+        return (
+            f"Data were loaded from {dataset_name}. "
+            "No structured preprocessing steps were recorded."
+        )
+
+    preamble = (
+        f"Data preparation was performed in the following sequence "
+        f"({len(sentences)} step(s) recorded)."
+    )
+    body = " ".join(sentences)
+    return f"{preamble} {body}"
