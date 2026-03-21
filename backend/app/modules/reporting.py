@@ -164,9 +164,11 @@ class ProtocolReport:
     V2 Report Engine supporting multi-step protocols.
     """
     
-    def __init__(self, run_data: Dict, dataset_name: str = "Dataset", style: str = "apa7"):
+    def __init__(self, run_data: Dict, dataset_name: str = "Dataset", style: str = "apa7",
+                 dataset_id: Optional[str] = None):
         self.data = run_data # The full results.json
         self.dataset_name = dataset_name
+        self.dataset_id = dataset_id
         self.style = style or "apa7"
         self.html_parts = []
         self.fig_counter = 0
@@ -174,6 +176,9 @@ class ProtocolReport:
 
     def generate_html(self) -> str:
         self._add_header()
+
+        # 0. Methods section from transform_log
+        self._add_methods_section()
 
         results = self.data.get("results", {})
 
@@ -191,6 +196,32 @@ class ProtocolReport:
 
         self._add_footer()
         return "\n".join(self.html_parts)
+
+    def _add_methods_section(self):
+        """Insert auto-generated Methods paragraph from transform_log.json."""
+        if not self.dataset_id:
+            return
+        try:
+            import os, json
+            workspace_dir = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+            log_path = os.path.join(workspace_dir, "datasets", self.dataset_id, "processed", "transform_log.json")
+            if not os.path.exists(log_path):
+                return
+            with open(log_path, "r", encoding="utf-8") as f:
+                transform_log = json.load(f)
+            if not transform_log:
+                return
+            methods_text = generate_methods_section(transform_log, dataset_name=self.dataset_name)
+            style_key = str(self.style or "apa7").strip().lower()
+            heading = "Методы" if style_key == "gost" else "Methods"
+            self.html_parts.append(f"""
+            <div class="card">
+                <h2>{heading}</h2>
+                <p style="text-align: justify;">{methods_text}</p>
+            </div>
+            """)
+        except Exception as exc:
+            logger.debug(f"_add_methods_section failed: {exc}")
 
     def _add_header(self):
         style_key = str(self.style or "apa7").strip().lower()
@@ -765,8 +796,9 @@ def render_report(
     template = env.get_template("report.html")
     return template.render(**context)
 
-def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[str] = None) -> str:
-    report = ProtocolReport(run_data, dataset_name, style=style or "apa7")
+def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[str] = None,
+                           dataset_id: Optional[str] = None) -> str:
+    report = ProtocolReport(run_data, dataset_name, style=style or "apa7", dataset_id=dataset_id)
     return report.generate_html()
 
 def generate_pdf_report(results, variables, dataset_id):
@@ -981,6 +1013,7 @@ def generate_protocol_pdf_with_plots(
     run_data: Dict[str, Any],
     dataset_name: str = "Dataset",
     style: Optional[str] = None,
+    dataset_id: Optional[str] = None,
 ) -> bytes:
     """
     Генерирует PDF-отчёт с графиками.
@@ -1103,6 +1136,27 @@ def generate_protocol_pdf_with_plots(
     if protocol_name:
         pdf.cell(0, 6, _safe_text(f"Protocol: {protocol_name}"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
+
+    # Methods section from transform_log
+    if dataset_id:
+        try:
+            import os as _os
+            import json as _json
+            _ws = _os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+            _log_path = _os.path.join(_ws, "datasets", dataset_id, "processed", "transform_log.json")
+            if _os.path.exists(_log_path):
+                with open(_log_path, "r", encoding="utf-8") as _f:
+                    _tlog = _json.load(_f)
+                if _tlog:
+                    _methods = generate_methods_section(_tlog, dataset_name=dataset_name)
+                    pdf.ln(2)
+                    pdf.set_font("Helvetica", "B", 13)
+                    pdf.cell(0, 8, _safe_text("Methods"), new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_font("Helvetica", "", 10)
+                    pdf.multi_cell(0, 5, _safe_text(_methods))
+                    pdf.ln(4)
+        except Exception:
+            pass
 
     results = run_data.get("results", {}) if isinstance(run_data, dict) else {}
     fig_counter = 0

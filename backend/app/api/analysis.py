@@ -259,7 +259,7 @@ def get_protocol_report_html(run_id: str, dataset_id: str, sections: Optional[st
         res = _apply_report_customization(res, sections, order)
              
         # Generate HTML
-        html = render_protocol_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+        html = render_protocol_report(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style, dataset_id=dataset_id)
         return HTMLResponse(content=html)
     except Exception as e:
          raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
@@ -276,7 +276,7 @@ def get_protocol_report_pdf(run_id: str, dataset_id: str, sections: Optional[str
 
         res = _apply_report_customization(res, sections, order)
 
-        pdf_bytes = generate_protocol_pdf_with_plots(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style)
+        pdf_bytes = generate_protocol_pdf_with_plots(res, dataset_name=f"Dataset {dataset_id[:5]}...", style=style, dataset_id=dataset_id)
         filename = f"protocol_report_{run_id}.pdf"
         return Response(
             content=pdf_bytes,
