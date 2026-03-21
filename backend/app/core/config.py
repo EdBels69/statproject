@@ -44,6 +44,16 @@ def _env_list(name: str, default: list[str]) -> list[str]:
     return [p for p in items if p]
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except Exception:
+        return default
+
+
 class Settings:
     def __init__(self):
         self.PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Stat Analyzer")
@@ -60,13 +70,49 @@ class Settings:
 
         self.GLM_ENABLED: bool = _env_bool("GLM_ENABLED", True)
         self.GLM_API_KEY: Optional[str] = os.getenv("GLM_API_KEY")
-        self.GLM_API_URL: str = os.getenv("GLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-        self.GLM_MODEL: str = os.getenv("GLM_MODEL", "xiaomi/mimo-v2-flash:free")
+        self.GLM_API_URL: str = os.getenv("GLM_API_URL", "https://api.z.ai/api/coding/paas/v4")
+        self.GLM_MODEL: str = os.getenv("GLM_MODEL", "glm-4.7")
 
         self.OPENROUTER_API_KEY: Optional[str] = os.getenv("OPENROUTER_API_KEY")
         self.OPENROUTER_API_URL: str = os.getenv(
             "OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions"
         )
+
+        self.AUTH_ENABLED: bool = _env_bool("AUTH_ENABLED", False)
+        self.AUTH_HEADER: str = os.getenv("AUTH_HEADER", "X-API-Key")
+        self.API_KEYS_RAW: str = os.getenv("API_KEYS", "")
+        self.AUDIT_LOG_PATH: str = os.getenv("AUDIT_LOG_PATH", "workspace/audit.log")
+
+        self.RATE_LIMIT_ENABLED: bool = _env_bool("RATE_LIMIT_ENABLED", True)
+        self.RATE_LIMIT_REQUESTS: int = _env_int("RATE_LIMIT_REQUESTS", 300)
+        self.RATE_LIMIT_WINDOW_SEC: int = _env_int("RATE_LIMIT_WINDOW_SEC", 60)
+
+        self.API_KEYS = self._parse_api_keys(self.API_KEYS_RAW)
+
+    def _parse_api_keys(self, raw: str) -> dict[str, dict[str, str]]:
+        keys: dict[str, dict[str, str]] = {}
+        if not raw:
+            return keys
+        for entry in raw.split(","):
+            item = entry.strip()
+            if not item:
+                continue
+            parts = [p.strip() for p in item.split(":") if p.strip()]
+            if len(parts) < 2:
+                continue
+            key = parts[0]
+            role = parts[1] if len(parts) > 1 else "user"
+            name = parts[2] if len(parts) > 2 else "api_user"
+            keys[key] = {"role": role, "name": name}
+        return keys
+
+    def get_user_by_key(self, api_key: str | None) -> dict[str, str] | None:
+        if not api_key:
+            return None
+        user = self.API_KEYS.get(api_key)
+        if not user:
+            return None
+        return {"key": api_key, **user}
 
 
 settings = Settings()

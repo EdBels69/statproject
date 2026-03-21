@@ -67,7 +67,7 @@ async def get_term_explanation(
     """
     explanation = get_explanation(term, level)
     if not explanation:
-        raise HTTPException(status_code=404, detail=f"Term '{term}' not found")
+        raise HTTPException(status_code=404, detail=f"Термин «{term}» не найден")
     return explanation
 
 
@@ -101,7 +101,7 @@ async def get_test_info(
     
     rationale = get_test_rationale(test_id, data_profile or None, level)
     if not rationale:
-        raise HTTPException(status_code=404, detail=f"Test '{test_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Тест «{test_id}» не найден")
     return rationale
 
 

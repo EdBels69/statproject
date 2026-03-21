@@ -67,6 +67,10 @@ class MixedEffectsEngine:
         Dict with model results, coefficients, and interpretation
         """
         smf, _ = _get_statsmodels()
+
+        def _q(name: str) -> str:
+            safe = str(name).replace("\\", "\\\\").replace('"', '\\"')
+            return f'Q("{safe}")'
         
         # Prepare data
         required_cols = [outcome, time_col, group_col, subject_col]
@@ -86,32 +90,63 @@ class MixedEffectsEngine:
         analysis_df[time_col] = analysis_df[time_col].astype('category')
         analysis_df[group_col] = analysis_df[group_col].astype('category')
         
-        # Build formula: outcome ~ Time * Group + covariates
-        fixed_effects = f"{outcome} ~ C({time_col}) * C({group_col})"
-        if covariates:
-            cov_terms = " + ".join(covariates)
-            fixed_effects += f" + {cov_terms}"
-        
-        # Random effects
-        re_formula = "~1" if not random_slope else f"~1 + C({time_col})"
-        
-        try:
+        def attempt_fit(active_covariates: Optional[List[str]], use_random_slope: bool) -> Dict[str, Any]:
+            fixed_effects = f"{_q(outcome)} ~ C({_q(time_col)}) * C({_q(group_col)})"
+            if active_covariates:
+                cov_terms = " + ".join([_q(c) for c in active_covariates])
+                fixed_effects += f" + {cov_terms}"
+
+            re_formula = "~1" if not use_random_slope else f"~1 + C({_q(time_col)})"
+            fit_attempts = [
+                {"method": "lbfgs", "reml": False},
+                {"method": "bfgs", "reml": False},
+                {"method": "powell", "reml": False},
+                {"method": "nm", "reml": False},
+                {"method": "cg", "reml": False},
+                {"method": "lbfgs", "reml": True},
+                {"method": "powell", "reml": True}
+            ]
+            last_error = None
+
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                
-                model = smf.mixedlm(
-                    fixed_effects,
-                    data=analysis_df,
-                    groups=analysis_df[subject_col],
-                    re_formula=re_formula
-                )
-                result = model.fit(method='lbfgs', maxiter=500)
-                
-                return self._extract_results(
-                    result, analysis_df, time_col, group_col, outcome, alpha
-                )
-                
+                for attempt in fit_attempts:
+                    try:
+                        model = smf.mixedlm(
+                            fixed_effects,
+                            data=analysis_df,
+                            groups=analysis_df[subject_col],
+                            re_formula=re_formula
+                        )
+                        result = model.fit(method=attempt["method"], reml=attempt["reml"], maxiter=500)
+                        return self._extract_results(
+                            result, analysis_df, time_col, group_col, outcome, alpha
+                        )
+                    except Exception as ex:
+                        last_error = ex
+
+            if last_error is not None:
+                raise last_error
+
+            raise RuntimeError("Mixed effects fit failed")
+
+        try:
+            return attempt_fit(covariates if covariates else None, random_slope)
         except Exception as e:
+            fallbacks = []
+            if random_slope:
+                fallbacks.append((covariates if covariates else None, False))
+            if covariates:
+                fallbacks.append((None, random_slope))
+            if covariates and random_slope:
+                fallbacks.append((None, False))
+
+            for next_covariates, next_random_slope in fallbacks:
+                try:
+                    return attempt_fit(next_covariates, next_random_slope)
+                except Exception:
+                    continue
+
             return {
                 "error": str(e),
                 "suggestion": "Check data quality or reduce model complexity"
@@ -129,6 +164,13 @@ class MixedEffectsEngine:
         alpha: float
     ) -> Dict[str, Any]:
         """Extract and format model results"""
+
+        def _q(name: str) -> str:
+            safe = str(name).replace("\\", "\\\\").replace('"', '\\"')
+            return f'Q("{safe}")'
+
+        time_key = f"C({_q(time_col)})"
+        group_key = f"C({_q(group_col)})"
         
         params = result.params
         pvalues = result.pvalues
@@ -136,17 +178,17 @@ class MixedEffectsEngine:
         # Identify term types
         interaction_terms = [
             p for p in params.index 
-            if f"C({time_col})" in p and f"C({group_col})" in p
+            if time_key in p and group_key in p
         ]
         
         time_terms = [
             p for p in params.index 
-            if f"C({time_col})" in p and f"C({group_col})" not in p
+            if time_key in p and group_key not in p
         ]
         
         group_terms = [
             p for p in params.index 
-            if f"C({group_col})" in p and f"C({time_col})" not in p
+            if group_key in p and time_key not in p
         ]
         
         # Interaction analysis
@@ -271,12 +313,12 @@ class MixedEffectsEngine:
         """Generate human-readable interpretation"""
         if significant:
             return (
-                f"Статистически значимое взаимодействие Время×Группа (p={p_value:.4f}). "
+                f"Статистически значимое взаимодействие Визит×Группа (p={p_value:.4f}). "
                 f"Траектории изменения показателя различаются между группами."
             )
         else:
             return (
-                f"Взаимодействие Время×Группа не достигло статистической значимости "
+                f"Взаимодействие Визит×Группа не достигло статистической значимости "
                 f"(p={p_value:.4f}). Траектории изменения не различаются значимо."
             )
 

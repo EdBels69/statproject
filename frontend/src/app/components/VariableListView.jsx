@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AutoSizer from 'react-virtualized-auto-sizer';
+import { FixedSizeList as List } from 'react-window';
 import Badge from './ui/Badge';
 
 const TYPE_OPTIONS = [
@@ -63,7 +65,7 @@ export default function VariableListView({
   const [query, setQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
   const rootRef = useRef(null);
-  const itemRefs = useRef([]);
+  const listRef = useRef(null);
   const safeColumns = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
   const statsByCol = scanReport?.columns || {};
 
@@ -84,11 +86,10 @@ export default function VariableListView({
   }, [visible.length]);
 
   useEffect(() => {
-    const el = itemRefs.current?.[safeFocusedIndex];
-    if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ block: 'nearest' });
-    }
-  }, [safeFocusedIndex, visible]);
+    const api = listRef.current;
+    if (!api || typeof api.scrollToItem !== 'function') return;
+    api.scrollToItem(safeFocusedIndex, 'smart');
+  }, [safeFocusedIndex]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.defaultPrevented) return;
@@ -200,89 +201,103 @@ export default function VariableListView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
-        {visible.map((col, idx) => {
-          const role = col.role ?? '';
-          const uiType = col.uiType ?? '';
-          const colStats = statsByCol?.[col.name];
-          const statLine = formatStatLine(colStats, uiType);
-          const isFocused = idx === safeFocusedIndex;
-
-          return (
-            <div
-              key={col.name}
-              ref={(el) => {
-                itemRefs.current[idx] = el;
-              }}
-              className={`variable-card rounded-[2px] border border-transparent bg-[color:var(--white)] px-5 py-4 ${isFocused ? 'ring-1 ring-[color:var(--accent)] ring-inset' : ''}`}
-              onMouseEnter={() => setFocusedIndex(idx)}
-              onMouseDown={() => {
-                const root = rootRef.current;
-                if (root && typeof root.focus === 'function') root.focus();
-              }}
+      <div className="h-[clamp(260px,calc(100vh-420px),560px)]">
+        <AutoSizer>
+          {({ height, width }) => (
+            <List
+              ref={listRef}
+              height={height}
+              width={width}
+              itemCount={visible.length}
+              itemSize={152}
+              overscanCount={8}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="truncate text-base font-semibold text-[color:var(--text-primary)]">
-                      {col.name}
+              {({ index, style }) => {
+                const col = visible[index];
+                if (!col) return null;
+
+                const role = col.role ?? '';
+                const uiType = col.uiType ?? '';
+                const colStats = statsByCol?.[col.name];
+                const statLine = formatStatLine(colStats, uiType);
+                const isFocused = index === safeFocusedIndex;
+
+                return (
+                  <div style={style} className="px-0 py-1">
+                    <div
+                      className={`variable-card rounded-[2px] border border-transparent bg-[color:var(--white)] px-5 py-4 ${isFocused ? 'ring-1 ring-[color:var(--accent)] ring-inset' : ''}`}
+                      onMouseEnter={() => setFocusedIndex(index)}
+                      onMouseDown={() => {
+                        const root = rootRef.current;
+                        if (root && typeof root.focus === 'function') root.focus();
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="truncate text-base font-semibold text-[color:var(--text-primary)]">
+                              {col.name}
+                            </div>
+                            {role ? <Badge variant={roleVariant(role)}>{role}</Badge> : null}
+                          </div>
+                          {statLine ? (
+                            <div className="mt-1 text-xs text-[color:var(--text-secondary)] tabular-nums">
+                              {statLine}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenSettings?.(col.name)}
+                          className="shrink-0 rounded-[2px] border border-[color:var(--border-color)] bg-transparent px-3 py-2 text-xs font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
+                        >
+                          ⚙︎
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2">
+                          <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">
+                            Тип
+                          </div>
+                          <select
+                            value={uiType}
+                            onChange={(e) => onTypeChange?.(col.name, e.target.value)}
+                            className="mt-1 w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 py-2 text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--text-primary)]"
+                          >
+                            {TYPE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2">
+                          <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">
+                            Роль
+                          </div>
+                          <select
+                            value={role}
+                            onChange={(e) => onRoleChange?.(col.name, e.target.value)}
+                            className="mt-1 w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 py-2 text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--text-primary)]"
+                          >
+                            {ROLE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    {role ? <Badge variant={roleVariant(role)}>{role}</Badge> : null}
                   </div>
-                  {statLine ? (
-                    <div className="mt-1 text-xs text-[color:var(--text-secondary)] tabular-nums">
-                      {statLine}
-                    </div>
-                  ) : null}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onOpenSettings?.(col.name)}
-                  className="shrink-0 rounded-[2px] border border-[color:var(--border-color)] bg-transparent px-3 py-2 text-xs font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-secondary)]"
-                >
-                  ⚙︎
-                </button>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2">
-                  <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">
-                    Тип
-                  </div>
-                  <select
-                    value={uiType}
-                    onChange={(e) => onTypeChange?.(col.name, e.target.value)}
-                    className="mt-1 w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 py-2 text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--text-primary)]"
-                  >
-                    {TYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--bg-secondary)] px-3 py-2">
-                  <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[color:var(--text-muted)]">
-                    Роль
-                  </div>
-                  <select
-                    value={role}
-                    onChange={(e) => onRoleChange?.(col.name, e.target.value)}
-                    className="mt-1 w-full rounded-[2px] border border-[color:var(--border-color)] bg-[color:var(--white)] px-2 py-2 text-xs font-semibold tracking-[0.18em] uppercase text-[color:var(--text-primary)]"
-                  >
-                    {ROLE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                );
+              }}
+            </List>
+          )}
+        </AutoSizer>
       </div>
 
       <div className="mt-4 pt-3 border-t border-[color:var(--border-color)] text-xs text-[color:var(--text-muted)]">

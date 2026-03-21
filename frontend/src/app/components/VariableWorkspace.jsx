@@ -29,6 +29,24 @@ const TYPE_CONFIG = {
     text: { icon: DocumentTextIcon, label: 'Текст' }
 };
 
+function formatCompactNumber(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    const abs = Math.abs(value);
+    if (abs > 0 && abs < 0.001) return '<0.001';
+    if (abs >= 1000) return value.toFixed(0);
+    if (abs >= 100) return value.toFixed(0);
+    if (abs >= 10) return value.toFixed(1);
+    if (abs >= 1) return value.toFixed(2);
+    return value.toFixed(3);
+}
+
+function roleBadge(role) {
+    if (role === 'target') return 'T';
+    if (role === 'group') return 'G';
+    if (role === 'covariate') return 'C';
+    return '';
+}
+
 function getVariableType(column) {
     if (!column || !column.type) return 'text';
     const dtype = String(column.type).toLowerCase();
@@ -58,10 +76,13 @@ export default function VariableWorkspace({
     mode = 'multi', // 'single' or 'multi'
     showStats = true
 }) {
+    const selectionEnabled = mode === 'multi' && typeof onSelectionChange === 'function';
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState(null); // null = all
     const [roleFilter, setRoleFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
+    const [sortKey, setSortKey] = useState('name');
+    const [sortDir, setSortDir] = useState('asc');
     const [previewName, setPreviewName] = useState(null);
     const [dragActiveRole, setDragActiveRole] = useState(null);
     const [draggingName, setDraggingName] = useState(null);
@@ -83,19 +104,16 @@ export default function VariableWorkspace({
         }));
     }, [columns]);
 
-    // Filter and search
-    const filteredColumns = (() => {
+    const filteredColumns = useMemo(() => {
         let result = processedColumns;
 
         if (typeFilter) {
-            result = result.filter(col => col.varType === typeFilter);
+            result = result.filter((col) => col.varType === typeFilter);
         }
 
         if (search.trim()) {
             const query = search.toLowerCase();
-            result = result.filter(col =>
-                col.name.toLowerCase().includes(query)
-            );
+            result = result.filter((col) => col.name.toLowerCase().includes(query));
         }
 
         if (roleFilter && roleFilter !== 'all') {
@@ -105,8 +123,28 @@ export default function VariableWorkspace({
             });
         }
 
-        return result;
-    })();
+        const dir = sortDir === 'desc' ? -1 : 1;
+        const typeOrder = { numeric: 0, categorical: 1, datetime: 2, text: 3 };
+        const roleOrder = { target: 0, group: 1, covariate: 2, unused: 3 };
+
+        return [...result].sort((a, b) => {
+            if (sortKey === 'type') {
+                const ax = typeOrder[a.varType] ?? 99;
+                const bx = typeOrder[b.varType] ?? 99;
+                if (ax !== bx) return (ax - bx) * dir;
+                return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) * dir;
+            }
+
+            if (sortKey === 'role') {
+                const ar = roleOrder[roleByName?.[a.name] || 'unused'] ?? 99;
+                const br = roleOrder[roleByName?.[b.name] || 'unused'] ?? 99;
+                if (ar !== br) return (ar - br) * dir;
+                return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) * dir;
+            }
+
+            return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) * dir;
+        });
+    }, [processedColumns, typeFilter, search, roleFilter, roleByName, sortKey, sortDir]);
 
     const safeFocusedIndex = filteredColumns.length > 0
         ? Math.max(0, Math.min(focusedIndex, filteredColumns.length - 1))
@@ -121,9 +159,10 @@ export default function VariableWorkspace({
         return stats;
     }, [processedColumns]);
 
-    const selectedSet = useMemo(() => new Set(selectedVariables), [selectedVariables]);
+    const selectedSet = useMemo(() => (selectionEnabled ? new Set(selectedVariables) : new Set()), [selectedVariables, selectionEnabled]);
 
     const handleToggle = useCallback((colName) => {
+        if (!selectionEnabled) return;
         if (mode === 'single') {
             onSelectionChange?.([colName]);
             onVariableClick?.(colName);
@@ -134,7 +173,7 @@ export default function VariableWorkspace({
             ? selectedVariables.filter(v => v !== colName)
             : [...selectedVariables, colName];
         onSelectionChange?.(newSelection);
-    }, [mode, selectedSet, selectedVariables, onSelectionChange, onVariableClick]);
+    }, [mode, selectedSet, selectedVariables, onSelectionChange, onVariableClick, selectionEnabled]);
 
     const preview = useMemo(() => {
         if (!effectivePreviewName) return null;
@@ -318,6 +357,18 @@ export default function VariableWorkspace({
         onSelectionChange?.([]);
     };
 
+    const toggleSort = useCallback((nextKey) => {
+        setFocusedIndex(0);
+        setSortKey((prevKey) => {
+            if (prevKey === nextKey) {
+                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                return prevKey;
+            }
+            setSortDir('asc');
+            return nextKey;
+        });
+    }, []);
+
     // Render single variable row
     const VariableRow = useCallback(({ index, style, data }) => {
         const col = data.items[index];
@@ -332,6 +383,32 @@ export default function VariableWorkspace({
         const uniqueCount = mergedStats?.unique_count ?? col.unique_count;
         const missingCount = mergedStats?.missing_count ?? col.missing_count;
         const mean = mergedStats?.mean;
+        const min = mergedStats?.min;
+        const max = mergedStats?.max;
+        const top = Array.isArray(mergedStats?.top_values) ? mergedStats.top_values : [];
+        const role = data.roleByName?.[col.name] || 'unused';
+        const badge = roleBadge(role);
+
+        const statsLine = (() => {
+            const parts = [];
+            if (typeof missingCount === 'number' && missingCount > 0) parts.push(`${missingCount} NA`);
+            if (typeof uniqueCount === 'number') parts.push(`u:${uniqueCount}`);
+
+            if (col.varType === 'numeric') {
+                if (typeof mean === 'number') parts.push(`μ:${mean < 0.001 && mean > 0 ? '<0.001' : mean.toFixed(3)}`);
+                const minText = formatCompactNumber(min);
+                const maxText = formatCompactNumber(max);
+                if (minText && maxText) parts.push(`${minText}–${maxText}`);
+            } else if (col.varType === 'categorical') {
+                const topNames = top
+                    .slice(0, 3)
+                    .map((tv) => (tv?.value != null ? String(tv.value) : ''))
+                    .filter(Boolean);
+                if (topNames.length > 0) parts.push(topNames.join(' | '));
+            }
+
+            return parts.length > 0 ? parts.join(' · ') : '';
+        })();
 
         return (
             <div style={style}>
@@ -340,20 +417,19 @@ export default function VariableWorkspace({
                         data.onToggle(col.name);
                         data.onPreview(col.name);
                     }}
-                    onMouseEnter={() => data.onFocus(index)}
+                    onMouseEnter={() => data.onFocus(index, col.name)}
                     draggable
                     onDragStart={(e) => data.onDragStart(e, col.name)}
                     onDragEnd={data.onDragEnd}
                     className={`
             variable-card h-full flex items-center gap-3 px-3 cursor-pointer transition-colors transition-transform active:scale-[0.99] cursor-grab active:cursor-grabbing
-            border-b border-[color:var(--border-color)]
-            ${isSelected ? 'bg-[color:var(--bg-secondary)] border-l-2 border-l-[color:var(--accent)]' : 'hover:bg-[color:var(--bg-secondary)]'}
+            border-b border-[color:var(--border-color)] border-l-2 ${isSelected ? 'border-l-[color:var(--accent)] bg-[color:var(--bg-secondary)]' : 'border-l-transparent hover:bg-[color:var(--bg-secondary)]'}
             ${isFocused ? 'ring-1 ring-[color:var(--accent)] ring-inset' : ''}
             ${data.draggingName === col.name ? 'opacity-60 scale-[0.985]' : ''}
           `}
                 >
                     {/* Checkbox for multi-select */}
-                    {data.mode === 'multi' && (
+                    {data.selectionEnabled && (
                         <div className={`
               w-4 h-4 rounded-[2px] border flex items-center justify-center flex-shrink-0
               ${isSelected ? 'bg-[color:var(--accent)] border-[color:var(--accent)]' : 'border-[color:var(--border-color)] bg-[color:var(--white)]'}
@@ -381,14 +457,11 @@ export default function VariableWorkspace({
                     {/* Stats preview */}
                     {data.showStats && (
                         <div className="flex items-center gap-2 flex-shrink-0 text-[10px] font-mono text-[color:var(--text-muted)]">
-                            {typeof missingCount === 'number' && missingCount > 0 ? (
-                                <span>{missingCount} NA</span>
+                            {badge ? (
+                                <span className="px-1.5 py-0.5 rounded-[2px] bg-[color:var(--black)] text-[color:var(--white)] text-[10px] font-semibold leading-none">{badge}</span>
                             ) : null}
-                            {typeof uniqueCount === 'number' ? (
-                                <span>u:{uniqueCount}</span>
-                            ) : null}
-                            {typeof mean === 'number' ? (
-                                <span>μ:{mean < 0.001 && mean > 0 ? '<0.001' : mean.toFixed(3)}</span>
+                            {statsLine ? (
+                                <span className="max-w-[220px] truncate">{statsLine}</span>
                             ) : null}
                         </div>
                     )}
@@ -400,17 +473,22 @@ export default function VariableWorkspace({
     const listData = useMemo(() => ({
         items: filteredColumns,
         selectedSet,
+        selectionEnabled,
         onToggle: handleToggle,
         onPreview: (name) => setPreviewName(name),
-        onFocus: (idx) => setFocusedIndex(idx),
+        onFocus: (idx, name) => {
+            setFocusedIndex(idx);
+            if (name) setPreviewName(name);
+        },
         focusedIndex: safeFocusedIndex,
         onDragStart: handleDragStart,
         onDragEnd: handleDragEnd,
         draggingName,
         columnStatsByName,
+        roleByName,
         mode,
         showStats
-    }), [filteredColumns, selectedSet, handleToggle, safeFocusedIndex, mode, showStats, columnStatsByName, draggingName]);
+    }), [filteredColumns, selectedSet, selectionEnabled, handleToggle, safeFocusedIndex, mode, showStats, columnStatsByName, draggingName, roleByName]);
 
     return (
         <div className="flex flex-col h-full bg-[color:var(--white)] rounded-[2px] border border-[color:var(--border-color)] overflow-hidden">
@@ -419,6 +497,25 @@ export default function VariableWorkspace({
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Переменные</h3>
                     <div className="flex items-center gap-1">
+                        <div className="hidden sm:flex items-center gap-1">
+                            {[{ id: 'name', label: 'Имя' }, { id: 'type', label: 'Тип' }, { id: 'role', label: 'Роль' }].map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => toggleSort(opt.id)}
+                                    className={`h-8 px-2 rounded-[2px] border text-[11px] font-semibold tracking-wide inline-flex items-center gap-1 transition-colors ${sortKey === opt.id
+                                        ? 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--text-primary)]'
+                                        : 'bg-transparent border-transparent text-[color:var(--text-muted)] hover:bg-[color:var(--white)] hover:border-[color:var(--border-color)] hover:text-[color:var(--text-primary)]'
+                                        }`}
+                                    aria-label={`Сортировка: ${opt.label}`}
+                                >
+                                    <span>{opt.label}</span>
+                                    <span className={`w-3 text-[9px] leading-none text-[color:var(--text-muted)] ${sortKey === opt.id ? 'opacity-100' : 'opacity-0'}`}>
+                                        {sortDir === 'asc' ? '▲' : '▼'}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`p-1.5 rounded-[2px] border transition-colors ${showFilters ? 'bg-[color:var(--white)] border-[color:var(--border-color)] text-[color:var(--accent)]' : 'bg-transparent border-transparent text-[color:var(--text-muted)] hover:bg-[color:var(--white)] hover:border-[color:var(--border-color)] hover:text-[color:var(--text-primary)]'}`}
@@ -493,7 +590,13 @@ export default function VariableWorkspace({
 
                 {showFilters && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                        {[{ id: 'all', label: 'Все' }, { id: 'unused', label: 'Не назначены' }, { id: 'target', label: 'Target' }, { id: 'group', label: secondaryRoleLabel || 'Group' }, { id: 'covariate', label: 'Covariates' }].map((opt) => (
+                        {[
+                            { id: 'all', label: 'Все' },
+                            { id: 'unused', label: 'Не назначены' },
+                            { id: 'target', label: 'Исход' },
+                            { id: 'group', label: secondaryRoleLabel || 'Группа' },
+                            { id: 'covariate', label: 'Ковариаты' }
+                        ].map((opt) => (
                             <button
                                 key={opt.id}
                                 onClick={() => {
@@ -524,21 +627,20 @@ export default function VariableWorkspace({
                     >
                         <div className="flex items-center justify-between gap-3">
                             <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Цель</div>
-                            {roles?.target ? (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeRole('target');
-                                    }}
-                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
-                                    aria-label="Убрать цель"
-                                >
-                                    <XMarkIcon className="w-4 h-4" />
-                                </button>
-                            ) : null}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeRole('target');
+                                }}
+                                className={`w-7 h-7 inline-flex items-center justify-center rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] ${roles?.target ? '' : 'invisible pointer-events-none'}`}
+                                aria-label="Убрать цель"
+                                disabled={!roles?.target}
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
                         </div>
-                        <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.target || 'Перетащите переменную сюда'}</div>
+                        <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.target || 'Перетащите сюда исход (что измеряем)'}</div>
                     </div>
 
                     <div
@@ -549,22 +651,21 @@ export default function VariableWorkspace({
                         aria-label="Группа: зона назначения"
                     >
                         <div className="flex items-center justify-between gap-3">
-                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{secondaryRoleLabel || 'Group'}</div>
-                            {roles?.group ? (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeRole('group');
-                                    }}
-                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
-                                    aria-label="Убрать группу"
-                                >
-                                    <XMarkIcon className="w-4 h-4" />
-                                </button>
-                            ) : null}
+                            <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">{secondaryRoleLabel || 'Группа'}</div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeRole('group');
+                                }}
+                                className={`w-7 h-7 inline-flex items-center justify-center rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] ${roles?.group ? '' : 'invisible pointer-events-none'}`}
+                                aria-label="Убрать группу"
+                                disabled={!roles?.group}
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
                         </div>
-                        <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.group || 'Перетащите переменную сюда'}</div>
+                        <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">{roles?.group || `Перетащите сюда ${secondaryRoleLabel || 'группу'} (как делим)`}</div>
                     </div>
 
                     <div
@@ -576,19 +677,18 @@ export default function VariableWorkspace({
                     >
                         <div className="flex items-center justify-between gap-3">
                             <div className="text-[10px] font-semibold tracking-[0.18em] text-[color:var(--text-muted)] uppercase">Ковариаты</div>
-                            {Array.isArray(roles?.covariates) && roles.covariates.length > 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeRole('covariates');
-                                    }}
-                                    className="p-1 rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
-                                    aria-label="Очистить ковариаты"
-                                >
-                                    <XMarkIcon className="w-4 h-4" />
-                                </button>
-                            ) : null}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeRole('covariates');
+                                }}
+                                className={`w-7 h-7 inline-flex items-center justify-center rounded-[2px] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] ${(Array.isArray(roles?.covariates) && roles.covariates.length > 0) ? '' : 'invisible pointer-events-none'}`}
+                                aria-label="Очистить ковариаты"
+                                disabled={!(Array.isArray(roles?.covariates) && roles.covariates.length > 0)}
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
                         </div>
                         {Array.isArray(roles?.covariates) && roles.covariates.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -601,7 +701,7 @@ export default function VariableWorkspace({
                                                 e.stopPropagation();
                                                 removeRole('covariates', n);
                                             }}
-                                            className="text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+                                            className="w-4 h-4 inline-flex items-center justify-center text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
                                             aria-label={`Убрать ковариату ${n}`}
                                         >
                                             <XMarkIcon className="w-3.5 h-3.5" />
@@ -610,14 +710,14 @@ export default function VariableWorkspace({
                                 ))}
                             </div>
                         ) : (
-                            <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">Перетащите переменные сюда</div>
+                            <div className="mt-1 text-sm font-semibold text-[color:var(--text-primary)] truncate">Перетащите сюда ковариаты (что контролируем)</div>
                         )}
                     </div>
                 </div>
             </div>
 
             {/* Selection actions */}
-            {mode === 'multi' && (
+            {selectionEnabled && (
                 <div className="flex-shrink-0 px-3 py-2 border-b border-[color:var(--border-color)] flex items-center justify-between bg-[color:var(--white)]">
                     <span className="text-xs text-[color:var(--text-muted)]">
                         Выбрано: {selectedVariables.length}

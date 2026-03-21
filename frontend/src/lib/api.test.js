@@ -44,7 +44,7 @@ describe('exportDocx', () => {
   it('throws when response not ok', async () => {
     fetch.mockResolvedValue({ ok: false, text: async () => 'nope' });
 
-    await expect(exportDocx({ results: {} })).rejects.toThrow('Failed to export DOCX');
+    await expect(exportDocx({ results: {} })).rejects.toThrow('Не удалось экспортировать DOCX');
   });
 });
 

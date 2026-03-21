@@ -14,19 +14,23 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { WhyThisTest } from '../education';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { checkAssumptions, getAlphaSetting } from '../../../lib/api';
-import TestConfigModal from './TestConfigModal';
+import TestConfigModal from '../TestConfigModal';
 
 const TestSelectionPanel = ({
   onTestSelect,
   datasetId,
   suggestedConfig,
+  columns = [],
+  variant = 'full',
   disabled = false
 }) => {
   const { t } = useTranslation();
   const { educationLevel } = useLanguage();
+  const isCompact = variant === 'compact';
   const [expandedCategories, setExpandedCategories] = useState({
-    group_comparison: true,
-    paired_comparison: false,
+    compare_2: true,
+    compare_3_plus: false,
+    paired: false,
     correlation: false,
     categorical: false,
     models: false,
@@ -93,34 +97,50 @@ const TestSelectionPanel = ({
 
   const testCategories = [
     {
-      id: 'group_comparison',
-      name: t('group_comparison'),
+      id: 'compare_1',
+      name: 'Одна выборка',
       icon: UserGroupIcon,
-      description: t('group_comparison_desc'),
+      description: 'Сравнение среднего с заданным значением',
       tests: [
-        { id: 't_test_one', name: 'One-Sample T-Test', description: 'Сравнение среднего с известным значением' },
-        { id: 'mann_whitney', name: 'Mann-Whitney U', description: 'Непараметрический тест для 2 независимых групп' },
-        { id: 't_test_ind', name: 't-критерий Стьюдента', description: 'Параметрический тест для 2 независимых групп' },
-        { id: 't_test_welch', name: 'Welch t-test', description: 'При неравных дисперсиях' },
-        { id: 'anova', name: 'One-Way ANOVA', description: 'Сравнение 3+ групп (параметрический)' },
-        { id: 'anova_welch', name: 'Welch ANOVA', description: 'ANOVA при неравных дисперсиях' },
-        { id: 'kruskal', name: 'Kruskal-Wallis', description: 'Непараметрический аналог ANOVA' },
-        { id: 'anova_twoway', name: 'Two-Way ANOVA', description: 'Два фактора + взаимодействие' },
-        { id: 'ancova', name: 'ANCOVA', description: 'ANOVA с ковариатами' }
+        { id: 't_test_one', name: 't-тест одной выборки', description: 'Сравнение среднего с эталонным значением' }
       ]
     },
     {
-      id: 'paired_comparison',
-      name: t('paired_comparison'),
-      icon: ClockIcon,
-      description: t('paired_comparison_desc'),
+      id: 'compare_2',
+      name: t('compare_2_groups'),
+      icon: UserGroupIcon,
+      description: t('compare_2_groups_desc'),
       tests: [
-        { id: 'wilcoxon', name: 'Wilcoxon Signed-Rank', description: 'Непараметрический для парных данных' },
-        { id: 't_test_rel', name: 'Paired t-test', description: 'Параметрический для парных данных' },
-        { id: 'rm_anova', name: 'RM-ANOVA', description: 'Повторные измерения (параметрический)' },
-        { id: 'friedman', name: 'Friedman Test', description: 'Непараметрический RM-ANOVA' },
-        { id: 'mcnemar', name: "McNemar's Test", description: 'Парные бинарные данные (до/после)' },
-        { id: 'cochran_q', name: "Cochran's Q", description: 'Парные бинарные, 3+ условий' }
+        { id: 'mann_whitney', name: 'Манна—Уитни (U)', description: 'Непараметрический тест для 2 независимых групп' },
+        { id: 't_test_ind', name: 't-тест (независимые)', description: 'Параметрический тест для 2 независимых групп' },
+        { id: 't_test_welch', name: 't-тест Уэлча', description: 'При неравных дисперсиях' },
+      ]
+    },
+    {
+      id: 'compare_3_plus',
+      name: t('compare_3plus_groups'),
+      icon: ChartBarIcon,
+      description: t('compare_3plus_groups_desc'),
+      tests: [
+        { id: 'anova', name: 'ANOVA (однофакторная)', description: 'Сравнение 3+ независимых групп (параметрический)' },
+        { id: 'anova_welch', name: 'ANOVA Уэлча', description: 'При неравных дисперсиях' },
+        { id: 'kruskal', name: 'Краскела—Уоллиса', description: 'Непараметрический аналог ANOVA' },
+        { id: 'anova_twoway', name: 'ANOVA (двухфакторная)', description: 'Два фактора + взаимодействие' },
+        { id: 'ancova', name: 'ANCOVA', description: 'С учетом ковариат' }
+      ]
+    },
+    {
+      id: 'paired',
+      name: t('paired_repeated'),
+      icon: ClockIcon,
+      description: t('paired_repeated_desc'),
+      tests: [
+        { id: 'wilcoxon', name: 'Уилкоксона (парные)', description: 'Непараметрический для парных данных' },
+        { id: 't_test_rel', name: 't-тест (парный)', description: 'Параметрический для парных данных' },
+        { id: 'rm_anova', name: 'ANOVA повторных измерений', description: 'Повторные измерения (параметрический)' },
+        { id: 'friedman', name: 'Фридмана', description: 'Непараметрический RM-ANOVA' },
+        { id: 'mcnemar', name: 'Мак-Немара', description: 'Парные бинарные данные (до/после)' },
+        { id: 'cochran_q', name: 'Q Кохрана', description: 'Парные бинарные, 3+ условий' }
       ]
     },
     {
@@ -129,11 +149,11 @@ const TestSelectionPanel = ({
       icon: ChartBarIcon,
       description: t('correlation_desc'),
       tests: [
-        { id: 'pearson', name: 'Pearson r', description: 'Линейная корреляция (параметрическая)' },
-        { id: 'spearman', name: 'Spearman ρ', description: 'Ранговая корреляция (непараметрическая)' },
-        { id: 'point_biserial', name: 'Point-Biserial', description: 'Корреляция с бинарной переменной' },
-        { id: 'partial_correlation', name: 'Partial Correlation', description: 'С контролем третьей переменной' },
-        { id: 'clustered_correlation', name: 'Correlation Matrix', description: 'Матрица с кластеризацией' }
+        { id: 'pearson', name: 'Пирсона (r)', description: 'Линейная корреляция (параметрическая)' },
+        { id: 'spearman', name: 'Спирмена (ρ)', description: 'Ранговая корреляция (непараметрическая)' },
+        { id: 'point_biserial', name: 'Точечно-бисериальная', description: 'Корреляция с бинарной переменной' },
+        { id: 'partial_correlation', name: 'Частная корреляция', description: 'С контролем третьей переменной' },
+        { id: 'clustered_correlation', name: 'Матрица корреляций', description: 'Матрица с кластеризацией' }
       ]
     },
     {
@@ -142,8 +162,8 @@ const TestSelectionPanel = ({
       icon: ChartBarIcon,
       description: 'Тесты для категориальных переменных',
       tests: [
-        { id: 'chi_square', name: 'Chi-Square χ²', description: 'Независимость категориальных переменных' },
-        { id: 'fisher', name: "Fisher's Exact", description: 'Для малых выборок (n < 20)' }
+        { id: 'chi_square', name: 'χ² Пирсона', description: 'Независимость категориальных переменных' },
+        { id: 'fisher', name: 'Точный тест Фишера', description: 'Для малых выборок (n < 20)' }
       ]
     },
     {
@@ -152,9 +172,10 @@ const TestSelectionPanel = ({
       icon: ChartBarIcon,
       description: t('models_desc'),
       tests: [
-        { id: 'linear_regression', name: 'Linear Regression', description: 'Предсказание непрерывной переменной' },
-        { id: 'logistic_regression', name: 'Logistic Regression', description: 'Предсказание бинарного исхода' },
-        { id: 'mixed_model', name: 'Mixed Effects (LMM)', description: 'Вложенные/кластеризованные данные' }
+        { id: 'linear_regression', name: 'Линейная регрессия', description: 'Предсказание непрерывной переменной' },
+        { id: 'logistic_regression', name: 'Логистическая регрессия', description: 'Предсказание бинарного исхода' },
+        { id: 'mixed_effects', name: 'Смешанные эффекты (LMM)', description: 'Вложенные/кластеризованные данные' },
+        { id: 'mixed_model', name: 'Линейная смешанная модель', description: 'Случайные эффекты и несбалансированные данные' }
       ]
     },
     {
@@ -163,10 +184,10 @@ const TestSelectionPanel = ({
       icon: UserGroupIcon,
       description: 'Оценка согласия методов/экспертов',
       tests: [
-        { id: 'bland_altman', name: 'Bland-Altman', description: 'Согласие двух методов измерения' },
+        { id: 'bland_altman', name: 'Бланд—Олтман', description: 'Согласие двух методов измерения' },
         { id: 'icc', name: 'ICC', description: 'Внутриклассовая корреляция' },
-        { id: 'cohens_kappa', name: "Cohen's Kappa", description: 'Согласие экспертов (категории)' },
-        { id: 'cronbach_alpha', name: "Cronbach's α", description: 'Внутренняя согласованность шкалы' }
+        { id: 'cohens_kappa', name: 'Каппа Коэна', description: 'Согласие экспертов (категории)' },
+        { id: 'cronbach_alpha', name: 'α Кронбаха', description: 'Внутренняя согласованность шкалы' }
       ]
     },
     {
@@ -175,8 +196,8 @@ const TestSelectionPanel = ({
       icon: BeakerIcon,
       description: 'Тесты для проверки допущений',
       tests: [
-        { id: 'shapiro_wilk', name: 'Shapiro-Wilk', description: 'Тест нормальности распределения' },
-        { id: 'levene', name: "Levene's Test", description: 'Однородность дисперсий' }
+        { id: 'shapiro_wilk', name: 'Шапиро—Уилка', description: 'Тест нормальности распределения' },
+        { id: 'levene', name: 'Левена', description: 'Однородность дисперсий' }
       ]
     },
     {
@@ -185,8 +206,8 @@ const TestSelectionPanel = ({
       icon: BeakerIcon,
       description: 'Снижение размерности и латентные факторы',
       tests: [
-        { id: 'pca', name: 'PCA', description: 'Анализ главных компонент' },
-        { id: 'efa', name: 'EFA', description: 'Эксплораторный факторный анализ' }
+        { id: 'pca', name: 'PCA (компоненты)', description: 'Анализ главных компонент' },
+        { id: 'efa', name: 'EFA (факторы)', description: 'Эксплораторный факторный анализ' }
       ]
     },
     {
@@ -196,7 +217,7 @@ const TestSelectionPanel = ({
       description: 'Группировка наблюдений по сходству',
       tests: [
         { id: 'kmeans', name: 'K-Means', description: 'Разбиение на K кластеров' },
-        { id: 'hierarchical_clustering', name: 'Hierarchical', description: 'Иерархическая кластеризация (дендрограмма)' }
+        { id: 'hierarchical_clustering', name: 'Иерархическая', description: 'Иерархическая кластеризация (дендрограмма)' }
       ]
     },
     {
@@ -205,25 +226,27 @@ const TestSelectionPanel = ({
       icon: BeakerIcon,
       description: t('advanced_desc'),
       tests: [
-        { id: 'survival_km', name: 'Kaplan-Meier', description: 'Анализ выживаемости + Log-Rank' },
-        { id: 'roc_analysis', name: 'ROC Analysis', description: 'AUC и оптимальный порог' }
+        { id: 'survival_km', name: 'Каплана—Майера', description: 'Анализ выживаемости + Log-Rank' },
+        { id: 'roc_analysis', name: 'ROC-анализ', description: 'AUC и оптимальный порог' }
       ]
     }
   ];
 
   return (
-    <div className="h-full flex flex-col bg-[color:var(--white)] border-r border-[color:var(--border-color)]">
-      <div className="p-4 border-b border-[color:var(--border-color)]">
-        <h2 className="text-lg font-semibold text-[color:var(--text-primary)] flex items-center gap-2">
+    <div className="h-full flex flex-col bg-[color:var(--white)]">
+      <div className={isCompact ? 'p-3 border-b border-[color:var(--border-color)]' : 'p-4 border-b border-[color:var(--border-color)]'}>
+        <h2 className={isCompact ? 'text-sm font-semibold text-[color:var(--text-primary)] flex items-center gap-2' : 'text-lg font-semibold text-[color:var(--text-primary)] flex items-center gap-2'}>
           <BeakerIcon className="w-5 h-5 text-[color:var(--accent)]" />
           {t('statistical_tests')}
         </h2>
-        <p className="text-sm text-[color:var(--text-muted)] mt-1">
-          {t('select_tests_tooltip')}
-        </p>
+        {!isCompact ? (
+          <p className="text-sm text-[color:var(--text-muted)] mt-1">
+            {t('select_tests_tooltip')}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className={isCompact ? 'flex-1 overflow-y-auto p-1' : 'flex-1 overflow-y-auto p-2'}>
         {testCategories.map(category => {
           const Icon = category.icon;
           const isExpanded = expandedCategories[category.id];
@@ -253,13 +276,13 @@ const TestSelectionPanel = ({
               </button>
 
               {isExpanded && (
-                <div className="mt-1 ml-2 space-y-1">
+                <div className={isCompact ? 'mt-1 ml-2 space-y-1' : 'mt-1 ml-2 space-y-1'}>
                   {category.tests.map(test => (
                     <div key={test.id} className="flex items-center gap-1">
                       <button
                         onClick={() => handleTestClick(test)}
                         disabled={disabled}
-                        className={`flex-1 flex items-start gap-2 p-3 border rounded-[2px] transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed group ${selectedTest?.id === test.id
+                        className={`flex-1 flex items-start gap-2 ${isCompact ? 'p-2' : 'p-3'} border rounded-[2px] transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed group ${selectedTest?.id === test.id
                           ? 'bg-[color:var(--bg-secondary)] border-[color:var(--accent)]'
                           : 'hover:bg-[color:var(--bg-secondary)] border-transparent hover:border-[color:var(--border-color)]'
                           }`}
@@ -268,27 +291,32 @@ const TestSelectionPanel = ({
                           <div className="flex items-center justify-between">
                             <div className="font-medium text-[color:var(--text-primary)] text-sm">
                               {test.name}
-                              {testConfigs[test.id] && <span className="ml-1 text-[color:var(--accent)]">⚙</span>}
+                              {testConfigs[test.id] && <span className="ml-1 text-[color:var(--accent)] font-semibold">•</span>}
                             </div>
                             <PlusIcon className="w-4 h-4 text-[color:var(--text-muted)] group-hover:text-[color:var(--accent)] transition-colors" />
                           </div>
-                          <div className="text-xs text-[color:var(--text-muted)] mt-1">
-                            {test.description}
-                          </div>
+                          {!isCompact ? (
+                            <div className="text-xs text-[color:var(--text-muted)] mt-1">
+                              {test.description}
+                            </div>
+                          ) : null}
                         </div>
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTest(test);
-                          setIsConfigModalOpen(true);
-                        }}
-                        disabled={disabled}
-                        className="p-2 hover:bg-[color:var(--bg-secondary)] rounded text-[color:var(--text-muted)] hover:text-[color:var(--accent)] disabled:opacity-50"
-                        title="Настройки теста"
-                      >
-                        <Cog6ToothIcon className="w-4 h-4" />
-                      </button>
+                      {!isCompact ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTest(test);
+                            setIsConfigModalOpen(true);
+                          }}
+                          disabled={disabled}
+                          className="p-2 hover:bg-[color:var(--bg-secondary)] rounded text-[color:var(--text-muted)] hover:text-[color:var(--accent)] disabled:opacity-50"
+                          title="Настройки теста"
+                          type="button"
+                        >
+                          <Cog6ToothIcon className="w-4 h-4" />
+                        </button>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -298,16 +326,18 @@ const TestSelectionPanel = ({
         })}
       </div>
 
-      <div className="p-3 border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)]">
-        <div className="flex items-start gap-2 text-xs text-[color:var(--text-muted)]">
-          <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <p>
-            {t('tests_selection_info')}
-          </p>
+      {!isCompact ? (
+        <div className="p-3 border-t border-[color:var(--border-color)] bg-[color:var(--bg-secondary)]">
+          <div className="flex items-start gap-2 text-xs text-[color:var(--text-muted)]">
+            <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p>
+              {t('tests_selection_info')}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      {selectedTest && (
+      {!isCompact && selectedTest && (
         <div className="p-3 border-t border-[color:var(--border-color)] bg-[color:var(--white)]">
           <WhyThisTest
             testId={selectedTest.id}
@@ -318,17 +348,21 @@ const TestSelectionPanel = ({
         </div>
       )}
 
-      <TestConfigModal
-        isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
-        test={selectedTest}
-        initialConfig={selectedTest ? testConfigs[selectedTest.id] : {}}
-        onApply={(config) => {
-          if (selectedTest) {
+      {!isCompact ? (
+        <TestConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          method={selectedTest?.id}
+          initialConfig={selectedTest ? testConfigs[selectedTest.id] : {}}
+          onConfigSave={(config) => {
+            if (!selectedTest) return;
             setTestConfigs(prev => ({ ...prev, [selectedTest.id]: config }));
-          }
-        }}
-      />
+          }}
+          columns={columns}
+          suggestedConfig={suggestedConfig}
+          datasetId={datasetId}
+        />
+      ) : null}
     </div>
   );
 };

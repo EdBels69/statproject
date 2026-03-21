@@ -1,15 +1,63 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './lib/i18n';
 import { LanguageProvider } from './contexts/LanguageContext';
 import MainLayout from './app/components/layout/MainLayout';
 import AnalysisErrorBoundary from './app/components/ErrorBoundary';
-import DatasetList from './app/pages/DatasetList';
-import Upload from './app/pages/Upload';
-import Analyze from './app/pages/Analyze';
-import AnalysisDesign from './app/pages/AnalysisDesign';
-import Settings from './app/pages/Settings';
-import Profile from './app/pages/Profile';
+
+const DatasetList = lazy(() => import('./app/pages/DatasetList'));
+const Upload = lazy(() => import('./app/pages/Upload'));
+const AnalysisDesign = lazy(() => import('./app/pages/AnalysisDesign'));
+const ProtocolWizard = lazy(() => import('./app/pages/ProtocolWizard'));
+const Settings = lazy(() => import('./app/pages/Settings'));
+const Profile = lazy(() => import('./app/pages/Profile'));
+const StudySetup = lazy(() => import('./app/pages/StudySetup'));
+const StepResults = lazy(() => import('./app/pages/steps/StepResults'));
+const SampleSizeCalculator = lazy(() => import('./app/pages/SampleSizeCalculator'));
+const StatWiki = lazy(() => import('./app/pages/StatWiki'));
+
+function AnalyzeRedirect() {
+  const { id } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/results/${id}`} replace state={location.state} />;
+}
+
+function ProtocolRunRoute({ mode }) {
+  const { id } = useParams();
+  const location = useLocation();
+
+  const runIdFromState = location.state?.runId;
+  const params = new URLSearchParams(location.search);
+  const runIdFromQuery = params.get('run') || params.get('run_id');
+  const runId = runIdFromQuery || runIdFromState || null;
+
+  const localKey = params.get('local');
+  let localPayload = null;
+  if (!runId && localKey) {
+    try {
+      const raw = sessionStorage.getItem(`statproject_wizard_run_${localKey}`);
+      localPayload = raw ? JSON.parse(raw) : null;
+    } catch {
+      localPayload = null;
+    }
+  }
+
+  if (!runId && !localPayload) {
+    return <Navigate to={`/design/${id}`} replace state={location.state} />;
+  }
+
+  return (
+    <StepResults
+      runId={runId}
+      datasetId={id}
+      mode={mode}
+      localKey={localKey}
+      initialResults={localPayload?.results || null}
+      wizardContext={localPayload?.wizard || null}
+    />
+  );
+}
 
 function App() {
   return (
@@ -18,18 +66,31 @@ function App() {
         <BrowserRouter>
           <AnalysisErrorBoundary>
             <MainLayout>
-              <Routes>
-                <Route path="/" element={<DatasetList />} />
-                <Route path="/datasets" element={<DatasetList />} />
-                <Route path="/upload" element={<Upload />} />
-                <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/analyze/:id" element={<Analyze />} />
-                <Route path="/report/:id" element={<Analyze />} />
-                <Route path="/wizard" element={<AnalysisDesign />} />
-                <Route path="/design" element={<AnalysisDesign />} />
-                <Route path="/design/:id" element={<AnalysisDesign />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
+              <Suspense fallback={<div className="px-6 py-10 text-sm text-zinc-500">Загрузка…</div>}>
+                <Routes>
+                  <Route path="/" element={<DatasetList />} />
+                  <Route path="/datasets" element={<DatasetList />} />
+                  <Route path="/upload" element={<Upload />} />
+                  <Route path="/prep/:id" element={<Profile />} />
+                  <Route path="/prepare/:id" element={<Profile />} />
+                  <Route path="/profile/:id" element={<Profile />} />
+                  <Route path="/study-setup/:id" element={<StudySetup />} />
+                  <Route path="/analyze/:id" element={<AnalyzeRedirect />} />
+                  <Route path="/results/:id" element={<ProtocolRunRoute mode="results" />} />
+                  <Route path="/graphs/:id" element={<ProtocolRunRoute mode="graphs" />} />
+                  <Route path="/report/:id" element={<ProtocolRunRoute mode="report" />} />
+                  <Route path="/tests" element={<AnalysisDesign mode="tests" />} />
+                  <Route path="/tests/:id" element={<AnalysisDesign mode="tests" />} />
+                  <Route path="/wizard" element={<AnalysisDesign />} />
+                  <Route path="/design" element={<AnalysisDesign />} />
+                  <Route path="/design/:id" element={<AnalysisDesign />} />
+                  <Route path="/ai" element={<AnalysisDesign />} />
+                  <Route path="/protocol" element={<ProtocolWizard />} />
+                  <Route path="/calculator" element={<SampleSizeCalculator />} />
+                  <Route path="/wiki" element={<StatWiki />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Routes>
+              </Suspense>
             </MainLayout>
           </AnalysisErrorBoundary>
         </BrowserRouter>

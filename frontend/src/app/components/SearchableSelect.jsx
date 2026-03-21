@@ -9,7 +9,7 @@ export default function SearchableSelect({
     value,
     onChange,
     options,
-    placeholder = 'Select...',
+    placeholder = 'Выберите…',
     disabled = false,
     className = '',
     pinnedOptions = [],

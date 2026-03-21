@@ -18,13 +18,51 @@ import json
 import math
 
 from app.core.logging import logger
-from app.modules.parsers import get_dataframe
+from app.modules.parsers import get_dataframe, get_dataset_columns, get_dataframe_window
 from app.core.pipeline import PipelineManager
+from app.core.protocol_engine import ProtocolEngine
 from app.stats.mixed_effects import MixedEffectsEngine
 from app.stats.clustered_correlation import ClusteredCorrelationEngine
 from app.stats.engine import run_analysis, select_test, compute_descriptive_compare
 from app.core.study_designer import StudyDesignEngine
+from app.core.study_designer import OmniReportDesignEngine, OmniReportPlanner
+from app.modules.text_generator import TextGenerator
 from app.api.datasets import DATA_DIR
+from app.schemas.analysis import (
+    OmniReportDesignSuggestRequest,
+    OmniReportDesignParseRequest,
+    OmniReportDesignSuggestResponse,
+    OmniReportProtocolBuildRequest,
+    OmniReportProtocolBuildResponse,
+    OmniReportDesignSpec,
+)
+
+pipeline = PipelineManager(DATA_DIR)
+
+_protocol_engine_v1 = ProtocolEngine(pipeline)
+
+_text_generator = TextGenerator()
+
+
+def _ensure_method(payload: Dict[str, Any], method_id: str) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    if payload.get("method"):
+        return payload
+    payload["method"] = {"id": method_id, "name": method_id}
+    return payload
+
+
+def _maybe_add_conclusion(payload: Dict[str, Any], variables: Dict[str, str]) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    if payload.get("conclusion"):
+        return payload
+    try:
+        payload["conclusion"] = _text_generator.interpret_result(payload, variables, style="ru")
+    except Exception:
+        pass
+    return payload
 
 router = APIRouter()
 
@@ -121,7 +159,7 @@ async def list_analysis_templates(goal: Optional[str] = None):
         return {"templates": designer.list_templates(goal=goal)}
     except Exception as e:
         logger.error(f"Template listing failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Template listing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось получить список шаблонов: {str(e)}")
 
 
 class AnalysisTemplateDesignRequest(BaseModel):
@@ -197,7 +235,7 @@ async def design_analysis_from_template(request: AnalysisTemplateDesignRequest):
         raise
     except Exception as e:
         logger.error(f"Template design failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Template design failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось создать протокол по шаблону: {str(e)}")
 
 # --- Endpoints ---
 
@@ -217,7 +255,7 @@ async def run_mixed_effects(request: MixedEffectsRequest):
         required_cols = [request.outcome, request.time_col, request.group_col, request.subject_col]
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
-            raise HTTPException(status_code=400, detail=f"Columns not found: {missing_cols}")
+            raise HTTPException(status_code=400, detail=f"Столбцы не найдены: {missing_cols}")
         
         # Run analysis in separate process to avoid memory bloat
         loop = asyncio.get_event_loop()
@@ -237,7 +275,7 @@ async def run_mixed_effects(request: MixedEffectsRequest):
         raise
     except Exception as e:
         logger.error(f"Mixed effects analysis failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Mixed effects analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить анализ со смешанными эффектами: {str(e)}")
 
 @router.post("/clustered-correlation", response_model=Dict[str, Any])
 async def run_clustered_correlation(request: ClusteredCorrelationRequest):
@@ -254,11 +292,11 @@ async def run_clustered_correlation(request: ClusteredCorrelationRequest):
         # Validate variables exist
         missing_vars = [var for var in request.variables if var not in df.columns]
         if missing_vars:
-            raise HTTPException(status_code=400, detail=f"Variables not found: {missing_vars}")
+            raise HTTPException(status_code=400, detail=f"Переменные не найдены: {missing_vars}")
         
         # Limit variables for memory safety
         if len(request.variables) > 50:
-            raise HTTPException(status_code=400, detail="Maximum 50 variables allowed for clustering")
+            raise HTTPException(status_code=400, detail="Для кластеризации допускается не более 50 переменных")
         
         # Run analysis in separate process
         loop = asyncio.get_event_loop()
@@ -277,7 +315,7 @@ async def run_clustered_correlation(request: ClusteredCorrelationRequest):
         raise
     except Exception as e:
         logger.error(f"Clustered correlation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Clustered correlation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить кластеризованную корреляцию: {str(e)}")
 
 @router.post("/protocol", response_model=Dict[str, Any])
 async def run_protocol_v2(request: ProtocolV2Request):
@@ -336,13 +374,13 @@ async def run_protocol_v2(request: ProtocolV2Request):
                 result = await run_analysis_async(df, method_id, target_col, group_col, request.alpha)
                 return {"status": "completed", "results": convert_numpy_to_native(result)}
         
-        raise HTTPException(status_code=400, detail=f"Method {method_id} not implemented")
+        raise HTTPException(status_code=400, detail=f"Метод {method_id} не реализован")
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Protocol execution failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Protocol execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить протокол: {str(e)}")
 
 # --- Helper Functions ---
 
@@ -399,107 +437,6 @@ def _run_clustered_correlation_sync(
         distance_threshold, show_p_values, alpha
     )
 
-# --- AI Assistant Endpoints ---
-
-class AISuggestTestsRequest(BaseModel):
-    """Request model for AI test suggestions."""
-    dataset_id: str = Field(..., description="Dataset identifier")
-    protocol: List[Dict[str, Any]] = Field(..., description="Current protocol for context")
-
-@router.post("/ai/suggest-tests", response_model=Dict[str, Any])
-async def ai_suggest_tests(request: AISuggestTestsRequest):
-    """
-    AI-powered test suggestions based on dataset characteristics and current protocol.
-    
-    Analyzes data types, distributions, and relationships to recommend appropriate
-    statistical tests. Non-automatic - requires explicit user activation.
-    """
-    try:
-        df = await load_dataset_async(request.dataset_id)
-        
-        # Analyze dataset characteristics
-        recommendations = []
-        
-        # Get column types
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        
-        # Check for time-series structure
-        potential_time_cols = [col for col in numeric_cols if 'time' in col.lower() or 'date' in col.lower()]
-        potential_group_cols = [col for col in categorical_cols if df[col].nunique() <= 10]
-        potential_subject_cols = [col for col in categorical_cols if df[col].nunique() > 10 and df[col].nunique() <= 100]
-        
-        # Suggest mixed effects if longitudinal structure detected
-        if len(potential_time_cols) > 0 and len(potential_group_cols) > 0 and len(potential_subject_cols) > 0:
-            recommendations.append(
-                {
-                    "test": {
-                        "id": "mixed_effects",
-                        "name": "Mixed Effects (LMM)",
-                        "config": {
-                            "outcome": numeric_cols[0] if numeric_cols else "Select outcome",
-                            "time": potential_time_cols[0],
-                            "group": potential_group_cols[0],
-                            "subject": potential_subject_cols[0],
-                            "random_slope": False,
-                        },
-                    },
-                    "reason": "Обнаружена структура продольных данных. Mixed Effects Model позволит учесть повторные измерения и индивидуальную вариабельность.",
-                    "confidence": 0.85,
-                }
-            )
-        
-        # Suggest clustered correlation if multiple numeric variables
-        if len(numeric_cols) >= 3:
-            recommendations.append(
-                {
-                    "test": {
-                        "id": "clustered_correlation",
-                        "name": "Clustered Correlation",
-                        "config": {
-                            "variables": numeric_cols[:8],
-                            "method": "pearson",
-                            "linkage_method": "ward",
-                        },
-                    },
-                    "reason": f"Обнаружено {len(numeric_cols)} числовых переменных. Кластерная корреляция выявит группы связанных переменных.",
-                    "confidence": 0.90,
-                }
-            )
-        
-        # Suggest group comparison tests
-        if len(potential_group_cols) > 0 and len(numeric_cols) > 0:
-            recommendations.append(
-                {
-                    "test": {
-                        "id": "mann_whitney",
-                        "name": "Mann-Whitney U",
-                        "config": {
-                            "outcome": numeric_cols[0],
-                            "group": potential_group_cols[0],
-                        },
-                    },
-                    "reason": "Сравнение групп с непараметрическим тестом подходит для данных с возможными выбросами.",
-                    "confidence": 0.75,
-                }
-            )
-        
-        # Avoid duplicates with current protocol
-        current_methods = {test.get("method") for test in request.protocol}
-        recommendations = [
-            rec for rec in recommendations
-            if rec.get("test", {}).get("id") not in current_methods
-        ]
-        
-        return {
-            "status": "completed",
-            "recommendations": recommendations
-        }
-        
-    except Exception as e:
-        logger.error(f"AI suggestion failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"AI suggestion failed: {str(e)}")
-
 # --- Protocol Execution Endpoints ---
 
 class ExecuteProtocolRequest(BaseModel):
@@ -507,6 +444,7 @@ class ExecuteProtocolRequest(BaseModel):
     dataset_id: str = Field(..., description="Dataset identifier")
     protocol: List[Dict[str, Any]] = Field(..., description="List of analysis steps")
     alpha: float = Field(0.05, ge=0.01, le=0.10, description="Significance level")
+    protocol_name: Optional[str] = Field(None, description="Human-readable protocol name")
 
 @router.post("/analysis/execute", response_model=Dict[str, Any])
 async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: BackgroundTasks):
@@ -521,11 +459,57 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
         
         results = []
         errors = []
+        results_map: Dict[str, Any] = {}
         
         for step in request.protocol:
             method_id = step.get("method")
             config = step.get("config", {})
             step_id = step.get("id", f"step_{len(results) + 1}")
+            df_step = df
+
+            where = config.get("filter")
+            if where is None:
+                where = step.get("filter")
+            if where is not None:
+                if not isinstance(where, dict):
+                    raise ValueError("filter должен быть объектом")
+                col = where.get("col") or where.get("column")
+                if not col or not isinstance(col, str):
+                    raise ValueError("filter.col обязателен")
+                if col not in df_step.columns:
+                    raise ValueError(f"Колонка фильтра не найдена: {col}")
+
+                op = (where.get("op") or where.get("operator") or "=")
+                op = str(op).strip().lower()
+
+                if "values" in where and isinstance(where.get("values"), list):
+                    values = where.get("values")
+                    if op in {"in", "==", "=", "eq"}:
+                        df_step = df_step[df_step[col].isin(values)]
+                    elif op in {"not_in", "nin", "!in"}:
+                        df_step = df_step[~df_step[col].isin(values)]
+                    else:
+                        raise ValueError(f"Неподдерживаемый оператор для values: {op}")
+                elif "value" in where:
+                    value = where.get("value")
+                    if op in {"==", "=", "eq"}:
+                        df_step = df_step[df_step[col] == value]
+                    elif op in {"!=", "neq", "ne"}:
+                        df_step = df_step[df_step[col] != value]
+                    elif op in {">", "gt"}:
+                        df_step = df_step[df_step[col] > value]
+                    elif op in {">=", "gte"}:
+                        df_step = df_step[df_step[col] >= value]
+                    elif op in {"<", "lt"}:
+                        df_step = df_step[df_step[col] < value]
+                    elif op in {"<=", "lte"}:
+                        df_step = df_step[df_step[col] <= value]
+                    elif op in {"in"}:
+                        df_step = df_step[df_step[col].isin([value])]
+                    else:
+                        raise ValueError(f"Неподдерживаемый оператор: {op}")
+                else:
+                    raise ValueError("filter.value или filter.values обязателен")
             
             try:
                 # Advanced methods
@@ -541,16 +525,35 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                     result = await loop.run_in_executor(
                         analysis_executor,
                         _run_mixed_effects_sync,
-                        df, outcome, time_col, group_col, subject_col,
+                        df_step, outcome, time_col, group_col, subject_col,
                         covariates, random_slope, request.alpha
                     )
                     
+                    payload = {
+                        "type": "mixed_effects",
+                        "method": {"id": "mixed_effects", "name": "Mixed Effects"},
+                        **convert_numpy_to_native(result)
+                    }
+
+                    p_value = payload.get("interaction_p_value")
+                    if p_value is None:
+                        interaction = payload.get("interaction") if isinstance(payload.get("interaction"), dict) else None
+                        p_value = interaction.get("min_p_value") if interaction else None
+                    payload["p_value"] = p_value
+                    payload["significant"] = (bool(p_value < request.alpha) if isinstance(p_value, (int, float)) else None)
+
+                    interaction = payload.get("interaction") if isinstance(payload.get("interaction"), dict) else None
+                    interpretation = interaction.get("interpretation") if interaction else None
+                    if isinstance(interpretation, str) and interpretation.strip():
+                        payload["conclusion"] = interpretation.strip()
+
                     results.append({
                         "step_id": step_id,
                         "method": method_id,
                         "status": "completed",
-                        "results": convert_numpy_to_native(result)
+                        "results": payload
                     })
+                    results_map[step_id] = payload
                 
                 elif method_id == "clustered_correlation":
                     variables = config.get("variables", [])
@@ -564,49 +567,63 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                     result = await loop.run_in_executor(
                         analysis_executor,
                         _run_clustered_correlation_sync,
-                        df, variables, method, linkage_method, n_clusters,
+                        df_step, variables, method, linkage_method, n_clusters,
                         distance_threshold, show_p_values, request.alpha
                     )
                     
+                    payload = {
+                        "type": "clustered_correlation",
+                        "method": {"id": "clustered_correlation", "name": "Clustered Correlation"},
+                        **convert_numpy_to_native(result)
+                    }
+
+                    n_vars = payload.get("n_variables")
+                    n_clusters_out = payload.get("n_clusters")
+                    if isinstance(n_vars, (int, float)) and isinstance(n_clusters_out, (int, float)):
+                        payload["conclusion"] = f"Обнаружено {int(n_clusters_out)} кластер(ов) среди {int(n_vars)} переменных."
+
                     results.append({
                         "step_id": step_id,
                         "method": method_id,
                         "status": "completed",
-                        "results": convert_numpy_to_native(result)
+                        "results": payload
                     })
+                    results_map[step_id] = payload
 
                 elif method_id == "descriptive_compare":
                     target = config.get("target") or config.get("outcome")
                     group = config.get("group")
                     if not target or not group:
-                        raise ValueError("Missing required config for descriptive_compare")
-                    table = compute_descriptive_compare(df, target, group)
+                        raise ValueError("Отсутствуют обязательные параметры для descriptive_compare")
+                    table = compute_descriptive_compare(df_step, target, group)
+                    payload = {"type": "table_1", "data": convert_numpy_to_native(table)}
                     results.append(
                         {
                             "step_id": step_id,
                             "method": method_id,
                             "status": "completed",
-                            "results": {"type": "table_1", "data": convert_numpy_to_native(table)},
+                            "results": payload,
                         }
                     )
+                    results_map[step_id] = payload
 
                 elif method_id == "auto":
                     outcome = config.get("outcome")
                     group = config.get("group")
                     is_paired = bool(config.get("is_paired", False))
                     if not outcome or not group:
-                        raise ValueError("Missing required config for auto")
+                        raise ValueError("Отсутствуют обязательные параметры для auto")
 
                     types = {
-                        outcome: "numeric" if pd.api.types.is_numeric_dtype(df[outcome]) else "categorical",
-                        group: "numeric" if pd.api.types.is_numeric_dtype(df[group]) else "categorical",
+                        outcome: "numeric" if pd.api.types.is_numeric_dtype(df_step[outcome]) else "categorical",
+                        group: "numeric" if pd.api.types.is_numeric_dtype(df_step[group]) else "categorical",
                     }
-                    selected = select_test(df, outcome, group, types, is_paired=is_paired)
+                    selected = select_test(df_step, outcome, group, types, is_paired=is_paired)
                     if not selected:
-                        raise ValueError("Could not auto-select method")
+                        raise ValueError("Не удалось автоматически выбрать метод")
 
                     result = await run_analysis_async(
-                        df,
+                        df_step,
                         selected,
                         outcome,
                         group,
@@ -614,14 +631,111 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                         is_paired=is_paired,
                     )
 
+                    payload = convert_numpy_to_native({**result, "type": "hypothesis_test", "auto_selected": selected})
+                    payload = _ensure_method(payload, selected)
+                    variables = {"target": outcome, "group": group}
+                    if selected in {"pearson", "spearman"}:
+                        variables = {"target": outcome, "predictor": group}
+                    payload = _maybe_add_conclusion(payload, variables)
                     results.append(
                         {
                             "step_id": step_id,
                             "method": selected,
                             "status": "completed",
-                            "results": convert_numpy_to_native({**result, "auto_selected": selected}),
+                            "results": payload,
                         }
                     )
+                    results_map[step_id] = payload
+
+                elif method_id == "anova_twoway":
+                    outcome = config.get("outcome") or config.get("target")
+                    group1 = config.get("group1")
+                    group2 = config.get("group2")
+                    if not outcome or not group1 or not group2:
+                        raise ValueError("Отсутствуют обязательные параметры для anova_twoway")
+
+                    result = await run_analysis_async(
+                        df_step,
+                        method_id,
+                        outcome,
+                        group1,
+                        request.alpha,
+                        group1=group1,
+                        group2=group2,
+                    )
+
+                    payload = convert_numpy_to_native({**result, "type": "hypothesis_test"})
+                    payload = _ensure_method(payload, method_id)
+                    payload = _maybe_add_conclusion(payload, {"target": outcome, "group": group1})
+                    results.append(
+                        {
+                            "step_id": step_id,
+                            "method": method_id,
+                            "status": "completed",
+                            "results": payload,
+                        }
+                    )
+                    results_map[step_id] = payload
+
+                elif method_id == "rm_anova":
+                    outcome_cols = config.get("outcome_cols")
+                    subject_col = config.get("subject_col")
+                    group_col = config.get("group_col")
+                    if not isinstance(outcome_cols, list) or len(outcome_cols) < 2:
+                        raise ValueError("outcome_cols требует минимум 2 колонки")
+                    if not subject_col:
+                        raise ValueError("subject_col обязателен для rm_anova")
+
+                    result = await run_analysis_async(
+                        df_step,
+                        method_id,
+                        str(outcome_cols[0]),
+                        str(subject_col),
+                        request.alpha,
+                        outcome_cols=outcome_cols,
+                        subject_col=subject_col,
+                        group_col=group_col,
+                    )
+
+                    payload = convert_numpy_to_native({**result, "type": "hypothesis_test"})
+                    payload = _ensure_method(payload, method_id)
+                    payload = _maybe_add_conclusion(payload, {"target": str(outcome_cols[0]), "group": str(group_col or subject_col)})
+                    results.append(
+                        {
+                            "step_id": step_id,
+                            "method": method_id,
+                            "status": "completed",
+                            "results": payload,
+                        }
+                    )
+                    results_map[step_id] = payload
+
+                elif method_id == "friedman":
+                    outcome_cols = config.get("outcome_cols")
+                    if not isinstance(outcome_cols, list) or len(outcome_cols) < 3:
+                        raise ValueError("outcome_cols требует минимум 3 колонки")
+
+                    result = await run_analysis_async(
+                        df_step,
+                        method_id,
+                        str(outcome_cols[0]),
+                        str(outcome_cols[1]),
+                        request.alpha,
+                        outcome_cols=outcome_cols,
+                    )
+
+                    payload = convert_numpy_to_native({**result, "type": "hypothesis_test"})
+                    payload = _ensure_method(payload, method_id)
+                    payload = _maybe_add_conclusion(payload, {"target": str(outcome_cols[0]), "group": str(outcome_cols[1])})
+                    results.append(
+                        {
+                            "step_id": step_id,
+                            "method": method_id,
+                            "status": "completed",
+                            "results": payload,
+                        }
+                    )
+                    results_map[step_id] = payload
                 
                 # Standard methods fallback
                 elif method_id in STANDARD_METHODS:
@@ -629,20 +743,23 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                     group = config.get("group")
                     predictors = config.get("predictors")
                     covariates = config.get("covariates")
+                    post_hoc = config.get("post_hoc")
+                    post_hoc_correction = config.get("post_hoc_correction")
+                    alternative = config.get("alternative")
 
                     if method_id in ["linear_regression", "logistic_regression"]:
                         if not outcome:
-                            raise ValueError(f"Missing required config for {method_id}")
+                            raise ValueError(f"Отсутствуют обязательные параметры для {method_id}")
                         if not isinstance(predictors, list):
                             predictors = []
                         if not isinstance(covariates, list):
                             covariates = []
                         col_b = group or (predictors[0] if predictors else None)
                         if not col_b:
-                            raise ValueError(f"Missing predictors for {method_id}")
+                            raise ValueError(f"Не указаны предикторы для {method_id}")
 
                         result = await run_analysis_async(
-                            df,
+                            df_step,
                             method_id,
                             outcome,
                             col_b,
@@ -652,40 +769,63 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                             show_or=bool(config.get("show_or", True)),
                             show_roc=bool(config.get("show_roc", True)),
                         )
+                        payload = convert_numpy_to_native({**result, "type": "hypothesis_test"})
+                        payload = _ensure_method(payload, method_id)
+                        payload = _maybe_add_conclusion(payload, {"target": outcome, "predictor": col_b})
                         results.append(
                             {
                                 "step_id": step_id,
                                 "method": method_id,
                                 "status": "completed",
-                                "results": convert_numpy_to_native(result),
+                                "results": payload,
                             }
                         )
+                        results_map[step_id] = payload
                         continue
 
                     if outcome and group:
+                        extra = {}
+                        if method_id in {"anova", "anova_welch", "kruskal"}:
+                            if post_hoc is not None:
+                                extra["post_hoc"] = post_hoc
+                            if post_hoc_correction is not None:
+                                extra["post_hoc_correction"] = post_hoc_correction
+                        if alternative is not None and method_id in {"t_test_ind", "t_test_welch", "mann_whitney", "t_test_rel", "wilcoxon", "pearson", "spearman"}:
+                            extra["alternative"] = alternative
+                        elif alternative is not None and method_id in {"chi_square"}:
+                            pass
+
                         result = await run_analysis_async(
-                            df,
+                            df_step,
                             method_id,
                             outcome,
                             group,
                             request.alpha,
                             is_paired=bool(config.get("is_paired", False)),
                             predictors=predictors,
+                            **extra,
                         )
 
+                        payload = convert_numpy_to_native({**result, "type": "hypothesis_test"})
+                        payload = _ensure_method(payload, method_id)
+                        variables = {"target": outcome, "group": group}
+                        if method_id in {"pearson", "spearman"}:
+                            variables = {"target": outcome, "predictor": group}
+                        payload = _maybe_add_conclusion(payload, variables)
                         results.append(
                             {
                                 "step_id": step_id,
                                 "method": method_id,
                                 "status": "completed",
-                                "results": convert_numpy_to_native(result),
+                                "results": payload,
                             }
                         )
+                        results_map[step_id] = payload
                     else:
-                        raise ValueError(f"Missing required config for {method_id}")
+                        raise ValueError(f"Отсутствуют обязательные параметры для {method_id}")
                 
                 else:
-                    raise ValueError(f"Method {method_id} not implemented")
+                    raise ValueError(f"Метод {method_id} не реализован")
                 
                 # Force garbage collection after each step
                 gc.collect()
@@ -697,10 +837,50 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
                     "method": method_id,
                     "error": str(e)
                 })
+
+        protocol_name = str(request.protocol_name or "Протокол").strip() or "Протокол"
+        run_dir = pipeline.create_analysis_run(
+            request.dataset_id,
+            {
+                "name": protocol_name,
+                "alpha": request.alpha,
+                "steps": request.protocol,
+            },
+        )
+        run_id = os.path.basename(run_dir)
+
+        pipeline.save_run_results(
+            run_dir,
+            {
+                "protocol_name": protocol_name,
+                "dataset_id": request.dataset_id,
+                "results": results_map,
+                "status": "completed" if not errors else "partial",
+                "errors": errors,
+                "total_steps": len(request.protocol),
+                "completed_steps": len(results_map),
+                "failed_steps": len(errors),
+            },
+        )
+
+        result_ir = pipeline.build_result_ir(
+            {
+                "protocol_name": protocol_name,
+                "dataset_id": request.dataset_id,
+                "results": results_map,
+                "status": "completed" if not errors else "partial",
+                "errors": errors,
+                "total_steps": len(request.protocol),
+                "completed_steps": len(results_map),
+                "failed_steps": len(errors),
+            }
+        )
         
         return {
+            "run_id": run_id,
             "status": "completed" if not errors else "partial",
             "results": results,
+            "result_ir": result_ir,
             "errors": errors,
             "total_steps": len(request.protocol),
             "completed_steps": len(results),
@@ -711,4 +891,108 @@ async def execute_protocol(request: ExecuteProtocolRequest, background_tasks: Ba
         raise
     except Exception as e:
         logger.error(f"Protocol execution failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Protocol execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить протокол: {str(e)}")
+
+
+@router.post("/omnireport/design/suggest", response_model=OmniReportDesignSuggestResponse)
+async def omnireport_design_suggest(request: OmniReportDesignSuggestRequest):
+    try:
+        columns = get_dataset_columns(request.dataset_id, DATA_DIR)
+        sample_cols = []
+        for c in columns:
+            lc = str(c).lower()
+            if any(k in lc for k in ["id", "subject", "patient", "group", "arm", "treat", "cohort", "группа", "пациент", "субъект"]):
+                sample_cols.append(str(c))
+        sample_cols = list(dict.fromkeys(sample_cols))
+        sample_df = get_dataframe_window(request.dataset_id, DATA_DIR, sample_cols[:50], 0, 5000) if sample_cols else get_dataframe_window(request.dataset_id, DATA_DIR, [], 0, 200)
+
+        engine = OmniReportDesignEngine()
+        out = engine.suggest_design_spec(request.dataset_id, sample_df, columns)
+        design_spec = OmniReportDesignSpec(**out.get("design_spec"))
+        confidence = float(out.get("confidence") or 0.0)
+        issues = out.get("issues") if isinstance(out.get("issues"), list) else []
+        return {"design_spec": design_spec, "confidence": confidence, "issues": [str(x) for x in issues if x is not None]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport design suggest failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось предложить дизайн: {str(e)}")
+
+
+@router.post("/omnireport/design/parse", response_model=OmniReportDesignSuggestResponse)
+async def omnireport_design_parse(request: OmniReportDesignParseRequest):
+    try:
+        columns = get_dataset_columns(request.dataset_id, DATA_DIR)
+        sample_df = get_dataframe_window(request.dataset_id, DATA_DIR, [], 0, 5000)
+
+        engine = OmniReportDesignEngine()
+        out = engine.parse_design_spec(request.dataset_id, sample_df, columns, request.text)
+        design_spec = OmniReportDesignSpec(**out.get("design_spec"))
+        confidence = float(out.get("confidence") or 0.0)
+        issues = out.get("issues") if isinstance(out.get("issues"), list) else []
+        return {"design_spec": design_spec, "confidence": confidence, "issues": [str(x) for x in issues if x is not None]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport design parse failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось распознать дизайн: {str(e)}")
+
+
+@router.post("/omnireport/protocol/build", response_model=OmniReportProtocolBuildResponse)
+async def omnireport_protocol_build(request: OmniReportProtocolBuildRequest):
+    try:
+        planner = OmniReportPlanner()
+        protocol = planner.build_protocol(request.dataset_id, request.design_spec.model_dump(), alpha=float(request.alpha))
+        return {"protocol": protocol}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport protocol build failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось собрать протокол OmniReport: {str(e)}")
+
+
+class OmniReportRunRequest(BaseModel):
+    dataset_id: str = Field(..., min_length=1)
+    design_spec: Optional[OmniReportDesignSpec] = None
+    alpha: float = Field(default=0.05, ge=0.001, le=0.25)
+
+
+@router.post("/omnireport/run", response_model=Dict[str, Any])
+async def omnireport_run(request: OmniReportRunRequest):
+    try:
+        df = await load_dataset_async(request.dataset_id)
+
+        if request.design_spec is None:
+            columns = list(df.columns)
+            engine = OmniReportDesignEngine()
+            suggest = engine.suggest_design_spec(request.dataset_id, df.iloc[:5000], [str(c) for c in columns])
+            design_spec = OmniReportDesignSpec(**suggest.get("design_spec"))
+        else:
+            design_spec = request.design_spec
+
+        planner = OmniReportPlanner()
+        protocol = planner.build_protocol(request.dataset_id, design_spec.model_dump(), alpha=float(request.alpha))
+
+        run_id = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: _protocol_engine_v1.execute_protocol(request.dataset_id, df, protocol, alpha=float(request.alpha)),
+        )
+
+        return {
+            "status": "success",
+            "run_id": run_id,
+            "dataset_id": request.dataset_id,
+            "protocol_name": protocol.get("name"),
+            "design_spec": design_spec,
+            "links": {
+                "results": f"/api/v1/analysis/run/{run_id}?dataset_id={request.dataset_id}",
+                "docx": f"/api/v1/analysis/protocol/report/{run_id}/docx?dataset_id={request.dataset_id}",
+                "pdf": f"/api/v1/analysis/protocol/report/{run_id}/pdf?dataset_id={request.dataset_id}",
+                "artifacts": f"/api/v1/analysis/protocol/artifacts/{run_id}?dataset_id={request.dataset_id}",
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OmniReport run failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Не удалось запустить OmniReport: {str(e)}")

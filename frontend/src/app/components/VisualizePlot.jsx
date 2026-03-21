@@ -431,6 +431,30 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
 
                     <Tooltip content={<VisualizeTooltip />} cursor={false} />
 
+                    <Legend
+                        verticalAlign="top"
+                        align="right"
+                        iconType="circle"
+                        iconSize={8}
+                        wrapperStyle={{
+                            fontFamily: GRAPHPAD_STYLE.fontFamily,
+                            fontSize: GRAPHPAD_STYLE.fontSize.legend,
+                            color: GRAPHPAD_STYLE.colors.text,
+                            paddingBottom: 6
+                        }}
+                        formatter={(value) => (
+                            <span
+                                style={{
+                                    color: GRAPHPAD_STYLE.colors.text,
+                                    fontFamily: GRAPHPAD_STYLE.fontFamily,
+                                    fontSize: GRAPHPAD_STYLE.fontSize.legend
+                                }}
+                            >
+                                {value}
+                            </span>
+                        )}
+                    />
+
                     {showBrackets && Array.isArray(comparisonsPlaced) && comparisonsPlaced.length > 0 && (
                         <Customized
                             component={(p) => {
@@ -482,6 +506,7 @@ export default function VisualizePlot({ data, stats, groups, comparisons, export
                             data={jitteredData}
                             name={t('raw_data')}
                             dataKey="value"
+                            fill={GRAPHPAD_STYLE.colors.primary}
                             shape={rawShape}
                         />
                     )}

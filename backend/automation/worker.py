@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import time
 import traceback
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -208,9 +209,10 @@ def _infer_operations(task: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def _run_command(command: str, cwd: str, timeout_s: float) -> ExecResult:
     start = _now()
+    normalized = _normalize_command(command)
     try:
         proc = subprocess.run(
-            command,
+            normalized,
             shell=True,
             cwd=cwd,
             text=True,
@@ -234,6 +236,16 @@ def _run_command(command: str, cwd: str, timeout_s: float) -> ExecResult:
             stderr=getattr(e, "stderr", "") or "timeout",
             duration_s=_now() - start,
         )
+
+
+def _normalize_command(command: str) -> str:
+    cmd = str(command).strip()
+    if cmd == "python3":
+        return json.dumps(sys.executable)
+    if cmd.startswith("python3 "):
+        rest = cmd[len("python3 "):]
+        return f"{json.dumps(sys.executable)} {rest}"
+    return command
 
 
 def _git_head(repo_root: str) -> Optional[str]:
@@ -292,7 +304,7 @@ def _execute_operation(op: Dict[str, Any], repo_root: str) -> Tuple[bool, Dict[s
 
     if op_type == "run":
         rel_cwd = str(op.get("cwd", "."))
-        cwd = os.path.abspath(os.path.join(repo_root, rel_cwd))
+        cwd = os.path.abspath(os.path.join(repo_root, rel_cwd)).replace("\\", "/")
         command = str(op.get("command", "")).strip()
         timeout_s = float(op.get("timeout_s", 600))
 

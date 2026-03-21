@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from fastapi.testclient import TestClient
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -24,8 +24,10 @@ import shutil
 client = TestClient(app)
 TEST_ID_V2 = "test_dataset_v2_integration"
 TEST_ID_V2_CLUSTER = "test_dataset_v2_cluster"
+TEST_ID_OMNI = "test_dataset_omnireport"
 TEST_DIR_V2 = os.path.join("workspace", "datasets", "test_dataset_v2_integration")
 TEST_DIR_V2_CLUSTER = os.path.join("workspace", "datasets", TEST_ID_V2_CLUSTER)
+TEST_DIR_OMNI = os.path.join("workspace", "datasets", TEST_ID_OMNI)
 
 # Test data for mixed effects (longitudinal)
 def create_mixed_effects_test_data():
@@ -102,12 +104,41 @@ def create_clustered_correlation_test_data():
     
     return df
 
+
+def create_omnireport_wide_test_data():
+    np.random.seed(7)
+    n = 40
+    subjects = [f"S{i:03d}" for i in range(1, n + 1)]
+    group = ["A" if i <= n // 2 else "B" for i in range(1, n + 1)]
+    base = np.random.normal(30, 5, size=n)
+    v1 = base - np.random.normal(2.0, 1.0, size=n) + np.array([0.0 if g == "A" else -1.0 for g in group])
+    v2 = v1 - np.random.normal(1.0, 1.0, size=n) + np.array([0.0 if g == "A" else -1.0 for g in group])
+
+    hb_base = np.random.normal(7.0, 0.6, size=n)
+    hb_v1 = hb_base - np.random.normal(0.3, 0.2, size=n) + np.array([0.0 if g == "A" else -0.1 for g in group])
+    hb_v2 = hb_v1 - np.random.normal(0.2, 0.2, size=n) + np.array([0.0 if g == "A" else -0.1 for g in group])
+
+    return pd.DataFrame(
+        {
+            "subject_id": subjects,
+            "group": group,
+            "UPDRS3_BL": base,
+            "UPDRS3_V1": v1,
+            "UPDRS3_V2": v2,
+            "HbA1c_BL": hb_base,
+            "HbA1c_V1": hb_v1,
+            "HbA1c_V2": hb_v2,
+        }
+    )
+
 def setup_v2_test_data():
     """Setup test data for v2 API endpoints with correct structure."""
     if os.path.exists(TEST_DIR_V2):
         shutil.rmtree(TEST_DIR_V2)
     if os.path.exists(TEST_DIR_V2_CLUSTER):
         shutil.rmtree(TEST_DIR_V2_CLUSTER)
+    if os.path.exists(TEST_DIR_OMNI):
+        shutil.rmtree(TEST_DIR_OMNI)
     
     # Create proper dataset structure for mixed effects
     os.makedirs(os.path.join(TEST_DIR_V2, "raw"), exist_ok=True)
@@ -149,6 +180,22 @@ def setup_v2_test_data():
     }
     with open(os.path.join(TEST_DIR_V2_CLUSTER, "source", "meta.json"), "w") as f:
         json.dump(cluster_metadata, f)
+
+    os.makedirs(os.path.join(TEST_DIR_OMNI, "raw"), exist_ok=True)
+    os.makedirs(os.path.join(TEST_DIR_OMNI, "processed"), exist_ok=True)
+    os.makedirs(os.path.join(TEST_DIR_OMNI, "source"), exist_ok=True)
+
+    omni_df = create_omnireport_wide_test_data()
+    omni_df.to_parquet(os.path.join(TEST_DIR_OMNI, "processed", f"{TEST_ID_OMNI}.parquet"))
+
+    omni_metadata = {
+        "original_filename": "omnireport_wide.csv",
+        "upload_date": "2024-01-01",
+        "header_row": 0,
+        "delimiter": ",",
+    }
+    with open(os.path.join(TEST_DIR_OMNI, "source", "meta.json"), "w") as f:
+        json.dump(omni_metadata, f)
     
     # Scan report for main dataset
     scan_report = {
@@ -173,6 +220,21 @@ def setup_v2_test_data():
     with open(os.path.join(TEST_DIR_V2_CLUSTER, "processed", "scan_report.json"), "w") as f:
         json.dump(cluster_scan_report, f)
 
+    omni_scan_report = {
+        "columns": {
+            "subject_id": {"type": "categorical"},
+            "group": {"type": "categorical"},
+            "UPDRS3_BL": {"type": "numeric", "normality": {"is_normal": True}},
+            "UPDRS3_V1": {"type": "numeric", "normality": {"is_normal": True}},
+            "UPDRS3_V2": {"type": "numeric", "normality": {"is_normal": True}},
+            "HbA1c_BL": {"type": "numeric", "normality": {"is_normal": True}},
+            "HbA1c_V1": {"type": "numeric", "normality": {"is_normal": True}},
+            "HbA1c_V2": {"type": "numeric", "normality": {"is_normal": True}},
+        }
+    }
+    with open(os.path.join(TEST_DIR_OMNI, "processed", "scan_report.json"), "w") as f:
+        json.dump(omni_scan_report, f)
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_and_teardown():
     """Setup and teardown for v2 tests."""
@@ -183,7 +245,136 @@ def setup_and_teardown():
         shutil.rmtree(TEST_DIR_V2)
     if os.path.exists(TEST_DIR_V2_CLUSTER):
         shutil.rmtree(TEST_DIR_V2_CLUSTER)
+    if os.path.exists(TEST_DIR_OMNI):
+        shutil.rmtree(TEST_DIR_OMNI)
     analysis_executor.shutdown(wait=False)
+
+
+def test_omnireport_design_suggest():
+    payload = {"dataset_id": TEST_ID_OMNI}
+    response = client.post("/api/v1/v2/omnireport/design/suggest", json=payload)
+    assert response.status_code == 200, f"Design suggest failed: {response.text}"
+    data = response.json()
+    assert "design_spec" in data
+    assert "confidence" in data
+    spec = data["design_spec"]
+    assert spec.get("dataset_id") == TEST_ID_OMNI
+    assert spec.get("group_column") == "group"
+    assert spec.get("subject_id_column") == "subject_id"
+    assert spec.get("time", {}).get("format") == "wide"
+    assert len(spec.get("endpoints") or []) >= 2
+    assert float(data["confidence"]) >= 0.6
+
+
+def test_omnireport_design_parse():
+    text = """
+    subject_id: subject_id
+    group: group
+    baseline: BL
+    include_visits: BL|V2
+    covariates: UPDRS3_BL
+    options: include_survival=false, multiplicity_correction=holm, multiplicity_scope=global
+    endpoint HbA1c: primary, direction=decrease, include_visits=BL|V2, method=t_test_welch, alternative=less
+    """.strip()
+
+    payload = {"dataset_id": TEST_ID_OMNI, "text": text}
+    response = client.post("/api/v1/v2/omnireport/design/parse", json=payload)
+    assert response.status_code == 200, f"Design parse failed: {response.text}"
+    data = response.json()
+    spec = data["design_spec"]
+    assert spec.get("time", {}).get("baseline_visit_id") == "BL"
+    assert spec.get("include_visits") == ["BL", "V2"]
+    assert spec.get("options", {}).get("include_survival") is False
+    assert spec.get("options", {}).get("multiplicity_correction") == "holm"
+    assert spec.get("options", {}).get("multiplicity_scope") == "global"
+    assert "UPDRS3_BL" in (spec.get("covariates") or [])
+
+    hb = None
+    for ep in spec.get("endpoints") or []:
+        if isinstance(ep, dict) and ep.get("name") == "HbA1c":
+            hb = ep
+            break
+    assert hb is not None
+    assert hb.get("primary") is True
+    assert hb.get("direction") == "decrease"
+    assert hb.get("baseline_visit_id") == "BL"
+    assert hb.get("method") == "t_test_welch"
+    assert hb.get("alternative") == "less"
+    assert hb.get("include_visits") == ["BL", "V2"]
+
+
+def test_omnireport_protocol_build_respects_endpoint_rules():
+    text = """
+    subject_id: subject_id
+    group: group
+    baseline: BL
+    include_visits: BL|V2
+    options: multiplicity_correction=holm, multiplicity_scope=global
+    endpoint HbA1c: primary, include_visits=BL|V2, method=t_test_welch, alternative=less
+    """.strip()
+
+    parsed = client.post("/api/v1/v2/omnireport/design/parse", json={"dataset_id": TEST_ID_OMNI, "text": text})
+    assert parsed.status_code == 200, f"Design parse failed: {parsed.text}"
+    design_spec = parsed.json()["design_spec"]
+
+    built = client.post(
+        "/api/v1/v2/omnireport/protocol/build",
+        json={"dataset_id": TEST_ID_OMNI, "design_spec": design_spec, "alpha": 0.05},
+    )
+    assert built.status_code == 200, f"Protocol build failed: {built.text}"
+    protocol = built.json()["protocol"]
+    steps = protocol.get("steps") or []
+
+    hb_steps = [s for s in steps if isinstance(s, dict) and str(s.get("endpoint")) == "hba1c" and s.get("type") == "compare"]
+    hb_visits = sorted({s.get("visit") for s in hb_steps if isinstance(s.get("visit"), str)})
+    assert hb_visits == ["BL", "V2"]
+
+    updrs_steps = [s for s in steps if isinstance(s, dict) and str(s.get("endpoint")) == "updrs3" and s.get("type") == "compare"]
+    updrs_visits = sorted({s.get("visit") for s in updrs_steps if isinstance(s.get("visit"), str)})
+    assert updrs_visits == ["BL", "V2"]
+
+    any_with_override = False
+    for s in hb_steps:
+        if s.get("visit") == "V2":
+            assert s.get("method") == "t_test_welch"
+            assert s.get("alternative") == "less"
+            any_with_override = True
+    assert any_with_override is True
+
+
+def test_omnireport_protocol_build():
+    suggest = client.post("/api/v1/v2/omnireport/design/suggest", json={"dataset_id": TEST_ID_OMNI})
+    assert suggest.status_code == 200
+    design_spec = suggest.json()["design_spec"]
+    response = client.post(
+        "/api/v1/v2/omnireport/protocol/build",
+        json={"dataset_id": TEST_ID_OMNI, "design_spec": design_spec, "alpha": 0.05},
+    )
+    assert response.status_code == 200, f"Protocol build failed: {response.text}"
+    protocol = response.json().get("protocol")
+    assert isinstance(protocol, dict)
+    assert protocol.get("name") == "OmniReport"
+    assert isinstance(protocol.get("steps"), list)
+    assert len(protocol.get("steps")) > 0
+    assert isinstance(protocol.get("design_spec"), dict)
+    step_types = {s.get("type") for s in protocol.get("steps") if isinstance(s, dict)}
+    assert "mixed_effects" in step_types
+    assert "responders" in step_types
+
+
+def test_omnireport_run():
+    suggest = client.post("/api/v1/v2/omnireport/design/suggest", json={"dataset_id": TEST_ID_OMNI})
+    assert suggest.status_code == 200
+    design_spec = suggest.json()["design_spec"]
+    response = client.post(
+        "/api/v1/v2/omnireport/run",
+        json={"dataset_id": TEST_ID_OMNI, "design_spec": design_spec, "alpha": 0.05},
+    )
+    assert response.status_code == 200, f"OmniReport run failed: {response.text}"
+    out = response.json()
+    assert out.get("status") == "success"
+    assert isinstance(out.get("run_id"), str) and out.get("run_id")
+    assert isinstance(out.get("links"), dict)
 
 # --- Mixed Effects Tests ---
 
@@ -226,6 +417,12 @@ def test_mixed_effects_basic():
     # Check that interaction exists
     assert result["interaction"]["significant"], "Interaction should be significant in synthetic data"
 
+    assert "min_p_value" in result["interaction"], "interaction.min_p_value missing"
+    assert isinstance(result["interaction"]["min_p_value"], (int, float)), "interaction.min_p_value must be numeric"
+    assert 0.0 <= float(result["interaction"]["min_p_value"]) <= 1.0
+    assert isinstance(result["interaction"].get("p_values"), dict), "interaction.p_values must be a dict"
+    assert isinstance(result["interaction"].get("interpretation"), str) and result["interaction"]["interpretation"].strip()
+
 def test_mixed_effects_random_slope():
     """Test mixed effects model with random slopes."""
     payload = {
@@ -262,7 +459,7 @@ def test_mixed_effects_missing_columns():
     
     response = client.post("/api/v1/v2/mixed-effects", json=payload)
     assert response.status_code == 400, "Should fail with 400 for missing columns"
-    assert "not found" in response.json()["detail"].lower()
+    assert "не найд" in response.json()["detail"].lower()
 
 # --- Clustered Correlation Tests ---
 
@@ -317,6 +514,10 @@ def test_clustered_correlation_basic():
     assert isinstance(heatmap_data, list)
     assert len(heatmap_data) == n_vars * n_vars
     assert all("row" in item and "col" in item and "r" in item for item in heatmap_data)
+    assert all("p" in item and "significant" in item for item in heatmap_data)
+    non_null_p = [item["p"] for item in heatmap_data if item.get("p") is not None]
+    assert len(non_null_p) > 0, "Expected p-values when show_p_values=True"
+    assert all(0.0 <= float(p) <= 1.0 for p in non_null_p)
 
 def test_clustered_correlation_auto_clusters():
     """Test clustered correlation with automatic cluster detection."""
@@ -431,6 +632,44 @@ def test_template_design_and_execute_protocol():
     assert exec_data.get("status") in ["completed", "partial"]
     assert exec_data.get("total_steps") == len(protocol)
     assert (exec_data.get("completed_steps") or 0) >= 1
+
+
+def test_ai_analyze_design_returns_protocol():
+    payload = {
+        "dataset_id": TEST_ID_V2,
+        "text": "Сравнить outcome между группами group",
+        "protocol": [],
+        "preferences": {
+            "alternative": "two-sided",
+            "post_hoc": "none",
+            "post_hoc_correction": "none",
+        },
+    }
+
+    mocked = {
+        "status": "completed",
+        "protocol_name": "Auto",
+        "globals": {"alternative": "two-sided"},
+        "protocol": [
+            {
+                "id": "step_1",
+                "name": "Сравнение",
+                "method": "auto",
+                "config": {"outcome": "outcome", "group": "group"},
+            }
+        ],
+        "notes": [],
+    }
+
+    with patch("app.api.ai_module.analyze_research_design", new=AsyncMock(return_value=mocked)):
+        response = client.post("/api/v1/v2/ai/analyze-design", json=payload)
+
+    assert response.status_code == 200, f"AI analyze design failed: {response.text}"
+    data = response.json()
+    assert data.get("status") == "completed"
+    assert isinstance(data.get("protocol"), list)
+    assert len(data.get("protocol")) >= 1
+    assert data["protocol"][0].get("method")
 
 # --- Memory and Performance Tests ---
 

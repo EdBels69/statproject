@@ -17,7 +17,7 @@ from app.llm import scan_data_quality
 from app.schemas.dataset import QualityReport
 from app.core.pipeline import PipelineManager
 
-router = APIRouter(prefix="/quality", tags=["quality"])
+router = APIRouter()
 
 pipeline = PipelineManager(DATA_DIR)
 
@@ -64,9 +64,9 @@ async def scan_dataset_quality(dataset_id: str):
             "summary": "Scan complete."
         }
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dataset not found")
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quality scan failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить проверку качества данных: {str(e)}")
 
 @router.post("/{dataset_id}/clean")
 async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
@@ -86,8 +86,8 @@ async def auto_clean_dataset(dataset_id: str, strategy: str = "mean"):
             cleaning_log={"action": "quality_auto_clean", "strategy": strategy}
         )
 
-        return {"status": "success", "message": f"Dataset cleaned using {strategy} and saved."}
+        return {"status": "success", "message": f"Файл данных очищен (стратегия: {strategy}) и сохранён."}
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Dataset not found")
+        raise HTTPException(status_code=404, detail="Файл данных не найден")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Не удалось выполнить очистку: {str(e)}")

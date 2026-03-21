@@ -174,6 +174,20 @@ OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
 # GLM_MODEL=deepseek/deepseek-tng-r1t2-chimera:free
 ```
 
+## Security
+
+Backend supports optional API key auth and rate limiting via environment variables:
+
+```env
+AUTH_ENABLED=false
+AUTH_HEADER=X-API-Key
+API_KEYS=key1:admin:Alice,key2:user:Bob
+AUDIT_LOG_PATH=workspace/audit.log
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS=300
+RATE_LIMIT_WINDOW_SEC=60
+```
+
 ## Error Handling
 
 The application includes an Error Boundary component that:
@@ -226,6 +240,22 @@ docker build -t stat-analyzer-frontend .
 ### Production Deployment
 
 For detailed deployment instructions, including SSL configuration, monitoring, and scaling, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Operations and Release Gates
+
+- Operator runbook: [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)
+- Production smoke gate script:
+
+```bash
+./scripts/release_production_smoke.sh
+```
+
+- Workspace backup/restore scripts:
+
+```bash
+./scripts/ops_backup_workspace.sh
+./scripts/ops_restore_workspace.sh /absolute/path/to/backup.tar.gz --yes
+```
 
 ## Development
 

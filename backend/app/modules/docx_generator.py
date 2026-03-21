@@ -4,7 +4,12 @@ from typing import Any, Dict, Optional
 from app.modules.reporting import generate_protocol_docx_report
 
 
-def create_results_document(results: Dict[str, Any], dataset_name: Optional[str] = None) -> BytesIO:
+def create_results_document(
+    results: Dict[str, Any],
+    dataset_name: Optional[str] = None,
+    style: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+) -> BytesIO:
     ds_name = dataset_name or "Dataset"
     run_data: Dict[str, Any]
 
@@ -13,7 +18,7 @@ def create_results_document(results: Dict[str, Any], dataset_name: Optional[str]
     else:
         run_data = {"protocol_name": "Results", "results": results if isinstance(results, dict) else {}}
 
-    docx_bytes = generate_protocol_docx_report(run_data, dataset_name=ds_name)
+    docx_bytes = generate_protocol_docx_report(run_data, dataset_name=ds_name, style=style, options=options)
     buffer = BytesIO()
     buffer.write(docx_bytes)
     buffer.seek(0)

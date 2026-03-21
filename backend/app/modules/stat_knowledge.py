@@ -191,6 +191,32 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
                 "weak": {"max": 0.3, "label": "слабая связь"},
                 "moderate": {"max": 0.5, "label": "умеренная связь"},
                 "strong": {"min": 0.5, "label": "сильная связь"}
+            },
+            "rho": {
+                "weak": {"max": 0.3, "label": "слабая связь"},
+                "moderate": {"max": 0.5, "label": "умеренная связь"},
+                "strong": {"min": 0.5, "label": "сильная связь"}
+            },
+            "cramers_v": {
+                "small": {"max": 0.1, "label": "малый"},
+                "medium": {"max": 0.3, "label": "средний"},
+                "large": {"min": 0.5, "label": "большой"}
+            },
+            "epsilon_squared": {
+                "small": {"max": 0.06, "label": "малый"},
+                "medium": {"max": 0.14, "label": "средний"},
+                "large": {"min": 0.14, "label": "большой"}
+            },
+            "rank_biserial": {
+                "small": {"max": 0.3, "label": "малый"},
+                "medium": {"max": 0.5, "label": "средний"},
+                "large": {"min": 0.5, "label": "большой"}
+            },
+            "auc": {
+                "poor": {"max": 0.6, "label": "слабая дискриминация"},
+                "fair": {"max": 0.7, "label": "удовлетворительно"},
+                "good": {"max": 0.8, "label": "хорошо"},
+                "excellent": {"min": 0.9, "label": "отлично"}
             }
         },
         "common_mistakes": [
@@ -237,6 +263,145 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
             "senior": "CI для effect size важнее CI для mean. Если CI не включает 0 — эффект значим на данном alpha."
         },
         "emoji": "📐"
+    },
+
+    "type_i_error": {
+        "term": "Type I Error",
+        "term_ru": "Ошибка I рода",
+        "definition": {
+            "junior": "Ложноположительный результат: решили, что эффект есть, хотя его нет.",
+            "mid": "Вероятность ошибки I рода равна α (уровню значимости).",
+            "senior": "Контроль Type I Error — часть дизайна. При множественных проверках без поправки общий риск растёт."
+        },
+        "what_to_check": ["alpha", "multiple_comparison"],
+        "emoji": "🎯"
+    },
+
+    "type_ii_error": {
+        "term": "Type II Error",
+        "term_ru": "Ошибка II рода",
+        "definition": {
+            "junior": "Ложноотрицательный результат: пропустили реальный эффект.",
+            "mid": "Вероятность ошибки II рода — β. Мощность = 1 − β.",
+            "senior": "Снижается при большем n и/или большем эффекте. Нельзя «починить» β после факта без увеличения данных."
+        },
+        "what_to_check": ["power", "sample_size"],
+        "emoji": "⚡"
+    },
+
+    "beta": {
+        "term": "Beta",
+        "term_ru": "β (бета)",
+        "definition": {
+            "junior": "β — шанс пропустить эффект (ошибка II рода).",
+            "mid": "β = 1 − power. Например power=0.80 → β=0.20.",
+            "senior": "В power analysis обычно задают power, а не β напрямую."
+        },
+        "what_to_check": ["power"],
+        "emoji": "⚡"
+    },
+
+    "one_tailed": {
+        "term": "One-tailed test",
+        "term_ru": "Односторонний тест",
+        "definition": {
+            "junior": "Проверяем эффект только в одном направлении (только ↑ или только ↓).",
+            "mid": "Даёт меньший порог для p в выбранном направлении, но запрещает считать значимым эффект в обратную сторону.",
+            "senior": "Выбор должен быть до анализа и обоснован. Если направление заранее не гарантировано — используйте двусторонний."
+        },
+        "common_mistakes": ["Выбирать односторонний после того, как увидели данные"],
+        "emoji": "➡️"
+    },
+
+    "two_tailed": {
+        "term": "Two-tailed test",
+        "term_ru": "Двусторонний тест",
+        "definition": {
+            "junior": "Проверяем эффект в обе стороны (↑ или ↓).",
+            "mid": "Стандарт по умолчанию: контролирует ошибки при любом направлении эффекта.",
+            "senior": "Честнее, когда направление заранее не закреплено. В power analysis требует большего n, чем one-tailed при прочих равных."
+        },
+        "emoji": "↔️"
+    },
+
+    "sample_size": {
+        "term": "Sample Size",
+        "term_ru": "Размер выборки (n)",
+        "definition": {
+            "junior": "Сколько наблюдений нужно, чтобы с высокой вероятностью найти эффект.",
+            "mid": "n зависит от effect size, α, power и дизайна (баланс групп, повторные измерения, кластеры).",
+            "senior": "Планируйте n под первичную гипотезу. Делайте sensitivity analysis (коридор по эффекту/SD/dropout)."
+        },
+        "what_to_check": ["effect_size", "alpha", "power", "multiple_comparison"],
+        "emoji": "🧮"
+    },
+
+    "allocation_ratio": {
+        "term": "Allocation ratio",
+        "term_ru": "Соотношение групп (N2/N1)",
+        "definition": {
+            "junior": "Как делим участников по группам: 1:1, 1:2 и т.д.",
+            "mid": "Дисбаланс увеличивает общий n при фиксированном power, особенно если редкая группа маленькая.",
+            "senior": "Если одна группа дороже/редче — дисбаланс может быть оправдан, но закладывайте рост n и анализируйте причину."
+        },
+        "emoji": "⚖️"
+    },
+
+    "dropout": {
+        "term": "Dropout / Attrition",
+        "term_ru": "Выбывание (dropout)",
+        "definition": {
+            "junior": "Часть людей не дойдёт до анализа (потеря данных).",
+            "mid": "Если нужно n для анализа, то набрать обычно нужно больше: n_recruit = n / (1 − dropout).",
+            "senior": "Dropout часто неслучаен. Планируйте стратегии работы с пропусками и критерии включения заранее."
+        },
+        "formula": "n_recruit = n_analyzed / (1 − dropout)",
+        "emoji": "🧷"
+    },
+
+    "minimal_detectable_effect": {
+        "term": "Minimal Detectable Effect",
+        "term_ru": "Минимально обнаружимый эффект (MDE)",
+        "definition": {
+            "junior": "Самый маленький эффект, который вы хотите уметь обнаружить.",
+            "mid": "Если заложить слишком маленький эффект — n вырастет сильно. Если слишком большой — велик риск «не увидеть» реальность.",
+            "senior": "Опирайтесь на клиническую значимость (MCID), литературу и пилот. Делайте диапазон (sensitivity)."
+        },
+        "what_to_check": ["effect_size", "confidence_interval"],
+        "emoji": "📏"
+    },
+
+    "sensitivity_analysis": {
+        "term": "Sensitivity analysis",
+        "term_ru": "Сенситивити-анализ",
+        "definition": {
+            "junior": "Проверка «а если параметры другие?»",
+            "mid": "Пересчитывают n для нескольких сценариев: эффект меньше/больше, dropout выше, α строже.",
+            "senior": "Лучший способ не «заблудиться»: фиксируйте базовый сценарий и 2–4 стресс-сценария с выводом по рискам."
+        },
+        "emoji": "🧭"
+    },
+
+    "standard_deviation": {
+        "term": "Standard deviation",
+        "term_ru": "Стандартное отклонение (SD)",
+        "definition": {
+            "junior": "Показывает, насколько значения разбросаны вокруг среднего.",
+            "mid": "Для расчёта n по средним SD критичен: завысите SD — получите больший n. Занижите — риск недомощности.",
+            "senior": "SD берите из пилота, прошлых исследований или консервативной оценки. Учитывайте, что SD зависит от популяции и измерения."
+        },
+        "emoji": "📐"
+    },
+
+    "delta": {
+        "term": "Delta",
+        "term_ru": "Δ (разница)",
+        "definition": {
+            "junior": "Разница между группами/условиями, которую вы ожидаете.",
+            "mid": "В расчёте по средним часто удобнее задавать Δ и SD, а не d.",
+            "senior": "Δ лучше якорить на клинической значимости (MCID) и измеримой шкале."
+        },
+        "emoji": "Δ"
     },
     
     # -------------------------------------------------------------------------
@@ -285,6 +450,95 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
         "emoji": "🔗"
     },
     
+    "linearity": {
+        "term": "Linearity",
+        "term_ru": "Линейность",
+        "definition": {
+            "junior": "Связь между переменными должна быть примерно линейной.",
+            "mid": "Для регрессии важна линейность связи предикторов с исходом или с логит-преобразованием.",
+            "senior": "Проверяйте остатки и добавляйте нелинейные члены (полиномы, сплайны), если нужно."
+        },
+        "how_to_check": "График остатков, partial residual plots, Box-Tidwell test",
+        "if_violated": "Используйте нелинейные модели, трансформации или сплайны",
+        "emoji": "📈"
+    },
+    
+    "homoscedasticity": {
+        "term": "Homoscedasticity",
+        "term_ru": "Гомоскедастичность",
+        "definition": {
+            "junior": "Разброс остатков должен быть примерно одинаковым по всему диапазону.",
+            "mid": "Гетероскедастичность искажает SE и p-value в регрессии.",
+            "senior": "Используйте robust SE, трансформации или модели с гетероскедастичностью."
+        },
+        "how_to_check": "Residuals vs fitted, Breusch-Pagan test",
+        "if_violated": "Robust SE, трансформации, взвешенная регрессия",
+        "emoji": "⚖️"
+    },
+    
+    "monotonic_relationship": {
+        "term": "Monotonic Relationship",
+        "term_ru": "Монотонная связь",
+        "definition": {
+            "junior": "Когда одна переменная растёт, другая либо растёт, либо падает, но не меняет направление.",
+            "mid": "Требуется для корреляции Спирмена.",
+            "senior": "При немонотонности лучше использовать нелинейные меры зависимости."
+        },
+        "how_to_check": "Scatterplot, loess smoothing",
+        "if_violated": "Используйте нелинейные меры или сегментируйте данные",
+        "emoji": "📉"
+    },
+    
+    "expected_count_>=5": {
+        "term": "Expected Count ≥ 5",
+        "term_ru": "Ожидаемые частоты ≥ 5",
+        "definition": {
+            "junior": "В таблице частот ожидаемые значения не должны быть слишком малы.",
+            "mid": "Для χ² при ожидаемых < 5 результат искажается.",
+            "senior": "При малых ожидаемых используйте Fisher's exact или объединение категорий."
+        },
+        "emoji": "🔢"
+    },
+    
+    "sphericity": {
+        "term": "Sphericity",
+        "term_ru": "Сферичность",
+        "definition": {
+            "junior": "Разницы между всеми парами повторных измерений должны иметь одинаковую дисперсию.",
+            "mid": "Проверяется тестом Мочли. При нарушении нужны корректировки.",
+            "senior": "Используйте Greenhouse-Geisser или Huynh-Feldt корректировки."
+        },
+        "how_to_check": "Mauchly's test",
+        "if_violated": "Greenhouse-Geisser или Huynh-Feldt корректировка",
+        "emoji": "🧭"
+    },
+    
+    "multicollinearity": {
+        "term": "Multicollinearity",
+        "term_ru": "Мультиколлинеарность",
+        "definition": {
+            "junior": "Предикторы слишком похожи друг на друга.",
+            "mid": "Высокая коллинеарность раздувает SE и делает коэффициенты нестабильными.",
+            "senior": "Проверяйте VIF и удаляйте/объединяйте предикторы."
+        },
+        "how_to_check": "VIF, корреляционная матрица",
+        "if_violated": "Сократить предикторы, регуляризация",
+        "emoji": "🧩"
+    },
+    
+    "proportional_hazards": {
+        "term": "Proportional Hazards",
+        "term_ru": "Пропорциональные риски",
+        "definition": {
+            "junior": "Отношение рисков между группами должно быть постоянным во времени.",
+            "mid": "Ключевое допущение для моделей выживаемости типа Cox.",
+            "senior": "Проверяйте Schoenfeld residuals или time-varying effects."
+        },
+        "how_to_check": "Schoenfeld residuals",
+        "if_violated": "Временные взаимодействия или стратификация",
+        "emoji": "⏱️"
+    },
+    
     # -------------------------------------------------------------------------
     # Effect Size Types
     # -------------------------------------------------------------------------
@@ -317,6 +571,72 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
         "formula": "η² = SS_between / SS_total",
         "emoji": "📐"
     },
+    
+    "epsilon_squared": {
+        "term": "Epsilon-squared (ε²)",
+        "term_ru": "Эпсилон-квадрат",
+        "definition": {
+            "junior": "Оценка размера эффекта для непараметрических тестов.",
+            "mid": "Часто используется для Kruskal-Wallis.",
+            "senior": "Интерпретируется похоже на η²."
+        },
+        "emoji": "📐"
+    },
+    
+    "cramers_v": {
+        "term": "Cramer's V",
+        "term_ru": "V Крамера",
+        "definition": {
+            "junior": "Сила связи между категориальными переменными.",
+            "mid": "От 0 до 1, ближе к 1 — сильнее связь.",
+            "senior": "Зависит от размера таблицы; интерпретация должна учитывать df."
+        },
+        "emoji": "📊"
+    },
+    
+    "rank_biserial": {
+        "term": "Rank-biserial correlation",
+        "term_ru": "Рангово-бисериальная корреляция",
+        "definition": {
+            "junior": "Размер эффекта для Mann-Whitney и Wilcoxon.",
+            "mid": "Показывает вероятность, что наблюдение из группы A больше, чем из группы B.",
+            "senior": "Интерпретируется аналогично r."
+        },
+        "emoji": "📈"
+    },
+    
+    "rho": {
+        "term": "Spearman's ρ",
+        "term_ru": "Спирмен ρ",
+        "definition": {
+            "junior": "Сила монотонной связи между переменными.",
+            "mid": "Корреляция по рангам, устойчива к выбросам.",
+            "senior": "Интерпретация по шкале r."
+        },
+        "emoji": "📈"
+    },
+    
+    "auc": {
+        "term": "AUC",
+        "term_ru": "Площадь под ROC-кривой",
+        "definition": {
+            "junior": "Насколько хорошо модель различает классы.",
+            "mid": "Минимальная (0.5) — как случайно, 1.0 — идеально.",
+            "senior": "Интерпретация зависит от контекста и клинической значимости."
+        },
+        "emoji": "🎯"
+    },
+    
+    "odds_ratio": {
+        "term": "Odds Ratio",
+        "term_ru": "Отношение шансов",
+        "definition": {
+            "junior": "Во сколько раз шансы события выше/ниже при изменении фактора.",
+            "mid": "OR > 1 — повышение шансов, OR < 1 — снижение.",
+            "senior": "Интерпретируйте вместе с CI и базовой частотой."
+        },
+        "emoji": "⚖️"
+    },
 
     "multiple_comparison": {
         "term": "Multiple Comparison Correction",
@@ -347,6 +667,11 @@ STAT_TERMS: Dict[str, Dict[str, Any]] = {
                 "name": "Benjamini-Yekutieli",
                 "description_ru": "FDR для зависимых тестов.",
                 "when_to_use": "Когда тесты коррелируют между собой"
+            },
+            "bky": {
+                "name": "Benjamini-Krieger-Yekutieli (two-stage)",
+                "description_ru": "Двухшаговая FDR-процедура, часто мощнее BH при неизвестных/неравных дисперсиях и в поисковых анализах.",
+                "when_to_use": "Поисковые исследования, много тестов, хочется больше мощности чем BH"
             }
         },
         "recommendation": "Для исследовательского анализа: BH-FDR. Для подтверждающего: Bonferroni или Holm.",
@@ -383,26 +708,8 @@ TEST_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
         },
         "alternatives": {
             "non_normal": {"test": "mann_whitney", "reason": "если данные ненормальные"},
-            "unequal_variance": {"test": "welch_t_test", "reason": "если дисперсии различаются"},
-            "small_n": {"test": "permutation_test", "reason": "если n < 15 и ненормально"}
-        },
-        "effect_size": "cohens_d",
-        "emoji": "📊"
-    },
-    
-    "welch_t_test": {
-        "name": "Welch's t-test",
-        "name_ru": "T-test Уэлча",
-        "when_to_use": [
-            "2 независимые группы",
-            "Дисперсии могут различаться",
-            "Более robust чем Student's t-test"
-        ],
-        "assumptions": ["normality", "independence"],
-        "why_it_works": {
-            "junior": "Как обычный t-test, но не требует равных дисперсий.",
-            "mid": "Использует Satterthwaite approximation для degrees of freedom.",
-            "senior": "По умолчанию рекомендуется вместо Student's t-test (Delacre et al., 2017)."
+            "unequal_variance": {"test": "t_test_welch", "reason": "если дисперсии различаются"},
+            "small_n": {"test": "mann_whitney", "reason": "если n < 15 и ненормально"}
         },
         "effect_size": "cohens_d",
         "emoji": "📊"
@@ -442,28 +749,10 @@ TEST_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
         },
         "post_hoc": ["tukey", "bonferroni", "holm"],
         "alternatives": {
-            "unequal_variance": {"test": "welch_anova", "reason": "если дисперсии различаются"},
-            "non_normal": {"test": "kruskal_wallis", "reason": "если данные ненормальные"}
+            "unequal_variance": {"test": "anova_welch", "reason": "если дисперсии различаются"},
+            "non_normal": {"test": "kruskal", "reason": "если данные ненормальные"}
         },
         "effect_size": "eta_squared",
-        "emoji": "📈"
-    },
-    
-    "kruskal_wallis": {
-        "name": "Kruskal-Wallis H test",
-        "name_ru": "H-тест Краскела-Уоллиса",
-        "when_to_use": [
-            "3+ независимых групп",
-            "Ненормальное распределение",
-            "Ordinal или skewed данные"
-        ],
-        "assumptions": ["independence"],
-        "why_it_works": {
-            "junior": "Непараметрический аналог ANOVA. Сравнивает ранги вместо средних.",
-            "mid": "H-статистика основана на сумме квадратов рангов.",
-            "senior": "Post-hoc: Dunn's test с коррекцией на множественные сравнения."
-        },
-        "effect_size": "epsilon_squared",
         "emoji": "📈"
     },
     
@@ -482,7 +771,7 @@ TEST_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
             "senior": "При 2×2 — Yates correction или Fisher's exact. При large samples — χ² robust."
         },
         "alternatives": {
-            "small_sample": {"test": "fisher_exact", "reason": "если expected count < 5"}
+            "small_sample": {"test": "fisher", "reason": "если expected count < 5"}
         },
         "effect_size": "cramers_v",
         "emoji": "📊"
@@ -526,6 +815,579 @@ TEST_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
         },
         "effect_size": "rho",
         "emoji": "📈"
+    },
+    
+    "t_test_one": {
+        "name": "One-sample t-test",
+        "name_ru": "T-test для одной выборки",
+        "when_to_use": [
+            "Одна группа",
+            "Сравнение среднего с заданным значением",
+            "Нормальное распределение (или n > 30)"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Проверяет, отличается ли среднее от заданного значения.",
+            "mid": "Использует t-распределение для среднего одной выборки.",
+            "senior": "Устойчив при умеренных отклонениях нормальности при n > 30."
+        },
+        "effect_size": "cohens_d",
+        "emoji": "📊"
+    },
+    
+    "t_test_rel": {
+        "name": "Paired t-test",
+        "name_ru": "Парный t-test",
+        "when_to_use": [
+            "Две зависимые выборки",
+            "До/после для одних и тех же участников",
+            "Нормальность разностей"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Сравнивает средние различий внутри пар.",
+            "mid": "Тестирует среднее разностей на отличия от 0.",
+            "senior": "Чувствителен к выбросам в разностях; при нарушении используйте Wilcoxon."
+        },
+        "alternatives": {
+            "non_normal": {"test": "wilcoxon", "reason": "если разности не нормальны"}
+        },
+        "effect_size": "cohens_d",
+        "emoji": "📊"
+    },
+    
+    "t_test_welch": {
+        "name": "Welch's t-test",
+        "name_ru": "T-test Уэлча",
+        "when_to_use": [
+            "2 независимые группы",
+            "Дисперсии различаются",
+            "Более robust чем Student's t-test"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Сравнивает средние без требования равных дисперсий.",
+            "mid": "Использует Satterthwaite approximation для df.",
+            "senior": "Рекомендуется по умолчанию при сомнениях в равенстве дисперсий."
+        },
+        "effect_size": "cohens_d",
+        "emoji": "📊"
+    },
+    
+    "wilcoxon": {
+        "name": "Wilcoxon signed-rank test",
+        "name_ru": "Критерий Вилкоксона",
+        "when_to_use": [
+            "Две зависимые выборки",
+            "Ненормальные разности",
+            "Ordinal или skewed данные"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Сравнивает ранги разностей вместо средних.",
+            "mid": "Проверяет медиану разностей.",
+            "senior": "Не требует нормальности, но предполагает симметрию распределения разностей."
+        },
+        "effect_size": "rank_biserial",
+        "emoji": "📊"
+    },
+    
+    "kruskal": {
+        "name": "Kruskal-Wallis H test",
+        "name_ru": "H-тест Краскела-Уоллиса",
+        "when_to_use": [
+            "3+ независимых групп",
+            "Ненормальное распределение",
+            "Ordinal или skewed данные"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Непараметрический аналог ANOVA. Сравнивает ранги вместо средних.",
+            "mid": "H-статистика основана на сумме квадратов рангов.",
+            "senior": "Post-hoc: Dunn's test с коррекцией на множественные сравнения."
+        },
+        "effect_size": "epsilon_squared",
+        "emoji": "📈"
+    },
+    
+    "anova_welch": {
+        "name": "Welch's ANOVA",
+        "name_ru": "ANOVA Уэлча",
+        "when_to_use": [
+            "3+ независимых групп",
+            "Дисперсии различаются",
+            "Неравные размеры групп"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Сравнивает группы без требования равных дисперсий.",
+            "mid": "Использует корректировки df для устойчивости.",
+            "senior": "Пост-хок: Games-Howell."
+        },
+        "effect_size": "eta_squared",
+        "emoji": "📈"
+    },
+    
+    "rm_anova": {
+        "name": "Repeated Measures ANOVA",
+        "name_ru": "ANOVA для повторных измерений",
+        "when_to_use": [
+            "Одна группа с несколькими измерениями",
+            "Нормальность остатков",
+            "Сферичность"
+        ],
+        "assumptions": ["normality", "sphericity", "independence"],
+        "why_it_works": {
+            "junior": "Сравнивает средние в нескольких временных точках.",
+            "mid": "Учитывает внутригрупповые корреляции.",
+            "senior": "При нарушении сферичности используйте корректировки или mixed models."
+        },
+        "effect_size": "partial_eta_squared",
+        "emoji": "📈"
+    },
+    
+    "friedman": {
+        "name": "Friedman test",
+        "name_ru": "Тест Фридмана",
+        "when_to_use": [
+            "Повторные измерения",
+            "Ненормальные данные",
+            "Ordinal шкала"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Непараметрический аналог RM-ANOVA.",
+            "mid": "Сравнивает ранги внутри субъекта.",
+            "senior": "Post-hoc: Wilcoxon с коррекцией на множественные сравнения."
+        },
+        "effect_size": "epsilon_squared",
+        "emoji": "📈"
+    },
+    
+    "fisher": {
+        "name": "Fisher's Exact Test",
+        "name_ru": "Точный критерий Фишера",
+        "when_to_use": [
+            "2×2 таблица частот",
+            "Малые выборки",
+            "Expected count < 5"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Точный тест для маленьких таблиц.",
+            "mid": "Основан на гипергеометрическом распределении.",
+            "senior": "Предпочтителен при малых ожидаемых частотах."
+        },
+        "effect_size": "cramers_v",
+        "emoji": "📊"
+    },
+    
+    "mcnemar": {
+        "name": "McNemar's Test",
+        "name_ru": "Тест МакНемара",
+        "when_to_use": [
+            "Парные бинарные исходы",
+            "До/после",
+            "2×2 таблица" 
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Проверяет, изменились ли пропорции в парных данных.",
+            "mid": "Использует discordant pairs.",
+            "senior": "Для малых sample используйте exact-версию."
+        },
+        "effect_size": "cramers_v",
+        "emoji": "📊"
+    },
+    
+    "cochran_q": {
+        "name": "Cochran's Q Test",
+        "name_ru": "Q-тест Кокрана",
+        "when_to_use": [
+            "3+ связанных бинарных условий",
+            "Повторные измерения",
+            "Дихотомические исходы"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Проверяет различия в пропорциях между несколькими условиями.",
+            "mid": "Обобщение McNemar для k условий.",
+            "senior": "Post-hoc: McNemar с коррекцией."
+        },
+        "effect_size": "cramers_v",
+        "emoji": "📊"
+    },
+    
+    "point_biserial": {
+        "name": "Point-Biserial Correlation",
+        "name_ru": "Точечно-бисериальная корреляция",
+        "when_to_use": [
+            "Одна переменная бинарная",
+            "Другая непрерывная",
+            "Линейная связь"
+        ],
+        "assumptions": ["normality", "linearity"],
+        "why_it_works": {
+            "junior": "Частный случай Pearson для бинарной переменной.",
+            "mid": "Эквивалентна t-test для групп 0/1.",
+            "senior": "Чувствительна к дисбалансу классов."
+        },
+        "effect_size": "r",
+        "emoji": "📈"
+    },
+    
+    "partial_correlation": {
+        "name": "Partial Correlation",
+        "name_ru": "Частная корреляция",
+        "when_to_use": [
+            "Нужно контролировать ковариату",
+            "Оценка чистой связи двух переменных",
+            "Линейность"
+        ],
+        "assumptions": ["normality", "linearity"],
+        "why_it_works": {
+            "junior": "Убирает влияние третьей переменной.",
+            "mid": "Работает через регрессию остатков.",
+            "senior": "Проверяйте мультиколлинеарность."
+        },
+        "effect_size": "r",
+        "emoji": "📈"
+    },
+    
+    "linear_regression": {
+        "name": "Linear Regression",
+        "name_ru": "Линейная регрессия",
+        "when_to_use": [
+            "Непрерывный исход",
+            "Несколько предикторов",
+            "Линейная связь"
+        ],
+        "assumptions": ["linearity", "homoscedasticity", "normality", "independence", "multicollinearity"],
+        "why_it_works": {
+            "junior": "Объясняет, как предикторы влияют на исход.",
+            "mid": "Минимизирует сумму квадратов ошибок.",
+            "senior": "Проверяйте остатки и leverage points."
+        },
+        "effect_size": "r",
+        "emoji": "📐"
+    },
+    
+    "logistic_regression": {
+        "name": "Logistic Regression",
+        "name_ru": "Логистическая регрессия",
+        "when_to_use": [
+            "Бинарный исход",
+            "Несколько предикторов",
+            "Оценка вероятностей"
+        ],
+        "assumptions": ["linearity", "independence", "multicollinearity"],
+        "why_it_works": {
+            "junior": "Предсказывает вероятность события.",
+            "mid": "Моделирует логит-вероятность как линейную функцию предикторов.",
+            "senior": "Интерпретируйте коэффициенты как odds ratio."
+        },
+        "effect_size": "odds_ratio",
+        "emoji": "📐"
+    },
+    
+    "roc_analysis": {
+        "name": "ROC Analysis",
+        "name_ru": "ROC-анализ",
+        "when_to_use": [
+            "Бинарный исход",
+            "Непрерывный предиктор",
+            "Оценка качества классификации"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Сравнивает чувствительность и специфичность на всех порогах.",
+            "mid": "AUC показывает качество классификации.",
+            "senior": "Сравнивайте ROC-кривые, учитывая клинические пороги."
+        },
+        "effect_size": "auc",
+        "emoji": "🎯"
+    },
+    
+    "survival_km": {
+        "name": "Kaplan-Meier Survival Analysis",
+        "name_ru": "Каплан–Майер",
+        "when_to_use": [
+            "Время до события",
+            "Цензурированные данные",
+            "Сравнение групп"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Оценивает вероятность выживания во времени.",
+            "mid": "Учитывает цензурирование и шаговые изменения.",
+            "senior": "Сравнение групп через log-rank тест."
+        },
+        "effect_size": "r",
+        "emoji": "⏱️"
+    },
+    
+    "mixed_model": {
+        "name": "Linear Mixed Models",
+        "name_ru": "Линейные смешанные модели",
+        "when_to_use": [
+            "Кластерные данные",
+            "Повторные измерения",
+            "Неравные размеры групп"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Учитывает случайные эффекты для группировки.",
+            "mid": "Разделяет фиксированные и случайные эффекты.",
+            "senior": "Устойчив к несбалансированным дизайнам."
+        },
+        "effect_size": "r",
+        "emoji": "🧩"
+    },
+    
+    "mixed_effects": {
+        "name": "Linear Mixed Effects",
+        "name_ru": "Смешанные эффекты",
+        "when_to_use": [
+            "Повторные измерения",
+            "Случайные эффекты",
+            "Time×Group взаимодействия"
+        ],
+        "assumptions": ["normality", "independence"],
+        "why_it_works": {
+            "junior": "Позволяет моделировать зависимые наблюдения.",
+            "mid": "Добавляет случайные эффекты для субъектов/кластеров.",
+            "senior": "Удобно для продольных и иерархических данных."
+        },
+        "effect_size": "r",
+        "emoji": "🧩"
+    },
+    
+    "clustered_correlation": {
+        "name": "Clustered Correlation",
+        "name_ru": "Кластерная корреляция",
+        "when_to_use": [
+            "Много переменных",
+            "Нужно выявить структуры",
+            "Корреляционная матрица"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Группирует похожие переменные по корреляции.",
+            "mid": "Использует иерархическую кластеризацию.",
+            "senior": "Чувствителен к масштабу и выбросам."
+        },
+        "effect_size": "r",
+        "emoji": "🗺️"
+    },
+    
+    "shapiro_wilk": {
+        "name": "Shapiro-Wilk Test",
+        "name_ru": "Тест Шапиро–Уилка",
+        "when_to_use": [
+            "Проверка нормальности",
+            "Малые и средние выборки",
+            "Перед t-test/ANOVA"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Проверяет, похожи ли данные на нормальное распределение.",
+            "mid": "Сравнивает упорядоченные данные с ожидаемыми квантилями.",
+            "senior": "Чувствителен к отклонениям при больших n."
+        },
+        "emoji": "🧪"
+    },
+    
+    "levene": {
+        "name": "Levene's Test",
+        "name_ru": "Тест Левена",
+        "when_to_use": [
+            "Проверка равенства дисперсий",
+            "Перед ANOVA",
+            "Сравнение групп"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Проверяет, одинаков ли разброс в группах.",
+            "mid": "Сравнивает отклонения от медианы/среднего.",
+            "senior": "Устойчив к отклонениям от нормальности."
+        },
+        "emoji": "🧪"
+    },
+    
+    "bland_altman": {
+        "name": "Bland-Altman Analysis",
+        "name_ru": "Анализ Бланда–Олтмана",
+        "when_to_use": [
+            "Сравнение двух методов измерения",
+            "Непрерывные данные",
+            "Оценка согласия"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Показывает смещение и пределы согласия.",
+            "mid": "Анализирует разности и средние измерений.",
+            "senior": "Проверяйте тренд разностей от уровня измерений."
+        },
+        "effect_size": "r",
+        "emoji": "🧭"
+    },
+    
+    "icc": {
+        "name": "Intraclass Correlation (ICC)",
+        "name_ru": "Внутриклассовая корреляция",
+        "when_to_use": [
+            "Оценка надежности измерений",
+            "Несколько оценщиков",
+            "Непрерывные данные"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Показывает, насколько согласованы измерения.",
+            "mid": "Разделяет вариацию между объектами и внутри.",
+            "senior": "Выбор типа ICC зависит от дизайна."
+        },
+        "effect_size": "r",
+        "emoji": "🤝"
+    },
+    
+    "cohens_kappa": {
+        "name": "Cohen's Kappa",
+        "name_ru": "Каппа Коэна",
+        "when_to_use": [
+            "Согласие категориальных оценок",
+            "Два оценщика",
+            "Бинарные или категориальные данные"
+        ],
+        "assumptions": ["independence"],
+        "why_it_works": {
+            "junior": "Корректирует согласие на случайность.",
+            "mid": "Сравнивает наблюдаемое и ожидаемое согласие.",
+            "senior": "Чувствителен к дисбалансу классов."
+        },
+        "effect_size": "r",
+        "emoji": "🤝"
+    },
+    
+    "anova_twoway": {
+        "name": "Two-Way ANOVA",
+        "name_ru": "Двухфакторный ANOVA",
+        "when_to_use": [
+            "Два фактора",
+            "Интеракции факторов",
+            "Нормальность и гомогенность"
+        ],
+        "assumptions": ["normality", "homogeneity", "independence"],
+        "why_it_works": {
+            "junior": "Проверяет влияние двух факторов и их взаимодействие.",
+            "mid": "Оценивает главные эффекты и interaction.",
+            "senior": "Пост-хок и simple effects при значимой interaction."
+        },
+        "effect_size": "eta_squared",
+        "emoji": "📈"
+    },
+    
+    "ancova": {
+        "name": "ANCOVA",
+        "name_ru": "ANCOVA",
+        "when_to_use": [
+            "Сравнение групп",
+            "Есть ковариата",
+            "Нужно контролировать смещение"
+        ],
+        "assumptions": ["normality", "homogeneity", "independence", "linearity"],
+        "why_it_works": {
+            "junior": "Сравнивает группы, учитывая ковариату.",
+            "mid": "Удаляет влияние ковариаты на исход.",
+            "senior": "Проверяйте homogeneity of regression slopes."
+        },
+        "effect_size": "partial_eta_squared",
+        "emoji": "📐"
+    },
+    
+    "pca": {
+        "name": "Principal Component Analysis",
+        "name_ru": "PCA",
+        "when_to_use": [
+            "Снижение размерности",
+            "Много коррелированных переменных",
+            "Визуализация структуры"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Находит направления максимальной дисперсии.",
+            "mid": "Компоненты ортогональны и упорядочены по объясненной дисперсии.",
+            "senior": "Стандартизируйте переменные перед PCA."
+        },
+        "emoji": "🧭"
+    },
+    
+    "efa": {
+        "name": "Exploratory Factor Analysis",
+        "name_ru": "Эксплораторный факторный анализ",
+        "when_to_use": [
+            "Латентные факторы",
+            "Вопросники",
+            "Структура переменных"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Находит скрытые факторы.",
+            "mid": "Разделяет общую и уникальную дисперсию.",
+            "senior": "Проверяйте KMO и Bartlett перед EFA."
+        },
+        "emoji": "🧭"
+    },
+    
+    "cronbach_alpha": {
+        "name": "Cronbach's Alpha",
+        "name_ru": "Альфа Кронбаха",
+        "when_to_use": [
+            "Надежность шкалы",
+            "Несколько пунктов измеряют одно",
+            "Оценка внутренней согласованности"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Показывает согласованность пунктов.",
+            "mid": "Основана на межпунктовых корреляциях.",
+            "senior": "Очень высокая alpha может означать дублирование пунктов."
+        },
+        "effect_size": "r",
+        "emoji": "🧩"
+    },
+    
+    "kmeans": {
+        "name": "K-Means Clustering",
+        "name_ru": "K-means",
+        "when_to_use": [
+            "Поиск кластеров",
+            "Нужно задать K",
+            "Однородные группы"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Группирует по близости к центрам.",
+            "mid": "Минимизирует внутрикластерную сумму квадратов.",
+            "senior": "Чувствителен к масштабам и выбросам."
+        },
+        "emoji": "🧠"
+    },
+    
+    "hierarchical_clustering": {
+        "name": "Hierarchical Clustering",
+        "name_ru": "Иерархическая кластеризация",
+        "when_to_use": [
+            "Неизвестное число кластеров",
+            "Нужна дендрограмма",
+            "Структура данных"
+        ],
+        "assumptions": [],
+        "why_it_works": {
+            "junior": "Постепенно объединяет похожие объекты.",
+            "mid": "Связь зависит от выбранного linkage.",
+            "senior": "Чувствительна к метрике и масштабу."
+        },
+        "emoji": "🌲"
     }
 }
 
@@ -557,6 +1419,14 @@ def get_explanation(term: str, level: str = "junior") -> Optional[Dict[str, Any]
         "definition": definition.get(level, definition.get("junior", "")),
         "common_mistakes": knowledge.get("common_mistakes", []),
         "what_to_check": knowledge.get("what_to_check", []),
+        "how_to_check": knowledge.get("how_to_check"),
+        "if_violated": knowledge.get("if_violated"),
+        "recommendation": knowledge.get("recommendation"),
+        "recommendations": knowledge.get("recommendations"),
+        "formula": knowledge.get("formula"),
+        "thresholds": knowledge.get("thresholds"),
+        "methods": knowledge.get("methods"),
+        "examples": knowledge.get("examples"),
         "emoji": knowledge.get("emoji", "📊")
     }
 
@@ -590,7 +1460,20 @@ def get_test_rationale(
         "when_to_use": knowledge.get("when_to_use", []),
         "why_it_works": why.get(level, why.get("junior", "")),
         "assumptions": knowledge.get("assumptions", []),
+        "assumption_details": [
+            {
+                "key": a,
+                "term": STAT_TERMS.get(a, {}).get("term", a),
+                "term_ru": STAT_TERMS.get(a, {}).get("term_ru", a),
+                "definition": STAT_TERMS.get(a, {}).get("definition", {}).get(level, STAT_TERMS.get(a, {}).get("definition", {}).get("junior", "")),
+                "how_to_check": STAT_TERMS.get(a, {}).get("how_to_check"),
+                "if_violated": STAT_TERMS.get(a, {}).get("if_violated"),
+            }
+            for a in knowledge.get("assumptions", [])
+        ],
         "alternatives": knowledge.get("alternatives", {}),
+        "references": get_references_for_test(test_id),
+        "reporting": knowledge.get("reporting"),
         "effect_size": knowledge.get("effect_size"),
         "emoji": knowledge.get("emoji", "📊")
     }
@@ -822,10 +1705,10 @@ def get_references_for_test(test_id: str) -> List[Dict[str, str]]:
     """
     test_to_refs = {
         "t_test_ind": ["effect_size_conventions", "welch_default", "effect_size_primer"],
-        "welch_t_test": ["welch_default", "effect_size_conventions"],
+        "t_test_welch": ["welch_default", "effect_size_conventions"],
         "mann_whitney": ["mann_whitney", "effect_size_primer"],
         "anova": ["effect_size_conventions", "bonferroni", "effect_size_primer"],
-        "kruskal_wallis": ["kruskal_wallis", "bonferroni"],
+        "kruskal": ["kruskal_wallis", "bonferroni"],
         "chi_square": ["de_smith_handbook", "field_spss"],
         "pearson": ["de_smith_handbook", "field_spss"],
         "spearman": ["de_smith_handbook", "field_spss"]
@@ -856,10 +1739,10 @@ def get_reporting_template(test_id: str, result: Dict[str, Any]) -> str:
     """
     templates = {
         "t_test_ind": "t({df}) = {stat:.2f}, p {p_str}, d = {effect:.2f} [{effect_label}]",
-        "welch_t_test": "t({df:.1f}) = {stat:.2f}, p {p_str}, d = {effect:.2f} [{effect_label}]",
+        "t_test_welch": "t({df:.1f}) = {stat:.2f}, p {p_str}, d = {effect:.2f} [{effect_label}]",
         "mann_whitney": "U = {stat:.0f}, p {p_str}, r = {effect:.2f}",
         "anova": "F({df_between}, {df_within}) = {stat:.2f}, p {p_str}, η² = {effect:.3f} [{effect_label}]",
-        "kruskal_wallis": "H({df}) = {stat:.2f}, p {p_str}",
+        "kruskal": "H({df}) = {stat:.2f}, p {p_str}",
         "chi_square": "χ²({df}) = {stat:.2f}, p {p_str}, V = {effect:.2f}",
         "pearson": "r({df}) = {stat:.2f}, p {p_str}",
         "spearman": "ρ({df}) = {stat:.2f}, p {p_str}"
