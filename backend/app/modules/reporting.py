@@ -185,15 +185,25 @@ class ProtocolReport:
 
         # 1. Look for Table 1 (Descriptive)
         for step_id, res in results.items():
-            if res.get("type") == "table_1":
+            rtype = res.get("type") or ""
+            if rtype in ("table_1", "descriptive_compare"):
                 self._add_table_one(res, step_id)
 
-        # 2. Look for Hypothesis Tests
+        # 2. Look for Hypothesis Tests / Analyses
         for step_id, res in results.items():
-            if res.get("type") in ["compare", "hypothesis_test", "correlation", "regression", "survival"]:
+            if "error" in res:
+                continue
+            rtype = res.get("type") or ""
+            if rtype in ("table_1", "descriptive_compare"):
+                continue  # already handled above
+            # Explicit type match
+            if rtype in ("compare", "hypothesis_test", "correlation", "regression", "survival"):
                 self._add_analysis_section(res, step_id)
-            elif res.get("type") == "batch_compare_by_factor":
+            elif rtype in ("batch_compare_by_factor", "longitudinal_comparison"):
                 self._add_longitudinal_section(res, step_id)
+            # Fallback: if result has p_value and method, treat as analysis
+            elif "p_value" in res and ("method" in res or "stats" in res):
+                self._add_analysis_section(res, step_id)
 
         self._add_footer()
         return "\n".join(self.html_parts)
@@ -435,8 +445,18 @@ class ProtocolReport:
     def _add_analysis_section(self, res: Dict, step_id: str):
         sig_class = "sig-yes" if res.get("significant") else "sig-no"
         sig_text = "SIGNIFICANT" if res.get("significant") else "Not Significant"
-        
-        method_name = res.get('method', {}).get('name', 'Statistical Test')
+
+        # method can be a dict, a string repr, or missing
+        method_raw = res.get('method')
+        if isinstance(method_raw, dict):
+            method_name = method_raw.get('name', 'Statistical Test')
+        elif isinstance(method_raw, str):
+            # Parse "id='...' name='...'" format
+            import re
+            m = re.search(r"name='([^']+)'", method_raw)
+            method_name = m.group(1) if m else method_raw
+        else:
+            method_name = 'Statistical Test'
         p_val = res.get('p_value', 1.0)
         p_display = "< 0.001" if p_val < 0.001 else f"{p_val:.4f}"
         
@@ -1135,6 +1155,8 @@ def generate_protocol_pdf_with_plots(
     for step_id, res in (results or {}).items():
         if not isinstance(res, dict):
             continue
+        if "error" in res:
+            continue
 
         # Шапка шага
         pdf.set_font("Helvetica", "B", 12)
@@ -1144,6 +1166,10 @@ def generate_protocol_pdf_with_plots(
         method = res.get("method")
         if isinstance(method, dict):
             method_name = method.get("name") or method.get("id") or "Statistical Test"
+        elif isinstance(method, str):
+            import re as _re
+            _m = _re.search(r"name='([^']+)'", method)
+            method_name = _m.group(1) if _m else method
         else:
             method_name = "Statistical Test"
         pdf.cell(0, 6, _safe_text(f"Method: {method_name}"), new_x="LMARGIN", new_y="NEXT")

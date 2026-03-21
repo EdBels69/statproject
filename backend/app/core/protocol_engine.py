@@ -64,13 +64,13 @@ class ProtocolEngine:
                 log.append(f"Starting step {step_id}...")
                 
                 # Dynamic Dispatch based on step type
-                if step_type == "compare" or step_type == "correlation":
+                if step_type in ("compare", "correlation"):
                     res = self._run_compare(df, step, alpha)
                 elif step_type == "survival":
                     res = self._run_survival(df, step, alpha)
                 elif step_type == "regression":
                     res = self._run_regression(df, step, alpha)
-                elif step_type == "descriptive_compare":
+                elif step_type in ("descriptive_compare", "table_1"):
                     res = self._run_desc_compare(df, step)
                 elif step_type == "batch_compare_by_factor":
                     res = self._run_batch_compare_by_factor(df, step, alpha)
@@ -82,6 +82,10 @@ class ProtocolEngine:
                     res = self._run_clustered_correlation(df, step, alpha)
                 else:
                     res = {"error": f"Unknown step type: {step_type}"}
+
+                # Ensure every result has a "type" field for the reporter
+                if isinstance(res, dict) and "error" not in res and "type" not in res:
+                    res["type"] = step_type
                 
                 results_map[step_id] = res
                 log.append(f"Step {step_id} completed.")
