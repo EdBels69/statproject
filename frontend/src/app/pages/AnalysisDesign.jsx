@@ -1226,6 +1226,11 @@ const AnalysisDesign = () => {
                   roles={workspaceRoles}
                   onRolesChange={setWorkspaceRoles}
                   columns={columns}
+                  datasetId={datasetId}
+                  onRunComplete={(result) => {
+                    setResults(result);
+                    setIsResultsOpen(true);
+                  }}
                 />
               )}
             </div>

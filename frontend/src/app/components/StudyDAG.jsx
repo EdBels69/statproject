@@ -11,8 +11,11 @@
  *   roles         : { target, group, covariates: string[] }
  *   onRolesChange : (next) => void
  *   columns       : Array<{ name, uiType }>
+ *   datasetId     : string (optional, for auto-protocol)
+ *   onRunComplete : (result) => void (optional, called after auto-protocol finishes)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { runAutoProtocol } from '../../lib/api';
 import {
     ReactFlow,
     Background,
@@ -139,8 +142,11 @@ const EmptyDAG = () => (
 );
 
 // ── Главный компонент ───────────────────────────────────────────────────────
-const StudyDAG = ({ roles, onRolesChange, columns }) => {
+const StudyDAG = ({ roles, onRolesChange, columns, datasetId, onRunComplete }) => {
     const [activeTemplate, setActiveTemplate] = useState(null);
+    const [isRunning, setIsRunning] = useState(false);
+    const [runResult, setRunResult] = useState(null);
+    const [runError, setRunError] = useState(null);
 
     const safeRoles = roles || { target: '', group: '', covariates: [] };
     const { nodes: initNodes, edges: initEdges } = useMemo(() => rolesToFlow(safeRoles), [safeRoles]);
@@ -223,6 +229,28 @@ const StudyDAG = ({ roles, onRolesChange, columns }) => {
         onRolesChange({ target: '', group: '', covariates: [] });
     }, [onRolesChange]);
 
+    // ── Запуск полного анализа ─────────────────────────────────────────
+    const handleRunAnalysis = useCallback(async () => {
+        if (!datasetId || !safeRoles.target || !safeRoles.group) return;
+        setIsRunning(true);
+        setRunError(null);
+        setRunResult(null);
+        try {
+            const result = await runAutoProtocol(datasetId, {
+                target: safeRoles.target,
+                group: safeRoles.group,
+                covariates: safeRoles.covariates || [],
+            });
+            setRunResult(result);
+            if (onRunComplete) onRunComplete(result);
+        } catch (e) {
+            setRunError(e.message || 'Ошибка');
+        } finally {
+            setIsRunning(false);
+        }
+    }, [datasetId, safeRoles, onRunComplete]);
+    const canRun = datasetId && safeRoles.target && safeRoles.group && !isRunning;
+
     return (
         <div className="flex flex-col gap-3">
             {/* ── Шаблоны ────────────────────────────────────────────── */}
@@ -298,6 +326,45 @@ const StudyDAG = ({ roles, onRolesChange, columns }) => {
                     )}
                 </div>
             </div>
+
+            {/* ── Запуск анализа ─────────────────────────────────────── */}
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={handleRunAnalysis}
+                    disabled={!canRun}
+                    className={`px-4 py-2 text-sm font-bold rounded-[2px] transition-colors ${
+                        canRun
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                >
+                    {isRunning ? '⏳ Анализ...' : '▶ Запустить полный анализ'}
+                </button>
+                {!safeRoles.target && <span className="text-xs text-red-400">← Выбери исход</span>}
+                {safeRoles.target && !safeRoles.group && <span className="text-xs text-red-400">← Выбери предиктор</span>}
+            </div>
+
+            {runError && (
+                <div className="px-3 py-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-[2px]">
+                    Ошибка: {runError}
+                </div>
+            )}
+
+            {runResult && (
+                <div className="px-3 py-2 text-xs bg-green-50 border border-green-200 rounded-[2px]">
+                    <div className="font-bold text-green-800 mb-1">
+                        ✅ {runResult.protocol_name} — {runResult.n_steps} шагов выполнено
+                    </div>
+                    <div className="text-green-700 space-y-0.5">
+                        {(runResult.steps || []).map(s => (
+                            <div key={s.id}>• {s.label || s.id}</div>
+                        ))}
+                    </div>
+                    <div className="mt-2 text-green-600">
+                        run_id: <code className="font-mono text-[10px]">{runResult.run_id}</code>
+                    </div>
+                </div>
+            )}
 
             {/* ── DAG граф ───────────────────────────────────────────── */}
             <div

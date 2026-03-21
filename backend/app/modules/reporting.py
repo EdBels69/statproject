@@ -197,8 +197,12 @@ class ProtocolReport:
             if rtype in ("table_1", "descriptive_compare"):
                 continue  # already handled above
             # Explicit type match
-            if rtype in ("compare", "hypothesis_test", "correlation", "regression", "survival"):
+            if rtype in ("compare", "hypothesis_test", "correlation", "survival"):
                 self._add_analysis_section(res, step_id)
+            elif rtype == "regression":
+                self._add_regression_section(res, step_id)
+            elif rtype == "clustered_correlation":
+                self._add_correlation_matrix_section(res, step_id)
             elif rtype in ("batch_compare_by_factor", "longitudinal_comparison"):
                 self._add_longitudinal_section(res, step_id)
             # Fallback: if result has p_value and method, treat as analysis
@@ -558,17 +562,110 @@ class ProtocolReport:
         for slice_key, slice_res in res.get("slices", {}).items():
             is_sig = slice_res.get("significant", False)
             p_val = slice_res.get('p_value', 1.0)
-            p_display = "< 0.001" if p_val < 0.001 else f"{p_val:.4f}"
-            
+            p_display = "< 0.001" if p_val is not None and p_val < 0.001 else (f"{p_val:.4f}" if p_val is not None else "-")
+
+            # method can be dict or str
+            method_raw = slice_res.get('method')
+            if isinstance(method_raw, dict):
+                method_name = method_raw.get('name', '-')
+            elif isinstance(method_raw, str):
+                import re
+                m = re.search(r"name='([^']+)'", method_raw)
+                method_name = m.group(1) if m else method_raw
+            else:
+                method_name = '-'
+
             html += f"""
                 <tr>
                     <td><strong>{slice_key}</strong></td>
-                    <td>{slice_res.get('method', {}).get('name', '-')}</td>
+                    <td>{method_name}</td>
                     <td><span class="stat-val { 'sig-yes' if is_sig else 'sig-no' }">{p_display}</span></td>
                     <td>{ 'Difference Detected' if is_sig else 'No Difference' }</td>
                 </tr>
             """
             
+        html += "</tbody></table></div>"
+        self.html_parts.append(html)
+
+    def _add_regression_section(self, res: Dict, step_id: str):
+        """Render regression results (linear or logistic)."""
+        method_raw = res.get('method')
+        if isinstance(method_raw, dict):
+            method_name = method_raw.get('name', 'Regression')
+        elif isinstance(method_raw, str):
+            import re
+            m = re.search(r"name='([^']+)'", method_raw)
+            method_name = m.group(1) if m else 'Regression'
+        else:
+            method_name = 'Regression'
+
+        p_val = res.get('p_value')
+        p_display = "< 0.001" if p_val is not None and p_val < 0.001 else (f"{p_val:.4f}" if p_val is not None else "-")
+        r_sq = res.get('r_squared')
+
+        self.table_counter += 1
+        html = f"""
+        <div class="card">
+            <h2>{method_name}: {step_id}</h2>
+            <p>P-value: <span class="stat-val {'sig-yes' if res.get('significant') or (p_val is not None and p_val < 0.05) else 'sig-no'}">{p_display}</span></p>
+        """
+        if r_sq is not None:
+            html += f"<p>R² = {float(r_sq):.4f}</p>"
+
+        coefficients = res.get('coefficients')
+        if coefficients and isinstance(coefficients, (list, dict)):
+            html += f"""
+            <div class="table-caption">Table {self.table_counter}. Regression Coefficients</div>
+            <table>
+                <thead><tr><th>Variable</th><th>Coefficient</th><th>Std Error</th><th>P-value</th></tr></thead>
+                <tbody>
+            """
+            coefs = coefficients if isinstance(coefficients, list) else [coefficients]
+            for c in coefs:
+                if isinstance(c, dict):
+                    name = c.get('variable', c.get('name', '?'))
+                    coef = c.get('coef', c.get('coefficient', '-'))
+                    se = c.get('std_err', c.get('se', '-'))
+                    cp = c.get('p_value', '-')
+                    html += f"<tr><td>{name}</td><td>{coef}</td><td>{se}</td><td>{cp}</td></tr>"
+            html += "</tbody></table>"
+
+        if res.get('conclusion'):
+            html += f'<div class="ai-box"><strong>AI Interpretation:</strong><br>{res["conclusion"]}</div>'
+
+        html += "</div>"
+        self.html_parts.append(html)
+
+    def _add_correlation_matrix_section(self, res: Dict, step_id: str):
+        """Render clustered correlation matrix."""
+        corr_matrix = res.get('correlation_matrix') or {}
+        variables = corr_matrix.get('variables', [])
+        if not variables:
+            return  # nothing to render
+        values = corr_matrix.get('values', [])
+        n_clusters = res.get('optimal_n_clusters', res.get('n_clusters', '?'))
+
+        self.table_counter += 1
+        html = f"""
+        <div class="card">
+            <h2>Correlation Matrix: {step_id}</h2>
+            <p>{len(variables)} variables, {n_clusters} clusters</p>
+            <div class="table-caption">Table {self.table_counter}. Correlation Matrix (Spearman)</div>
+            <table style="font-size: 11px;">
+                <thead><tr><th></th>{''.join(f'<th>{v[:12]}</th>' for v in variables)}</tr></thead>
+                <tbody>
+        """
+        for i, var in enumerate(variables):
+            row_vals = values[i] if i < len(values) else []
+            cells = ""
+            for j, val in enumerate(row_vals):
+                if val is None:
+                    cells += "<td>-</td>"
+                else:
+                    color = f"rgba(59,130,246,{min(abs(val), 1) * 0.5})" if val >= 0 else f"rgba(239,68,68,{min(abs(val), 1) * 0.5})"
+                    cells += f'<td style="background:{color}; text-align:center">{val:.2f}</td>'
+            html += f"<tr><td><strong>{var[:12]}</strong></td>{cells}</tr>"
+
         html += "</tbody></table></div>"
         self.html_parts.append(html)
 

@@ -327,6 +327,53 @@ async def export_docx(request: ExportDocxRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DOCX export failed: {str(e)}")
 
+@router.post("/protocol/auto")
+async def auto_protocol_api(request: ProtocolRequest):
+    """
+    Генерирует и выполняет полный протокол анализа автоматически.
+    Принимает: { dataset_id, protocol: { target, group, covariates: [] }, alpha }
+    Возвращает: { status, run_id, protocol_summary }
+    """
+    from app.core.auto_protocol import generate_full_protocol
+    try:
+        df = get_dataframe(request.dataset_id, DATA_DIR)
+
+        roles = request.protocol  # { target, group, covariates }
+        target = roles.get("target")
+        group = roles.get("group")
+        covariates = roles.get("covariates", [])
+
+        if not target or not group:
+            raise HTTPException(status_code=400, detail="target and group are required")
+
+        # Валидация колонок
+        missing = [c for c in [target, group] + covariates if c not in df.columns]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Columns not found: {missing}")
+
+        # Генерируем протокол
+        protocol = generate_full_protocol(df, target, group, covariates, alpha=request.alpha)
+
+        # Выполняем
+        run_id = protocol_engine.execute_protocol(request.dataset_id, df, protocol, alpha=request.alpha)
+
+        return {
+            "status": "success",
+            "run_id": run_id,
+            "protocol_name": protocol["name"],
+            "n_steps": protocol["n_steps"],
+            "description": protocol["description"],
+            "steps": [{"id": s["id"], "type": s["type"], "label": s.get("_label", "")} for s in protocol["steps"]],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        logger.error(f"Auto protocol failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Auto protocol failed: {str(e)}")
+
+
 @router.post("/protocol/run")
 async def run_protocol_api(request: ProtocolRequest):
     """
@@ -336,12 +383,12 @@ async def run_protocol_api(request: ProtocolRequest):
     try:
         # Load Data using centralized helper (Processed > Raw)
         df = get_dataframe(request.dataset_id, DATA_DIR)
-        
+
         # Run Engine with alpha parameter
         run_id = protocol_engine.execute_protocol(request.dataset_id, df, request.protocol, alpha=request.alpha)
-        
+
         return {"status": "success", "run_id": run_id}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Protocol execution failed: {str(e)}")
 
