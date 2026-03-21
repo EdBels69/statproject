@@ -205,9 +205,12 @@ const DeriveForm = ({ columns, onApply, applying }) => {
         if (!newCol.trim()) return setErr('Укажи имя новой колонки');
         if (!formula.trim()) return setErr('Укажи формулу');
         setErr('');
+        // Extract only column names that actually appear in the formula
+        const allNames = columns.map(c => c.name || c);
+        const usedCols = allNames.filter(name => formula.includes(name));
         await onApply([{
             type: 'derive_column', column: newCol.trim(),
-            config: { formula: formula.trim(), source_columns: columns.map(c => c.name || c) },
+            config: { formula: formula.trim(), source_columns: usedCols },
         }]);
     };
 
@@ -256,7 +259,10 @@ const DeriveForm = ({ columns, onApply, applying }) => {
 // ── Форма: bin_variable ────────────────────────────────────────────────────────
 const BinForm = ({ columns, onApply, applying }) => {
     const numericCols = useMemo(() =>
-        columns.filter(c => ['numeric'].includes(c.uiType || c.type || '')), [columns]);
+        columns.filter(c => {
+            const t = (c.uiType || c.type || '').toLowerCase();
+            return t === 'numeric' || t === 'integer' || t === 'float' || t.startsWith('int') || t.startsWith('float');
+        }), [columns]);
 
     const [col, setCol] = useState('');
     const [newCol, setNewCol] = useState('');

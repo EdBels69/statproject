@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import numpy as np
 import base64
@@ -202,7 +203,6 @@ class ProtocolReport:
         if not self.dataset_id:
             return
         try:
-            import os, json
             workspace_dir = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
             log_path = os.path.join(workspace_dir, "datasets", self.dataset_id, "processed", "transform_log.json")
             if not os.path.exists(log_path):
@@ -801,43 +801,46 @@ def render_protocol_report(run_data: Dict, dataset_name: str, style: Optional[st
     report = ProtocolReport(run_data, dataset_name, style=style or "apa7", dataset_id=dataset_id)
     return report.generate_html()
 
-def generate_pdf_report(results, variables, dataset_id):
-    def _safe_text(value: Any) -> str:
+# ── Common PDF helpers ─────────────────────────────────────────────────────────
+
+def _safe_text(value: Any) -> str:
+    text = str(value) if value is not None else ""
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+def _fmt_num(value: Any, digits: int = 3) -> str:
+    try:
         if value is None:
-            return ""
-        text = str(value)
-        return text.encode("latin-1", errors="replace").decode("latin-1")
-
-    def _fmt_num(value: Any, digits: int = 3) -> str:
-        try:
-            if value is None:
-                return "-"
-            num = float(value)
-            if not np.isfinite(num):
-                return "-"
-            return f"{num:.{digits}f}"
-        except Exception:
             return "-"
-
-    def _fmt_p(value: Any) -> str:
-        try:
-            if value is None:
-                return "-"
-            p = float(value)
-            if not np.isfinite(p):
-                return "-"
-            return "< 0.001" if p < 0.001 else f"{p:.4f}"
-        except Exception:
+        num = float(value)
+        if not np.isfinite(num):
             return "-"
+        return f"{num:.{digits}f}"
+    except Exception:
+        return "-"
 
-    def _pdf_bytes(pdf: FPDF) -> bytes:
-        try:
-            out = pdf.output()
-        except TypeError:
-            out = pdf.output(dest="S")
-        if isinstance(out, (bytes, bytearray)):
-            return bytes(out)
-        return str(out).encode("latin-1", errors="replace")
+def _fmt_p(value: Any) -> str:
+    try:
+        if value is None:
+            return "-"
+        p = float(value)
+        if not np.isfinite(p):
+            return "-"
+        return "< 0.001" if p < 0.001 else f"{p:.4f}"
+    except Exception:
+        return "-"
+
+def _pdf_bytes(pdf: FPDF) -> bytes:
+    try:
+        out = pdf.output()
+    except TypeError:
+        out = pdf.output(dest="S")
+    if isinstance(out, (bytes, bytearray)):
+        return bytes(out)
+    return str(out).encode("latin-1", errors="replace")
+
+# ── Legacy single-analysis PDF ────────────────────────────────────────────────
+
+def generate_pdf_report(results, variables, dataset_id):
 
     method = None
     if isinstance(results, dict):
@@ -1030,30 +1033,6 @@ def generate_protocol_pdf_with_plots(
     except ImportError:
         _pil_available = False
 
-    def _safe_text(value: Any) -> str:
-        text = str(value or "")
-        return text.encode("latin-1", errors="replace").decode("latin-1")
-
-    def _fmt_p(value: Any) -> str:
-        try:
-            p = float(value)
-            return "< 0.001" if p < 0.001 else f"{p:.4f}"
-        except Exception:
-            return "-"
-
-    def _fmt_num(value: Any, digits: int = 3) -> str:
-        try:
-            return f"{float(value):.{digits}f}" if value is not None else "-"
-        except Exception:
-            return "-"
-
-    def _pdf_bytes(pdf: FPDF) -> bytes:
-        try:
-            out = pdf.output()
-        except TypeError:
-            out = pdf.output(dest="S")
-        return bytes(out) if isinstance(out, (bytes, bytearray)) else str(out).encode("latin-1", errors="replace")
-
     def _make_plot_png(res: Dict[str, Any]) -> Optional[bytes]:
         """Рисуем график из plot_data шага через matplotlib → PNG bytes."""
         try:
@@ -1103,15 +1082,9 @@ def generate_protocol_pdf_with_plots(
             return None
 
     def _insert_png(pdf: FPDF, png_bytes: bytes) -> None:
-        """Вставить PNG bytes в FPDF через временный in-memory файл."""
-        if not _pil_available:
-            return
+        """Вставить PNG bytes в FPDF — fpdf2 принимает BytesIO напрямую."""
         try:
-            img = PILImage.open(io.BytesIO(png_bytes))
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            buf.seek(0)
-            # fpdf2 принимает file-like object
+            buf = io.BytesIO(png_bytes)
             page_w = pdf.w - pdf.l_margin - pdf.r_margin
             img_w = min(page_w * 0.85, 160)
             pdf.image(buf, w=img_w)
@@ -1140,20 +1113,18 @@ def generate_protocol_pdf_with_plots(
     # Methods section from transform_log
     if dataset_id:
         try:
-            import os as _os
-            import json as _json
-            _ws = _os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
-            _log_path = _os.path.join(_ws, "datasets", dataset_id, "processed", "transform_log.json")
-            if _os.path.exists(_log_path):
-                with open(_log_path, "r", encoding="utf-8") as _f:
-                    _tlog = _json.load(_f)
-                if _tlog:
-                    _methods = generate_methods_section(_tlog, dataset_name=dataset_name)
+            ws_dir = os.getenv("STATWIZARD_WORKSPACE_DIR", "workspace")
+            log_path = os.path.join(ws_dir, "datasets", dataset_id, "processed", "transform_log.json")
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as fh:
+                    tlog = json.load(fh)
+                if tlog:
+                    methods_text = generate_methods_section(tlog, dataset_name=dataset_name)
                     pdf.ln(2)
                     pdf.set_font("Helvetica", "B", 13)
                     pdf.cell(0, 8, _safe_text("Methods"), new_x="LMARGIN", new_y="NEXT")
                     pdf.set_font("Helvetica", "", 10)
-                    pdf.multi_cell(0, 5, _safe_text(_methods))
+                    pdf.multi_cell(0, 5, _safe_text(methods_text))
                     pdf.ln(4)
         except Exception:
             pass
@@ -1283,9 +1254,15 @@ def _render_action_sentence(entry: Dict[str, Any]) -> str:
     elif action == "bin_variable":
         labels = cfg.get("labels")
         labels_note = f" with labels {labels}" if labels else ""
+        # For custom method, derive n_bins from the bins list
+        bins_list = cfg.get("bins")
+        if bins_list and isinstance(bins_list, list):
+            n_bins = len(bins_list) - 1
+        else:
+            n_bins = cfg.get("n_bins", "?")
         return _ACTION_TEMPLATES["bin_variable"].format(
             column=col,
-            n_bins=cfg.get("n_bins", "?"),
+            n_bins=n_bins,
             method=cfg.get("method", "equal_width"),
             labels_note=labels_note,
             new_col=cfg.get("new_column") or f"{col}_bin",
