@@ -108,7 +108,8 @@ def _action_split_column(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
     trim = bool(cfg.get("trim", True))
     prefix = str(cfg.get("prefix", f"{col}_"))
 
-    series = df[col].astype(str)
+    # Сохраняем NaN, не превращая в строку "nan"
+    series = df[col].astype(str).where(df[col].notna(), other=None)
     split_series = series.str.split(sep)
     if trim:
         split_series = split_series.apply(
@@ -146,12 +147,15 @@ def _action_recode_values(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
     if not mapping:
         raise ValueError("Для recode_values нужен непустой mapping")
 
-    str_series = df[col].astype(str)
-    mapped = str_series.map(mapping)
+    # Сохраняем NaN, не превращая в строку "nan"
+    str_series = df[col].astype(str).where(df[col].notna(), other=None)
 
     if unmapped == "keep":
-        df[col] = mapped.where(mapped.notna(), other=str_series)
+        # .replace() оставляет нематченные значения на месте
+        df[col] = str_series.replace(mapping)
     else:
+        # unmapped="null" — нематченные станут NaN
+        mapped = str_series.map(mapping)
         df[col] = mapped
 
     return df
@@ -245,18 +249,21 @@ def _action_string_clean(df: "pd.DataFrame", action: Any) -> "pd.DataFrame":
     replace_from = str(cfg.get("replace_from", ""))
     replace_to = str(cfg.get("replace_to", ""))
 
-    series = df[col].astype(str)
+    # Сохраняем NaN как NaN, не превращая в строку "nan"
+    mask = df[col].notna()
+    series = df[col].copy()
+    series.loc[mask] = series.loc[mask].astype(str)
 
     for op in operations:
         if op == "trim":
-            series = series.str.strip()
+            series.loc[mask] = series.loc[mask].str.strip()
         elif op == "lowercase":
-            series = series.str.lower()
+            series.loc[mask] = series.loc[mask].str.lower()
         elif op == "uppercase":
-            series = series.str.upper()
+            series.loc[mask] = series.loc[mask].str.upper()
         elif op == "replace":
             if replace_from:
-                series = series.str.replace(replace_from, replace_to, regex=False)
+                series.loc[mask] = series.loc[mask].str.replace(replace_from, replace_to, regex=False)
         else:
             raise ValueError(f"Неизвестная операция string_clean: {op}")
 

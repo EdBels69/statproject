@@ -1237,13 +1237,18 @@ def _render_action_sentence(entry: Dict[str, Any]) -> str:
             new_col=cfg.get("new_column") or f"{col}_bin",
         )
     elif action == "string_clean":
+        operations = cfg.get("operations") or []
         ops_list = []
-        if cfg.get("strip"):      ops_list.append("leading/trailing whitespace removed")
-        if cfg.get("lowercase"):  ops_list.append("converted to lowercase")
-        if cfg.get("uppercase"):  ops_list.append("converted to uppercase")
-        repl = cfg.get("replace")
-        if isinstance(repl, dict) and repl:
-            ops_list.append(f"substring replacements applied ({len(repl)} rule(s))")
+        if "trim" in operations:      ops_list.append("leading/trailing whitespace removed")
+        if "lowercase" in operations:  ops_list.append("converted to lowercase")
+        if "uppercase" in operations:  ops_list.append("converted to uppercase")
+        if "replace" in operations:
+            replace_from = cfg.get("replace_from", "")
+            replace_to = cfg.get("replace_to", "")
+            if replace_from:
+                ops_list.append(f"'{replace_from}' replaced with '{replace_to}'")
+            else:
+                ops_list.append("substring replacement applied")
         ops = "; ".join(ops_list) if ops_list else "no specific operations recorded"
         return _ACTION_TEMPLATES["string_clean"].format(column=col, ops=ops)
     else:

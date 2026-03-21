@@ -238,3 +238,33 @@ class TestStringClean:
         action = _action("string_clean", "z", {"operations": ["trim"]})
         with pytest.raises(ValueError, match="Колонка не найдена"):
             _action_string_clean(df, action)
+
+
+# ── NaN preservation ──────────────────────────────────────────────────────────
+
+class TestNaNPreservation:
+    """Проверяем, что NaN не превращается в строку 'nan'."""
+
+    def test_split_column_preserves_nan(self):
+        df = pd.DataFrame({"x": ["a,b", None, "c,d"], "id": [1, 2, 3]})
+        action = _action("split_column", "x", {"separator": ",", "mode": "rows", "trim": True})
+        result = _action_split_column(df, action)
+        nan_rows = result[result["x"].isna()]
+        assert len(nan_rows) >= 1, "NaN строки должны сохраняться"
+        assert "nan" not in result["x"].dropna().values
+
+    def test_recode_preserves_nan(self):
+        df = pd.DataFrame({"g": ["1", None, "2"]})
+        action = _action("recode_values", "g", {"mapping": {"1": "М", "2": "Ж"}, "unmapped": "keep"})
+        result = _action_recode_values(df, action)
+        assert result["g"].iloc[0] == "М"
+        assert result["g"].iloc[2] == "Ж"
+        assert result["g"].iloc[1] is None or pd.isna(result["g"].iloc[1])
+
+    def test_string_clean_preserves_nan(self):
+        df = pd.DataFrame({"diag": ["  ДИАБЕТ  ", None, "ГИПЕРТОНИЯ"]})
+        action = _action("string_clean", "diag", {"operations": ["trim", "lowercase"]})
+        result = _action_string_clean(df, action)
+        assert result["diag"].iloc[0] == "диабет"
+        assert result["diag"].iloc[1] is None or pd.isna(result["diag"].iloc[1])
+        assert result["diag"].iloc[2] == "гипертония"
